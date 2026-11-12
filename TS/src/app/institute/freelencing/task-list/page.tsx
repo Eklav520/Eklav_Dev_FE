@@ -1,14 +1,12 @@
 import PageMetaData from "@/components/PageMetaData";
-import { Card } from "react-bootstrap";
 import TaskListManager from "../components/TaskListManager";
 
 const FreelancingTaskListPage = () => {
   return (
     <>
       <PageMetaData title="Internship Tasks" />
-      <Card className="bg-transparent border rounded-4">
-        <TaskListManager />
-      </Card>
+      {/* No extra card — the layout's content card is the only frame, as on the other admin pages */}
+      <TaskListManager />
     </>
   );
 };

@@ -1,160 +1,320 @@
 import { useState, useEffect, useRef } from 'react'
 import { Modal } from 'react-bootstrap'
 import {
-  FaUserGraduate, FaSearch, FaFileDownload, FaMicrophone,
-  FaPen, FaBook, FaHeadphones, FaBullhorn, FaRobot, FaFileAlt,
+  FaUserGraduate, FaSearch, FaFileDownload, FaUsers, FaChartLine, FaFilter,
+  FaCalendarAlt, FaExclamationTriangle,
+  FaBook, FaRobot,
   FaClipboardList, FaCheckCircle, FaStar,
-  FaChevronLeft, FaChevronRight, FaTrophy, FaClock,
-  FaCode, FaGraduationCap, FaEye, FaFlask, FaLanguage,
+  FaChevronLeft, FaChevronRight, FaChevronDown, FaTrophy, FaClock, FaMedal,
+  FaSort, FaSortUp, FaSortDown,
+  FaCode, FaEye, FaLanguage,
+  FaIdCard, FaEnvelope, FaLayerGroup, FaTimes, FaExclamationCircle,
 } from 'react-icons/fa'
+import type { IconType } from 'react-icons'
 import { useAuthContext } from '@/context/useAuthContext'
+import './StudentReports.css'
+import StudentReportDocument from './StudentReportDocument'
+import StudentReportsSheet, { type SheetRow } from './StudentReportsSheet'
+import { renderToStaticMarkup } from 'react-dom/server'
+import {
+  type Student, type Report, type ReportMetric, type ReportStatus, type TrendPoint,
+  sName, statusOf, STATUS_LABELS, rankText, profileImageUrl, reportMetrics, activitiesCompleted, monthRanges, formatDuration, activeDays,
+} from './studentReportData'
 
 /* ── Types ─────────────────────────────────────────────── */
-type Student = { _id: string; name?: string; fullName?: string; email: string; branch?: string; rollNumber?: string; gender?: string }
-
-type SectionStat    = { sessions: number; totalAttempts?: number; avgScore: number }
-type AssessmentStat = { sessions: number; passed: number; avgScore: number }
-type TopicAttempt   = { topic: string; usedThisMonth: number; remaining: number }
-type TopicStat      = SectionStat & { monthlyLimit?: number; topicsAttempted?: TopicAttempt[]; topicsAvailable?: string[] }
-type ResumeAttempt  = { attemptNumber: number | null; totalScore: number | null; isScored: boolean; createdAt: string }
-type ResumeStat     = { sessions: number; avgScore: number; monthlyLimit: number; usedThisMonth: number; remainingThisMonth: number; attempts: ResumeAttempt[] }
-type EnglishSection = {
-  attemptsUsed: number; monthlyLimit: number; remainingAttempts: number
-  bestScore: number | null; latestScore: number | null; avgScore: number
-  trend: string
-  attempts: { attempt: number; score: number; date: string }[]
-}
-
-type VocabSection = {
-  totalWordsLearned: number; wordsMastered: number; masteredPercentOfLearned: number
-  wordsToReview: number; wordsPracticedInPeriod: number
-  currentLevel: string; nextLevel: string | null
-}
-
-type CourseItem = { courseId: string; title: string; progress: number }
-
-type Report = {
-  student: { _id: string; name: string; email: string; branch: string; rollNumber: string; gender: string; college: string; department: string; joiningYear: string | number; batch: string; skills: string[]; profileImage: string; reportId: string }
-  period: { from: string | null; to: string | null }
-  overallScore: number; englishAvg: number; aiAvg: number
-  rank: { position: number; total: number; score?: number; overallPosition?: number | null; overallTotal?: number | null } | null
-  timeSpent: { totalSecs: number; uniqueDays: number; avgMinPerDay: number; label: string }
-  courses: CourseItem[]
-  totalCoursesAvailable: number
-  overallCourseProgress: number
-  codeStats: { available: { easy: number; medium: number; hard: number }; solved: number }
-  activity: { labsCompleted: number; labsAvailable: number; freelanceAvailable: number; freelanceAssigned: number; freelanceCompleted: number; codeSolved: number }
-  sections: {
-    speaking: EnglishSection; writing: EnglishSection; reading: EnglishSection
-    listening: EnglishSection; jam: EnglishSection
-    vocabulary: VocabSection
-    selfInterview: TopicStat; resumeInterview: ResumeStat
-    assessment: AssessmentStat
-  }
-}
-
-type RowState = { from: string; to: string; loading: boolean }
+type RowState = { loading: boolean }
 
 /* ── Helpers ────────────────────────────────────────────── */
-const sName      = (s: Student) => s.fullName || s.name || s.email
-const pct        = (v: number)  => `${Math.min(100, Math.max(0, v))}%`
 const scoreColor = (v: number)  => v >= 75 ? '#22c55e' : v >= 50 ? '#f59e0b' : v > 0 ? '#ef4444' : '#444'
 const fmt        = (d: string | null) =>
   d ? new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'
 const PAGE_SIZE  = 10
+const toDateInput = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+const todayISO = () => toDateInput(new Date())
+const METRIC_ICONS: Record<string, IconType> = {
+  engagement: FaCalendarAlt, course: FaBook, interview: FaRobot,
+  english: FaLanguage, assessment: FaClipboardList, code: FaCode,
+}
+const RADAR_LABELS: Record<string, string> = {
+  engagement: 'Engagement', course: 'Course', interview: 'AI Interview',
+  english: 'English', assessment: 'Assessments', code: 'Code',
+}
+const progressColor = (v: number) => v >= 80 ? '#31d866' : '#f5a524'
 
-/* ── Small reusable pieces ──────────────────────────────── */
-const SectionHeader = ({ num, title, sub, color }: { num: string; title: string; sub?: string; color: string }) => (
-  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', marginBottom: '1.1rem' }}>
-    <div style={{
-      width: 28, height: 28, borderRadius: 7, background: color,
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      fontSize: '0.7rem', fontWeight: 800, color: '#fff', flexShrink: 0,
-    }}>{num}</div>
-    <div>
-      <div style={{ fontSize: '0.95rem', fontWeight: 800, color: '#fff' }}>{title}</div>
-      {sub && <div style={{ fontSize: '0.65rem', color: '#555', marginTop: 1 }}>{sub}</div>}
-    </div>
-  </div>
-)
+const StudentDetailPanel = ({ student, report, metrics, periodDays, onDownload, onClose, loading }: {
+  student: Student
+  report: Report
+  metrics: ReportMetric[]
+  periodDays: number
+  onDownload: () => void
+  onClose: () => void
+  loading: boolean
+}) => {
+  const ranked = [...metrics].sort((a, b) => b.score - a.score)
+  const strong = ranked.slice(0, 2).filter(metric => metric.score > 0)
+  const weak = [...ranked].reverse().slice(0, 2)
+  const status = statusOf(report)
+  const rank = rankText(report)
+  const [avatarFailed, setAvatarFailed] = useState(false)
+  const listLabels = (items: ReportMetric[]) =>
+    items.map(metric => `${metric.label} (${metric.score}%)`).join(' and ')
 
-const MetricBox = ({ label, value, unit, sub, color, icon: Icon }: {
-  label: string; value: string | number; unit?: string; sub?: string; color: string; icon?: React.ElementType
-}) => (
-  <div className="metric-card" style={{
-    flex: '1 1 0', background: '#101418', border: '1px solid #1e2530',
-    borderRadius: 12, padding: '1.1rem 1rem 0.9rem', display: 'flex',
-    flexDirection: 'column' as const, alignItems: 'center', gap: 0,
-    borderTop: `3px solid ${color}`,
-  }}>
-    <div style={{
-      width: 32, height: 32, borderRadius: '50%', marginBottom: 10,
-      background: `${color}18`, border: `1px solid ${color}35`,
-      display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-    }}>
-      {Icon ? <Icon size={13} color={color} /> : <FaStar size={11} color={color} />}
-    </div>
-    <div style={{ fontSize: '1.65rem', fontWeight: 900, color: '#fff', lineHeight: 1 }}>{value}</div>
-    {unit && <div style={{ fontSize: '0.58rem', color: '#444', marginTop: 3, fontWeight: 500 }}>{unit}</div>}
-    <div style={{ fontSize: '0.62rem', color: '#6b7280', marginTop: 7, fontWeight: 700, letterSpacing: '0.05em', textAlign: 'center' as const }}>{label}</div>
-    {sub && (
-      <div style={{
-        marginTop: 5, fontSize: '0.58rem', fontWeight: 700, color,
-        background: `${color}12`, border: `1px solid ${color}25`,
-        borderRadius: 4, padding: '2px 7px',
-      }}>{sub}</div>
-    )}
-  </div>
-)
+  /* Radar geometry */
+  const cx = 100, cy = 82, maxR = 50
+  const clamp = (v: number) => Math.min(100, Math.max(0, v))
+  const point = (index: number, radius: number) => {
+    const angle = (Math.PI * 2 * index) / metrics.length - Math.PI / 2
+    return { x: cx + Math.cos(angle) * radius, y: cy + Math.sin(angle) * radius }
+  }
+  const polygon = (radiusOf: (index: number) => number) =>
+    metrics.map((_, index) => { const { x, y } = point(index, radiusOf(index)); return `${x},${y}` }).join(' ')
 
-const SkillRow = ({ icon: Icon, label, sessions, score, color, maxScore = 100 }: {
-  icon: React.ElementType; label: string; sessions: number; score: number; color: string; maxScore?: number
-}) => (
-  <div style={{ marginBottom: '0.85rem' }}>
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-        <Icon size={11} color={color} />
-        <span style={{ fontSize: '0.79rem', color: '#ccc', fontWeight: 600 }}>{label}</span>
-        <span style={{ fontSize: '0.62rem', color: '#3a3a3a', background: '#1a1a1a', borderRadius: 4, padding: '1px 6px' }}>
-          {sessions} session{sessions !== 1 ? 's' : ''}
-        </span>
+  return (
+    <>
+      <div className="sr-detail-header">
+        <div className="sr-detail-student">
+          {report.student.profileImage && !avatarFailed
+            ? <img src={profileImageUrl(report.student.profileImage)} alt="" onError={() => setAvatarFailed(true)} />
+            : <span className="sr-avatar sr-detail-avatar">{sName(student).split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()}</span>}
+          <div>
+            <div className="sr-detail-name">
+              <strong>{sName(student)}</strong>
+              <span className={`sr-status-pill sr-status-${status}`}>
+                {status === 'on-track' ? <FaCheckCircle /> : status === 'not-started' ? <FaClock /> : <FaExclamationTriangle />} {STATUS_LABELS[status]}
+              </span>
+            </div>
+            <small>
+              <FaIdCard />
+              {[student.rollNumber || report.student.rollNumber, student.branch || report.student.branch, report.student.batch || report.student.joiningYear].filter(Boolean).join('  |  ')}
+            </small>
+            <small><FaEnvelope /> {student.email}</small>
+          </div>
+        </div>
+        <div className="sr-detail-kpis">
+          <div><span><FaTrophy /></span><strong>{report.overallScore}%</strong><small>Overall Score</small></div>
+          <div><span><FaMedal /></span><strong>{rank ? `${rank.label} ${rank.total}` : '—'}</strong><small>Institute Rank</small></div>
+          <div><span><FaLayerGroup /></span><strong>{activitiesCompleted(report)}</strong><small>Activities Completed</small></div>
+          <div><span><FaClock /></span><strong>{formatDuration(report.timeSpent.totalSecs)}</strong><small>Learning Time</small></div>
+          <div><span><FaCalendarAlt /></span><strong>{activeDays(report)} / {periodDays}</strong><small>Active Days</small></div>
+        </div>
+        <button type="button" className="sr-export-button sr-detail-download" onClick={onDownload} disabled={loading}>
+          {loading ? <span className="sr-button-loader" /> : <FaFileDownload />} Download Report (PDF)
+        </button>
+        <button type="button" className="sr-detail-close" onClick={onClose} aria-label="Close student details">
+          <FaTimes />
+        </button>
       </div>
-      <span style={{ fontSize: '0.78rem', fontWeight: 800, color: score > 0 ? color : '#2a2a2a', minWidth: 38, textAlign: 'right' as const }}>
-        {score > 0 ? `${score}/${maxScore}` : '—'}
-      </span>
-    </div>
-    <div style={{ background: '#1a1a1a', borderRadius: 4, height: 6, overflow: 'hidden', position: 'relative' as const }}>
-      <div style={{
-        width: score > 0 ? pct(score) : '0%', height: '100%',
-        background: `linear-gradient(90deg, ${color}aa, ${color})`,
-        borderRadius: 4, animation: 'barFill 0.9s cubic-bezier(.22,.68,0,1.2) 0.3s both',
-      }} />
-    </div>
-  </div>
-)
 
-const TopicTag = ({ label, used }: { label: string; used: boolean }) => (
-  <span style={{
-    fontSize: '0.65rem', borderRadius: 5, padding: '3px 8px', fontWeight: 600,
-    background: used ? 'rgba(168,85,247,0.12)' : '#111',
-    border: `1px solid ${used ? 'rgba(168,85,247,0.35)' : '#1e1e1e'}`,
-    color: used ? '#a855f7' : '#333',
-  }}>{label}</span>
-)
+      <div className="sr-detail-grid">
+        <section className="sr-detail-card sr-skill-card">
+          <h3>Skill Performance</h3>
+          <svg className="sr-radar-chart" viewBox="0 0 200 165" role="img" aria-label="Student scores by module">
+            {[1, 2, 3, 4].map(ring => (
+              <polygon key={ring} points={polygon(() => maxR * ring / 4)} fill="none" stroke="#3a3027" strokeWidth="0.7" />
+            ))}
+            {metrics.map((metric, index) => {
+              const { x, y } = point(index, maxR)
+              return <line key={metric.key} x1={cx} y1={cy} x2={x} y2={y} stroke="#3a3027" strokeWidth="0.7" />
+            })}
+            <g className="sr-radar-shape" style={{ transformOrigin: `${cx}px ${cy}px` }}>
+              <polygon points={polygon(index => maxR * clamp(metrics[index].score) / 100)} fill="rgba(255,122,0,0.45)" stroke="#ff8a19" strokeWidth="1.6" strokeLinejoin="round" />
+              {metrics.map((metric, index) => {
+                const { x, y } = point(index, maxR * clamp(metric.score) / 100)
+                return <circle key={metric.key} cx={x} cy={y} r="2.8" fill="#ffb15e" stroke="#ff7a00" strokeWidth="1" />
+              })}
+            </g>
+            {metrics.map((metric, index) => {
+              const { x, y } = point(index, maxR + 14)
+              const anchor = Math.abs(x - cx) < 4 ? 'middle' : x > cx ? 'start' : 'end'
+              const top = y < cy - 4, bottom = y > cy + 4
+              const baseY = top ? y - 9 : bottom && anchor === 'middle' ? y + 2 : y - 3
+              return (
+                <text key={metric.key} y={baseY} textAnchor={anchor} fill="#d5d8db" fontSize="7.5">
+                  <tspan x={x}>{RADAR_LABELS[metric.key] ?? metric.label}</tspan>
+                  <tspan x={x} dy="9" fill="#9aa0a6">({metric.score}%)</tspan>
+                </text>
+              )
+            })}
+          </svg>
+        </section>
 
-const DiffRow = ({ level, available, color }: { level: string; available: number; color: string }) => (
-  <div style={{
-    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-    background: '#111', border: `1px solid ${color}18`, borderRadius: 8,
-    padding: '0.65rem 0.9rem',
-  }}>
-    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-      <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-      <span style={{ fontSize: '0.78rem', color: '#bbb', fontWeight: 600 }}>{level}</span>
+        <section className="sr-detail-card sr-progress-card">
+          <h3>Section-wise Progress</h3>
+          <div className="sr-detail-progress-list">
+            {metrics.map(metric => {
+              const Icon = METRIC_ICONS[metric.key] ?? FaChartLine
+              return (
+                <div className="sr-detail-progress-row" key={metric.key}>
+                  <Icon className="sr-progress-icon" />
+                  <span>{metric.label}</span>
+                  <div><i style={{ width: `${clamp(metric.score)}%`, background: progressColor(metric.score) }} /></div>
+                  <strong>{metric.score}%</strong>
+                  <small>{metric.detail}</small>
+                </div>
+              )
+            })}
+          </div>
+        </section>
+
+        <section className="sr-detail-card sr-insights-card">
+          <h3><FaStar /> EKLAV Insights</h3>
+          <div className="sr-insight-item sr-insight-strong">
+            <span><FaCheckCircle /></span>
+            <p>
+              <strong>Strong Areas: </strong>
+              {strong.length ? listLabels(strong) : 'No module has activity in this period yet.'}
+            </p>
+          </div>
+          <div className="sr-insight-item sr-insight-improve">
+            <span><FaExclamationCircle /></span>
+            <p><strong>Improvement Needed: </strong>{listLabels(weak)}</p>
+          </div>
+          <div className="sr-insight-item sr-insight-recommend">
+            <span><FaChartLine /></span>
+            <p>
+              <strong>Recommendation: </strong>
+              {report.overallScore >= 75
+                ? 'Keep up the strong performance across modules.'
+                : `Focus on ${weak.map(metric => metric.label.toLowerCase()).join(' and ')} this week to lift the overall score.`}
+            </p>
+          </div>
+        </section>
+      </div>
+    </>
+  )
+}
+
+/* ── Header filters ─────────────────────────────────────── */
+const useDismiss = (open: boolean, close: () => void) => {
+  const ref = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onPointer = (event: MouseEvent) => { if (!ref.current?.contains(event.target as Node)) close() }
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') close() }
+    document.addEventListener('mousedown', onPointer)
+    document.addEventListener('keydown', onKey)
+    return () => { document.removeEventListener('mousedown', onPointer); document.removeEventListener('keydown', onKey) }
+  }, [open]) // eslint-disable-line
+  return ref
+}
+
+const fmtRangeDate = (iso: string) =>
+  new Date(`${iso}T00:00:00`).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+
+const rangePresets = (): { label: string; from: string; to: string }[] => {
+  const now = new Date()
+  const daysAgo = (n: number) => { const d = new Date(now); d.setDate(d.getDate() - n); return toDateInput(d) }
+  const y = now.getFullYear(), m = now.getMonth()
+  return [
+    // Empty range = everything since each student was onboarded (the API treats no dates as all time)
+    { label: 'All time',     from: '', to: '' },
+    { label: 'Today',        from: todayISO(), to: todayISO() },
+    { label: 'Last 7 days',  from: daysAgo(6),  to: todayISO() },
+    { label: 'Last 30 days', from: daysAgo(29), to: todayISO() },
+    { label: 'This month',   from: toDateInput(new Date(y, m, 1)), to: toDateInput(new Date(y, m + 1, 0)) },
+    { label: 'Last month',   from: toDateInput(new Date(y, m - 1, 1)), to: toDateInput(new Date(y, m, 0)) },
+  ]
+}
+
+const DateRangePicker = ({ from, to, onChange }: { from: string; to: string; onChange: (from: string, to: string) => void }) => {
+  const [open, setOpen] = useState(false)
+  const [draftFrom, setDraftFrom] = useState(from)
+  const [draftTo, setDraftTo] = useState(to)
+  const ref = useDismiss(open, () => setOpen(false))
+
+  useEffect(() => { if (open) { setDraftFrom(from); setDraftTo(to) } }, [open]) // eslint-disable-line
+
+  const apply = (nextFrom: string, nextTo: string) => { onChange(nextFrom, nextTo); setOpen(false) }
+
+  return (
+    <div className="sr-dropdown" ref={ref}>
+      <button type="button" className={`sr-dropdown-trigger sr-range-trigger${open ? ' is-open' : ''}`} aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(v => !v)}>
+        <FaCalendarAlt className="sr-range-icon" aria-hidden="true" />
+        <span>{from && to ? `${fmtRangeDate(from)} – ${fmtRangeDate(to)}` : 'All time · since onboarding'}</span>
+        <FaChevronDown className="sr-dropdown-caret" aria-hidden="true" />
+      </button>
+      {open && (
+        <div className="sr-dropdown-menu sr-range-menu" role="dialog" aria-label="Select report date range">
+          <div className="sr-range-presets">
+            {rangePresets().map(preset => (
+              <button
+                key={preset.label}
+                type="button"
+                className={preset.from === from && preset.to === to ? 'is-active' : ''}
+                onClick={() => apply(preset.from, preset.to)}
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+          <div className="sr-range-custom">
+            <span className="sr-range-title">Custom range</span>
+            <label>
+              <span>From</span>
+              <input type="date" value={draftFrom} max={draftTo || undefined} onChange={event => setDraftFrom(event.target.value)} />
+            </label>
+            <label>
+              <span>To</span>
+              <input type="date" value={draftTo} min={draftFrom || undefined} onChange={event => setDraftTo(event.target.value)} />
+            </label>
+            <button type="button" className="sr-range-apply" disabled={!draftFrom || !draftTo || draftFrom > draftTo} onClick={() => apply(draftFrom, draftTo)}>
+              Apply
+            </button>
+          </div>
+        </div>
+      )}
     </div>
-    <span style={{ fontSize: '0.75rem', color: '#555' }}>{available} available</span>
-  </div>
-)
+  )
+}
+
+type SelectOption = { value: string; label: string }
+const toOptions = (allLabel: string, values: string[]): SelectOption[] =>
+  [{ value: '', label: allLabel }, ...values.map(value => ({ value, label: value }))]
+
+const HeaderSelect = ({ label, prefix, value, options, onChange }: {
+  label: string; prefix?: string; value: string; options: SelectOption[]; onChange: (value: string) => void
+}) => {
+  const [open, setOpen] = useState(false)
+  const ref = useDismiss(open, () => setOpen(false))
+  const choose = (next: string) => { onChange(next); setOpen(false) }
+  const current = options.find(option => option.value === value) ?? options[0]
+
+  return (
+    <div className="sr-dropdown" ref={ref}>
+      <button type="button" className={`sr-dropdown-trigger sr-select-trigger${open ? ' is-open' : ''}`} aria-label={label} aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen(v => !v)}>
+        {prefix && <span className="sr-select-prefix">{prefix}</span>}
+        <span>{current?.label}</span>
+        <FaChevronDown className="sr-dropdown-caret" aria-hidden="true" />
+      </button>
+      {open && (
+        <ul className="sr-dropdown-menu sr-select-menu" role="listbox" aria-label={label}>
+          {options.map(option => (
+            <li key={option.value || '__all'} role="option" aria-selected={option.value === value}>
+              <button type="button" className={option.value === value ? 'is-active' : ''} onClick={() => choose(option.value)}>
+                {option.label}
+                {option.value === value && <FaCheckCircle aria-hidden="true" />}
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+const STATUS_OPTIONS: SelectOption[] = [
+  { value: 'all', label: 'All' },
+  { value: 'on-track', label: 'On Track' },
+  { value: 'needs-attention', label: 'Needs Attention' },
+  { value: 'at-risk', label: 'At Risk' },
+  { value: 'not-started', label: 'Not Started' },
+]
+const PERFORMANCE_OPTIONS: SelectOption[] = [
+  { value: 'all', label: 'All' },
+  { value: 'high', label: '80–100%' },
+  { value: 'medium', label: '50–79%' },
+  { value: 'low', label: 'Below 50%' },
+]
 
 /* ── Main Component ─────────────────────────────────────── */
 const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) => {
@@ -165,9 +325,25 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
   const [allStudents, setAllStudents] = useState<Student[]>([])
   const [loadingList, setLoadingList] = useState(true)
   const [searchTerm, setSearchTerm]   = useState('')
+  const [branchFilter, setBranchFilter] = useState('')
+  const [yearFilter, setYearFilter] = useState('')
+  // Default: all time, so each student's progress runs from their onboarding date to today
+  const [periodFrom, setPeriodFrom] = useState('')
+  const [periodTo, setPeriodTo] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [performanceFilter, setPerformanceFilter] = useState('all')
   const [page, setPage]               = useState(1)
   const [rowState, setRowState]       = useState<Record<string, RowState>>({})
+  const [performanceReports, setPerformanceReports] = useState<Record<string, Report>>({})
+  const [loadingReportIds, setLoadingReportIds] = useState<Set<string>>(() => new Set())
+  const [reportLoadErrors, setReportLoadErrors] = useState<Record<string, string>>({})
+  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
+  const [detailClosed, setDetailClosed] = useState(false)
   const [report, setReport]           = useState<Report | null>(null)
+  const [trend, setTrend]             = useState<TrendPoint[]>([])
+  const [exportProgress, setExportProgress] = useState<{ done: number; total: number } | null>(null)
+  const [liveRanks, setLiveRanks]     = useState<Record<string, { position: number; total: number }>>({})
+  const [rankSort, setRankSort]       = useState<'none' | 'asc' | 'desc'>('none')
   const [showModal, setShowModal]     = useState(false)
   const [modalError, setModalError]   = useState('')
 
@@ -181,37 +357,182 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
       .finally(() => setLoadingList(false))
   }, [user?.token]) // eslint-disable-line
 
-  const filtered   = searchTerm.trim()
-    ? allStudents.filter(s =>
-        sName(s).toLowerCase().includes(searchTerm.toLowerCase()) ||
-        s.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (s.rollNumber || '').toLowerCase().includes(searchTerm.toLowerCase()))
-    : allStudents
+  const branches = Array.from(new Set(allStudents.map(student => student.branch?.trim()).filter((branch): branch is string => !!branch))).sort()
+  const years = Array.from(new Set(allStudents.map(student => String(student.joiningYear ?? '').trim()).filter(Boolean))).sort((a, b) => b.localeCompare(a, undefined, { numeric: true }))
+  const filtered = allStudents.filter(student => {
+    const query = searchTerm.trim().toLowerCase()
+    const matchesSearch = !query ||
+      sName(student).toLowerCase().includes(query) ||
+      student.email?.toLowerCase().includes(query) ||
+      (student.rollNumber || '').toLowerCase().includes(query)
+    const matchesBranch = !branchFilter || student.branch === branchFilter
+    const matchesYear = !yearFilter || String(student.joiningYear ?? '') === yearFilter
+    return matchesSearch && matchesBranch && matchesYear
+  })
+  /* Rank sort spans every page: live ranks cover the whole institute.
+     Students without a rank always go last. */
+  if (rankSort !== 'none') {
+    const rankOf = (student: Student) =>
+      liveRanks[student._id]?.position ?? performanceReports[student._id]?.rank?.position ?? null
+    filtered.sort((a, b) => {
+      const ra = rankOf(a), rb = rankOf(b)
+      if (ra == null || rb == null) return ra == null ? (rb == null ? 0 : 1) : -1
+      return rankSort === 'asc' ? ra - rb : rb - ra
+    })
+  }
+  const cycleRankSort = () => {
+    setRankSort(current => current === 'none' ? 'asc' : current === 'asc' ? 'desc' : 'none')
+    setPage(1)
+  }
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
   const paginated  = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE)
+  const pageKey = paginated.map(student => student._id).join(',')
 
-  const getRow = (id: string): RowState => rowState[id] ?? { from: '', to: '', loading: false }
+  useEffect(() => {
+    let cancelled = false
+    const students = paginated
+    if (!user?.token || students.length === 0) {
+      setPerformanceReports({})
+      setLoadingReportIds(new Set())
+      setReportLoadErrors({})
+      return
+    }
+
+    const ids = new Set(students.map(student => student._id))
+    setPerformanceReports({})
+    setLoadingReportIds(ids)
+    setReportLoadErrors({})
+
+    const loadPageReports = async () => {
+      await Promise.all(students.map(async student => {
+        try {
+          const params = new URLSearchParams({ userId: student._id })
+          if (periodFrom) params.set('from', periodFrom)
+          if (periodTo) params.set('to', periodTo)
+          const response = await fetch(`${baseURL}${apiBase}/student-report?${params}`, {
+            headers: { Authorization: `Bearer ${user.token}` },
+          })
+          if (!response.ok) throw new Error(`Could not load report (${response.status})`)
+          const data = await response.json()
+          if (!data.success || !data.report) throw new Error(data.message || 'Report data unavailable')
+          if (!cancelled) {
+            setPerformanceReports(previous => ({ ...previous, [student._id]: data.report as Report }))
+          }
+        } catch (error) {
+          console.error(`Failed to load report for student ${student._id}:`, error)
+          if (!cancelled) {
+            setReportLoadErrors(previous => ({ ...previous, [student._id]: 'Unavailable' }))
+          }
+        } finally {
+          if (!cancelled) {
+            setLoadingReportIds(previous => {
+              const next = new Set(previous)
+              next.delete(student._id)
+              return next
+            })
+          }
+        }
+      }))
+    }
+
+    void loadPageReports()
+    return () => { cancelled = true }
+  }, [pageKey, periodFrom, periodTo, user?.token, baseURL, apiBase])
+
+  const getRow = (id: string): RowState => rowState[id] ?? { loading: false }
   const setRow = (id: string, patch: Partial<RowState>) =>
     setRowState(prev => ({ ...prev, [id]: { ...getRow(id), ...patch } }))
 
+  const periodDays = periodFrom && periodTo
+    ? Math.max(1, Math.floor((new Date(`${periodTo}T00:00:00`).getTime() - new Date(`${periodFrom}T00:00:00`).getTime()) / 86400000) + 1)
+    : 30
+  /* Days a student's engagement is measured against — from the API (starts at onboarding), else the picked range */
+  const daysOf = (studentReport?: Report) => studentReport?.periodDays ?? periodDays
+  const currentPageReports = paginated
+    .map(student => performanceReports[student._id])
+    .filter((studentReport): studentReport is Report => !!studentReport)
+  const statusCounts = currentPageReports.reduce((counts, studentReport) => {
+    counts[statusOf(studentReport)] += 1
+    return counts
+  }, { 'on-track': 0, 'needs-attention': 0, 'at-risk': 0, 'not-started': 0 } as Record<ReportStatus, number>)
+  const averagePerformance = currentPageReports.length
+    ? Math.round(currentPageReports.reduce((total, studentReport) => total + studentReport.overallScore, 0) / currentPageReports.length)
+    : 0
+  const displayedStudents = paginated.filter(student => {
+    const studentReport = performanceReports[student._id]
+    if (!studentReport && (statusFilter !== 'all' || performanceFilter !== 'all')) return false
+    if (!studentReport) return true
+    const score = studentReport.overallScore
+    const status = statusOf(studentReport)
+    const matchesStatus = statusFilter === 'all' || status === statusFilter
+    const matchesPerformance = performanceFilter === 'all' ||
+      (performanceFilter === 'high' && score >= 80) ||
+      (performanceFilter === 'medium' && score >= 50 && score < 80) ||
+      (performanceFilter === 'low' && score < 50)
+    return matchesStatus && matchesPerformance
+  })
+  const selectedStudent = paginated.find(student => student._id === selectedStudentId) ?? paginated[0] ?? null
+  /* Live institute rank for the selected period; falls back to the nightly-job rank in the report */
+  useEffect(() => {
+    if (!user?.token) return
+    let cancelled = false
+    const params = new URLSearchParams()
+    if (periodFrom) params.set('from', periodFrom)
+    if (periodTo) params.set('to', periodTo)
+    fetch(`${baseURL}${apiBase}/student-ranks?${params}`, { headers: { Authorization: `Bearer ${user.token}` } })
+      .then(r => r.ok ? r.json() : null)
+      .then(d => { if (!cancelled) setLiveRanks(d?.success ? d.ranks : {}) })
+      .catch(() => { if (!cancelled) setLiveRanks({}) })
+    return () => { cancelled = true }
+  }, [user?.token, baseURL, apiBase, periodFrom, periodTo])
+  const withLiveRank = (studentReport: Report, studentId: string): Report =>
+    liveRanks[studentId] ? { ...studentReport, rank: liveRanks[studentId] } : studentReport
+
+  const selectedReport = selectedStudent && performanceReports[selectedStudent._id]
+    ? withLiveRank(performanceReports[selectedStudent._id], selectedStudent._id)
+    : undefined
+
+  const fetchStudentReport = async (studentId: string, from?: string, to?: string): Promise<Report | null> => {
+    const params = new URLSearchParams({ userId: studentId })
+    if (from) params.set('from', from)
+    if (to) params.set('to', to)
+    const r = await fetch(`${baseURL}${apiBase}/student-report?${params}`, {
+      headers: { Authorization: `Bearer ${user?.token}` },
+    })
+    const d = await r.json()
+    if (!d.success) throw new Error(d.message || 'Failed to generate')
+    return d.report as Report
+  }
+
+  /* Overall score for each of the 3 months ending with the report period */
+  const fetchTrend = (studentId: string) =>
+    Promise.all(monthRanges(periodTo || todayISO(), 3).map(async month => {
+      try {
+        const monthReport = await fetchStudentReport(studentId, month.from, month.to)
+        return { label: month.label, score: monthReport ? Math.round(monthReport.overallScore) : null }
+      } catch {
+        return { label: month.label, score: null }
+      }
+    }))
+
   const generateReport = async (student: Student, action: 'preview' | 'download') => {
-    const { from, to } = getRow(student._id)
     setRow(student._id, { loading: true })
     setModalError('')
     try {
-      const params = new URLSearchParams({ userId: student._id })
-      if (from) params.set('from', from)
-      if (to)   params.set('to', to)
-      const r = await fetch(`${baseURL}${apiBase}/student-report?${params}`, {
-        headers: { Authorization: `Bearer ${user?.token}` },
-      })
-      const d = await r.json()
-      if (!d.success) { setModalError(d.message || 'Failed to generate'); return }
-      setReport(d.report)
+      const [studentReport, trendPoints] = await Promise.all([
+        performanceReports[student._id] ?? fetchStudentReport(student._id, periodFrom, periodTo),
+        fetchTrend(student._id),
+      ])
+      if (!studentReport) return
+      setReport(withLiveRank(studentReport, student._id))
+      setTrend(trendPoints)
       setShowModal(true)
       if (action === 'download') setTimeout(() => triggerPrint(), 500)
-    } catch { setModalError('Network error') }
+    } catch (error) {
+      setModalError(error instanceof Error ? error.message : 'Network error')
+      setShowModal(true)
+    }
     finally { setRow(student._id, { loading: false }) }
   }
 
@@ -227,9 +548,9 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
   <title>Student Performance Report</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; }
-    body { margin: 0; padding: 16px; background: #080808; font-family: system-ui,-apple-system,sans-serif; color: #fff; }
+    body { margin: 0; padding: 0; background: #ffffff; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; color: #1f2430; }
     @media print {
-      @page { margin: 8mm; size: A4 portrait; }
+      @page { margin: 6mm; size: A4 portrait; }
       body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
     }
     @keyframes spin { to { transform: rotate(360deg); } }
@@ -241,838 +562,290 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
     pw.onload = () => { setTimeout(() => { pw.print(); pw.close() }, 300) }
   }
 
-  /* ── Report body ── */
-  const ReportBody = ({ rep }: { rep: Report }) => {
-    const sec     = rep.sections
-    const monthlyLimit    = sec.selfInterview.monthlyLimit ?? 5
-    const topicsWithUsage = sec.selfInterview.topicsAttempted || []
-    const topicUsageMap   = Object.fromEntries(topicsWithUsage.map(t => [t.topic, t]))
-    const topicsAvailable = sec.selfInterview.topicsAvailable || []
-    // Merge: all available topics, with usage data overlaid from topicsAttempted
-    const allTopics = topicsAvailable.length > 0
-      ? topicsAvailable.map(name => topicUsageMap[name] ?? { topic: name, usedThisMonth: 0, remaining: monthlyLimit })
-      : topicsWithUsage
-    const topRank = rep.rank ? Math.max(1, Math.ceil((rep.rank.position / rep.rank.total) * 100)) : null
-    const totalCodeAvail = (rep.codeStats?.available.easy ?? 0) + (rep.codeStats?.available.medium ?? 0) + (rep.codeStats?.available.hard ?? 0)
+  /* Export: landscape PDF of every filtered student — all six sections, overall, rank and status */
+  const exportStudents = async () => {
+    if (exportProgress) return
+    // Open the window synchronously (still inside the click) so pop-up blockers allow it
+    const pw = window.open('', '_blank')
+    if (!pw) { alert('Please allow pop-ups for this site to export the PDF.'); return }
+    pw.document.write('<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Preparing report…</title></head><body style="font-family:Segoe UI,system-ui,sans-serif;display:grid;place-items:center;height:100vh;margin:0;color:#374151">Preparing student performance summary…</body></html>')
 
-    return (
-      <div ref={printRef} style={{ maxWidth: 860, margin: '0 auto', color: '#fff', fontFamily: 'system-ui, sans-serif' }}>
-      <style>{`
-        @keyframes fadeSlideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to   { opacity: 1; transform: translateY(0); }
+    const students = [...filtered]
+    const reports: Record<string, Report> = { ...performanceReports }
+    const queue = students.filter(student => !reports[student._id])
+    let done = students.length - queue.length
+    setExportProgress({ done, total: students.length })
+
+    const worker = async () => {
+      while (queue.length) {
+        const student = queue.shift()!
+        try {
+          const studentReport = await fetchStudentReport(student._id, periodFrom, periodTo)
+          if (studentReport) reports[student._id] = studentReport
+        } catch (error) {
+          console.error(`Export: report failed for ${student._id}`, error)
         }
-        @keyframes popIn {
-          from { opacity: 0; transform: scale(0.88); }
-          to   { opacity: 1; transform: scale(1); }
+        done += 1
+        setExportProgress({ done, total: students.length })
+      }
+    }
+
+    try {
+      await Promise.all(Array.from({ length: 6 }, worker))
+
+      const rows: SheetRow[] = students.map(student => {
+        const studentReport = reports[student._id]
+        return {
+          student,
+          report: studentReport,
+          metrics: studentReport ? reportMetrics(studentReport, daysOf(studentReport)) : undefined,
+          rank: liveRanks[student._id] ?? studentReport?.rank ?? null,
         }
-        @keyframes barFill {
-          from { clip-path: inset(0 100% 0 0 round 4px); }
-          to   { clip-path: inset(0 0% 0 0 round 4px); }
-        }
-        @keyframes barFill3 {
-          from { clip-path: inset(0 100% 0 0 round 3px); }
-          to   { clip-path: inset(0 0% 0 0 round 3px); }
-        }
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to   { opacity: 1; }
-        }
-        @keyframes shimmer {
-          0%   { background-position: -400px 0; }
-          100% { background-position: 400px 0; }
-        }
-        .report-section { animation: fadeSlideUp 0.5s ease both; }
-        .report-section:nth-child(1) { animation-delay: 0.05s; }
-        .report-section:nth-child(2) { animation-delay: 0.12s; }
-        .report-section:nth-child(3) { animation-delay: 0.19s; }
-        .report-section:nth-child(4) { animation-delay: 0.26s; }
-        .report-section:nth-child(5) { animation-delay: 0.33s; }
-        .report-section:nth-child(6) { animation-delay: 0.40s; }
-        .report-section:nth-child(7) { animation-delay: 0.47s; }
-        .report-section:nth-child(8) { animation-delay: 0.54s; }
-        .report-section:nth-child(9) { animation-delay: 0.61s; }
-        .metric-card { animation: popIn 0.4s ease both; }
-        .metric-card:nth-child(1) { animation-delay: 0.15s; }
-        .metric-card:nth-child(2) { animation-delay: 0.22s; }
-        .metric-card:nth-child(3) { animation-delay: 0.29s; }
-        .metric-card:nth-child(4) { animation-delay: 0.36s; }
-        .metric-card:nth-child(5) { animation-delay: 0.43s; }
-        .metric-card:nth-child(6) { animation-delay: 0.50s; }
-        .bar-fill   { animation: barFill  0.9s cubic-bezier(.22,.68,0,1.2) both; animation-delay: 0.3s; }
-        .bar-fill-3 { animation: barFill3 0.9s cubic-bezier(.22,.68,0,1.2) both; animation-delay: 0.3s; }
-      `}</style>
+      })
+      // Ranked students first (best rank on top), then by overall score
+      rows.sort((x, y) => {
+        const rx = x.rank?.position ?? Infinity, ry = y.rank?.position ?? Infinity
+        if (rx !== ry) return rx - ry
+        return (y.report?.overallScore ?? -1) - (x.report?.overallScore ?? -1)
+      })
 
-        {/* ── Cover header ── */}
-        <div style={{
-          background: 'linear-gradient(135deg, #0a1628 0%, #0f1e3a 50%, #0a1628 100%)',
-          border: '1px solid #1a2a4a', borderRadius: 18, overflow: 'hidden',
-          marginBottom: '1.25rem', animation: 'fadeSlideUp 0.5s ease both',
-        }}>
-
-          {/* ── Title band ── */}
-          <div style={{ padding: '1.5rem 2rem 1.25rem', textAlign: 'center' as const, borderBottom: '1px solid #152038' }}>
-            <div style={{ fontSize: '1.55rem', fontWeight: 900, color: '#fff', letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-              Student Performance Report
-            </div>
-            <div style={{ fontSize: '0.7rem', color: '#4a6080', marginTop: '0.35rem', letterSpacing: '0.05em' }}>
-              Comprehensive Skills &amp; Behavioural Analysis · EKLAV Platform
-            </div>
-          </div>
-
-          {/* ── Body: avatar+info  |  score+rank ── */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr auto', alignItems: 'stretch' }}>
-
-            {/* LEFT — avatar + info rows + skills */}
-            <div style={{ padding: '1.4rem 2rem', borderRight: '1px solid #152038' }}>
-
-              {/* Avatar row */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1.1rem' }}>
-                {rep.student.profileImage ? (
-                  <img
-                    src={`${import.meta.env.VITE_API_BASE_URL}${rep.student.profileImage}`}
-                    alt={rep.student.name}
-                    style={{ width: 58, height: 58, borderRadius: '50%', objectFit: 'cover', border: '2px solid #1e3a5f', flexShrink: 0 }}
-                  />
-                ) : (
-                  <div style={{ width: 58, height: 58, borderRadius: '50%', background: 'rgba(59,130,246,0.12)', border: '2px solid #1e3a5f', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <FaUserGraduate size={22} color="#3b82f6" />
-                  </div>
-                )}
-                <div>
-                  <div style={{ fontSize: '1.1rem', fontWeight: 900, color: '#fff' }}>{rep.student.name}</div>
-                  <div style={{ fontSize: '0.68rem', color: '#4a6080', marginTop: 2 }}>{rep.student.email}</div>
-                </div>
-              </div>
-
-              {/* Info rows */}
-              {[
-                { label: 'Programme',   value: rep.student.department || rep.student.branch || '—' },
-                { label: 'Institution', value: rep.student.college || '—' },
-                { label: 'Batch',       value: rep.student.batch ? `${rep.student.batch}${rep.student.joiningYear ? ' · ' + rep.student.joiningYear : ''}` : (rep.student.joiningYear ? String(rep.student.joiningYear) : '—') },
-                { label: 'Roll No',     value: rep.student.rollNumber || '—' },
-                { label: 'Report Date', value: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'long', year: 'numeric' }) },
-                { label: 'Report ID',   value: rep.student.reportId },
-              ].map((row, i, arr) => (
-                <div key={row.label} style={{
-                  display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start',
-                  padding: '0.48rem 0',
-                  borderBottom: i < arr.length - 1 ? '1px dashed #152038' : 'none',
-                }}>
-                  <span style={{ fontSize: '0.68rem', color: '#3a5070', fontWeight: 600, minWidth: 90, flexShrink: 0 }}>{row.label}</span>
-                  <span style={{ fontSize: '0.72rem', color: '#cbd5e1', fontWeight: 700, textAlign: 'right' as const, maxWidth: 310 }}>{row.value}</span>
-                </div>
-              ))}
-
-              {/* Skills */}
-              {rep.student.skills?.length > 0 && (
-                <div style={{ marginTop: '0.9rem', paddingTop: '0.75rem', borderTop: '1px dashed #152038' }}>
-                  <div style={{ fontSize: '0.58rem', color: '#3a5070', fontWeight: 700, letterSpacing: '0.08em', marginBottom: '0.5rem' }}>SKILLS</div>
-                  <div style={{ display: 'flex', flexWrap: 'wrap' as const, gap: '0.3rem' }}>
-                    {rep.student.skills.map(s => (
-                      <span key={s} style={{
-                        fontSize: '0.62rem', fontWeight: 600, color: '#93c5fd',
-                        background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.2)',
-                        borderRadius: 5, padding: '2px 8px',
-                      }}>{s}</span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* RIGHT — score + rank */}
-            <div style={{
-              padding: '1.5rem 1.75rem',
-              display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: '1rem', minWidth: 165,
-            }}>
-              {/* Overall score */}
-              <div style={{ textAlign: 'center' as const }}>
-                <div style={{ fontSize: '0.55rem', color: '#3a5070', fontWeight: 700, letterSpacing: '0.1em', marginBottom: 8 }}>OVERALL SCORE</div>
-                <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: 2 }}>
-                  <span style={{ fontSize: '3.2rem', fontWeight: 900, lineHeight: 1, color: rep.overallScore >= 75 ? '#22c55e' : rep.overallScore >= 50 ? '#f59e0b' : rep.overallScore > 0 ? '#ef4444' : '#fff' }}>
-                    {rep.overallScore > 0 ? rep.overallScore : '—'}
-                  </span>
-                  {rep.overallScore > 0 && <span style={{ fontSize: '0.9rem', color: '#3a5070', fontWeight: 600 }}>/100</span>}
-                </div>
-                <div style={{
-                  marginTop: 6, fontSize: '0.62rem', fontWeight: 700,
-                  color: rep.overallScore >= 75 ? '#22c55e' : rep.overallScore >= 50 ? '#f59e0b' : rep.overallScore > 0 ? '#ef4444' : '#3a5070',
-                }}>
-                  {rep.overallScore >= 75 ? 'Excellent' : rep.overallScore >= 50 ? 'Strong Performer' : rep.overallScore > 0 ? 'Needs Improvement' : 'No Activity'}
-                </div>
-              </div>
-
-              {/* Rank badges */}
-              {rep.rank && (
-                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 6, width: '100%' }}>
-                  {/* Institute Rank */}
-                  <div style={{
-                    background: 'rgba(251,191,36,0.07)', border: '1px solid rgba(251,191,36,0.22)',
-                    borderRadius: 10, padding: '0.55rem 1rem', textAlign: 'center' as const,
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', marginBottom: 3 }}>
-                      <FaTrophy size={10} color="#fbbf24" />
-                      <span style={{ fontSize: '0.55rem', color: '#8a6a20', fontWeight: 700, letterSpacing: '0.08em' }}>INSTITUTE RANK</span>
-                    </div>
-                    <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#fbbf24', lineHeight: 1 }}>
-                      #{rep.rank.position}
-                    </div>
-                    <div style={{ fontSize: '0.6rem', color: '#8a6a20', marginTop: 3 }}>
-                      of {rep.rank.total} students · Top {topRank}%
-                    </div>
-                  </div>
-                  {/* Overall Rank */}
-                  {rep.rank.overallPosition && (
-                    <div style={{
-                      background: 'rgba(99,102,241,0.07)', border: '1px solid rgba(99,102,241,0.22)',
-                      borderRadius: 10, padding: '0.55rem 1rem', textAlign: 'center' as const,
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem', marginBottom: 3 }}>
-                        <FaGraduationCap size={10} color="#818cf8" />
-                        <span style={{ fontSize: '0.55rem', color: '#4a4a8a', fontWeight: 700, letterSpacing: '0.08em' }}>OVERALL RANK</span>
-                      </div>
-                      <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#818cf8', lineHeight: 1 }}>
-                        #{rep.rank.overallPosition}
-                      </div>
-                      <div style={{ fontSize: '0.6rem', color: '#4a4a8a', marginTop: 3 }}>
-                        of {rep.rank.overallTotal} students
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Period */}
-              <div style={{ textAlign: 'center' as const }}>
-                <div style={{ fontSize: '0.6rem', color: '#3a5070', fontWeight: 600 }}>
-                  {rep.period.from || rep.period.to
-                    ? `${fmt(rep.period.from)} → ${fmt(rep.period.to)}`
-                    : 'All Time'}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── 01 Score Snapshot ── */}
-        <div className="report-section" style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.25rem', marginBottom: '1rem' }}>
-          <SectionHeader num="01" title="Score Snapshot" sub="Overall performance summary" color="#ff6b00" />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.65rem' }}>
-            <MetricBox
-              label="Overall Score"
-              value={rep.overallScore > 0 ? rep.overallScore : '—'}
-              unit={rep.overallScore > 0 ? '/ 100' : undefined}
-              color={scoreColor(rep.overallScore)}
-              icon={FaStar}
-              sub={rep.overallScore >= 75 ? 'Excellent' : rep.overallScore >= 50 ? 'Good' : rep.overallScore > 0 ? 'Needs Work' : undefined}
-            />
-            <MetricBox
-              label="Institute Rank"
-              value={rep.rank ? `#${rep.rank.position}` : '—'}
-              unit={rep.rank ? `of ${rep.rank.total}` : undefined}
-              color="#fbbf24" icon={FaTrophy}
-              sub={topRank ? `Top ${topRank}%` : undefined}
-            />
-            <MetricBox
-              label="Overall Rank"
-              value={rep.rank?.overallPosition ? `#${rep.rank.overallPosition}` : '—'}
-              unit={rep.rank?.overallTotal ? `of ${rep.rank.overallTotal}` : undefined}
-              color="#818cf8" icon={FaGraduationCap}
-              sub={rep.rank?.overallPosition && rep.rank?.overallTotal
-                ? `Top ${Math.max(1, Math.ceil((rep.rank.overallPosition / rep.rank.overallTotal) * 100))}%`
-                : undefined}
-            />
-            <MetricBox
-              label="Daily Avg Time"
-              value={rep.timeSpent.avgMinPerDay > 0 ? `${rep.timeSpent.avgMinPerDay}m` : '—'}
-              unit="avg / day"
-              color={rep.timeSpent.label === 'Good' ? '#22c55e' : rep.timeSpent.label === 'Average' ? '#f59e0b' : rep.timeSpent.avgMinPerDay > 0 ? '#ef4444' : '#555'}
-              icon={FaClock}
-              sub={rep.timeSpent.label !== 'No Data' ? rep.timeSpent.label : undefined}
-            />
-            <MetricBox
-              label="Enrolled Courses"
-              value={rep.courses.length}
-              unit={`of ${rep.totalCoursesAvailable || '—'} available`}
-              color="#3b82f6" icon={FaGraduationCap}
-              sub={rep.overallCourseProgress > 0 ? `${rep.overallCourseProgress}% progress` : undefined}
-            />
-            <MetricBox
-              label="English Avg"
-              value={rep.englishAvg > 0 ? rep.englishAvg : '—'}
-              unit={rep.englishAvg > 0 ? '/ 100' : undefined}
-              color="#22c55e" icon={FaMicrophone}
-            />
-            <MetricBox
-              label="AI Interview"
-              value={rep.aiAvg > 0 ? rep.aiAvg : '—'}
-              unit={rep.aiAvg > 0 ? '/ 100' : undefined}
-              color="#a855f7" icon={FaRobot}
-            />
-          </div>
-        </div>
-
-        {/* ── 02 Courses ── */}
-        <div className="report-section" style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.25rem', marginBottom: '1rem' }}>
-          <SectionHeader num="02" title="Course Progress" sub="Enrolled courses and completion status" color="#3b82f6" />
-          {/* Summary bar */}
-          <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap' as const }}>
-            {[
-              { label: 'Available', value: rep.totalCoursesAvailable, color: '#3b82f6' },
-              { label: 'Enrolled', value: rep.courses.length, color: '#22c55e' },
-              { label: 'Avg Progress', value: `${rep.overallCourseProgress}%`, color: '#f59e0b' },
-              { label: 'Completed', value: rep.courses.filter(c => c.progress >= 100).length, color: '#a855f7' },
-            ].map(item => (
-              <div key={item.label} style={{
-                flex: '1 1 90px', background: '#141414', border: `1px solid ${item.color}20`,
-                borderRadius: 9, padding: '0.65rem', textAlign: 'center' as const,
-              }}>
-                <div style={{ fontSize: '1.3rem', fontWeight: 800, color: item.color }}>{item.value}</div>
-                <div style={{ fontSize: '0.6rem', color: '#444', marginTop: 2 }}>{item.label}</div>
-              </div>
-            ))}
-          </div>
-          {rep.courses.length === 0 ? (
-            <div style={{ color: '#333', fontSize: '0.78rem', padding: '0.5rem 0', textAlign: 'center' as const }}>Not enrolled in any course</div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '0.55rem' }}>
-              {[...rep.courses].sort((a, b) => b.progress - a.progress).map(c => {
-                const p = Math.min(100, Math.round(c.progress))
-                const col = p >= 100 ? '#22c55e' : p >= 50 ? '#3b82f6' : p >= 20 ? '#f59e0b' : '#ef4444'
-                return (
-                  <div key={c.courseId} style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: 8, padding: '0.65rem 0.85rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
-                      <span style={{ fontSize: '0.78rem', color: '#ccc', fontWeight: 500, flex: 1, marginRight: 8 }}>{c.title}</span>
-                      <span style={{
-                        fontSize: '0.68rem', fontWeight: 800, color: col,
-                        background: `${col}12`, border: `1px solid ${col}30`,
-                        borderRadius: 5, padding: '2px 8px', flexShrink: 0,
-                      }}>
-                        {p === 100 ? '✓ Completed' : `${p}%`}
-                      </span>
-                    </div>
-                    <div style={{ background: '#1a1a1a', borderRadius: 4, height: 5, overflow: 'hidden' }}>
-                      <div className="bar-fill" style={{ width: pct(p), height: '100%', background: `linear-gradient(90deg, ${col}88, ${col})`, borderRadius: 4 }} />
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* ── 03 English Practice ── */}
-        <div className="report-section" style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.25rem', marginBottom: '1rem' }}>
-          <SectionHeader num="03" title="English Practice" sub="Current month · Speaking · Writing · Reading · Listening · JAM" color="#22c55e" />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '0.75rem', marginBottom: '1rem' }}>
-            {([
-              { label: 'Speaking',  stat: sec.speaking,  color: '#22c55e', icon: FaMicrophone, scale: 1  },
-              { label: 'Writing',   stat: sec.writing,   color: '#3b82f6', icon: FaPen,        scale: 1  },
-              { label: 'Reading',   stat: sec.reading,   color: '#f59e0b', icon: FaBook,       scale: 1  },
-              { label: 'Listening', stat: sec.listening, color: '#ec4899', icon: FaHeadphones, scale: 1  },
-              { label: 'JAM',       stat: sec.jam,       color: '#ff6b00', icon: FaBullhorn,   scale: 10 },
-            ] as { label: string; stat: EnglishSection; color: string; icon: React.ElementType; scale: number }[]).map(({ label, stat, color, icon: Icon, scale }) => {
-              const trendIcon = stat.trend === 'IMPROVED' ? '↑' : stat.trend === 'DROPPED' ? '↓' : '–'
-              const trendColor = stat.trend === 'IMPROVED' ? '#22c55e' : stat.trend === 'DROPPED' ? '#ef4444' : '#444'
-              const displayBest   = stat.bestScore   != null ? Math.min(100, Math.round(stat.bestScore   * scale)) : null
-              const displayLatest = stat.latestScore != null ? Math.min(100, Math.round(stat.latestScore * scale)) : null
-              const barPct = displayBest != null ? displayBest : 0
-              return (
-                <div key={label} style={{ background: '#111', border: `1px solid ${color}20`, borderRadius: 10, padding: '0.85rem' }}>
-                  {/* Header row */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.6rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <Icon size={12} color={color} />
-                      <span style={{ fontSize: '0.8rem', fontWeight: 700, color: '#ddd' }}>{label}</span>
-                    </div>
-                    <span style={{ fontSize: '0.62rem', background: `${color}15`, border: `1px solid ${color}30`, color, borderRadius: 5, padding: '2px 7px', fontWeight: 700 }}>
-                      {stat.attemptsUsed}/{stat.monthlyLimit}
-                    </span>
-                  </div>
-                  {/* Scores row */}
-                  <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.6rem', flexWrap: 'wrap' as const }}>
-                    <div style={{ flex: 1, background: '#0a0a0a', borderRadius: 7, padding: '0.35rem 0.5rem', textAlign: 'center' as const }}>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 900, color: displayBest != null ? color : '#2a2a2a', lineHeight: 1 }}>
-                        {displayBest ?? '—'}
-                      </div>
-                      <div style={{ fontSize: '0.55rem', color: '#444', marginTop: 2, fontWeight: 600 }}>BEST</div>
-                    </div>
-                    <div style={{ flex: 1, background: '#0a0a0a', borderRadius: 7, padding: '0.35rem 0.5rem', textAlign: 'center' as const }}>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 900, color: displayLatest != null ? '#aaa' : '#2a2a2a', lineHeight: 1 }}>
-                        {displayLatest ?? '—'}
-                      </div>
-                      <div style={{ fontSize: '0.55rem', color: '#444', marginTop: 2, fontWeight: 600 }}>LATEST</div>
-                    </div>
-                    <div style={{ flex: 1, background: '#0a0a0a', borderRadius: 7, padding: '0.35rem 0.5rem', textAlign: 'center' as const }}>
-                      <div style={{ fontSize: '1.2rem', fontWeight: 900, color: trendColor, lineHeight: 1 }}>{trendIcon}</div>
-                      <div style={{ fontSize: '0.55rem', color: '#444', marginTop: 2, fontWeight: 600 }}>TREND</div>
-                    </div>
-                  </div>
-                  {/* Score bar */}
-                  <div style={{ background: '#1a1a1a', borderRadius: 4, height: 5, overflow: 'hidden' }}>
-                    <div className="bar-fill" style={{ width: `${barPct}%`, height: '100%', background: `linear-gradient(90deg, ${color}88, ${color})`, borderRadius: 4 }} />
-                  </div>
-                  {/* Mini attempt dots */}
-                  {(stat.attempts?.length ?? 0) > 0 && (
-                    <div style={{ display: 'flex', gap: 3, marginTop: '0.5rem', flexWrap: 'wrap' as const }}>
-                      {(stat.attempts || []).slice(-10).map((a, i) => {
-                        const displayScore = Math.min(100, Math.round(a.score * scale))
-                        return (
-                          <div key={i} title={`Attempt ${a.attempt}: ${displayScore}`} style={{
-                            width: 20, height: 18, borderRadius: 4, fontSize: '0.5rem', fontWeight: 800,
-                            display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            background: `${color}18`, color,
-                          }}>{displayScore}</div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
-          </div>
-          {/* English summary bar */}
-          <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 8, padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', gap: '1rem', flexWrap: 'wrap' as const }}>
-            <span style={{ fontSize: '0.7rem', color: '#555', fontWeight: 700 }}>OVERALL ENGLISH BEST AVG</span>
-            <div style={{ flex: 1, background: '#1a1a1a', borderRadius: 4, height: 6, overflow: 'hidden', minWidth: 80 }}>
-              <div className="bar-fill" style={{ width: pct(rep.englishAvg), height: '100%', background: 'linear-gradient(90deg, #22c55e88, #22c55e)', borderRadius: 4 }} />
-            </div>
-            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: scoreColor(rep.englishAvg), minWidth: 40, textAlign: 'right' as const }}>
-              {rep.englishAvg > 0 ? `${rep.englishAvg}%` : '—'}
-            </span>
-          </div>
-        </div>
-
-        {/* ── 04 Vocabulary Practice ── */}
-        <div className="report-section" style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.25rem', marginBottom: '1rem' }}>
-          <SectionHeader num="04" title="Vocabulary Practice" sub="Daily words · Learned · Mastered · CEFR level" color="#8b5cf6" />
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '0.75rem' }}>
-            {([
-              { label: 'Total Words Learned', value: sec.vocabulary.totalWordsLearned, sub: sec.vocabulary.wordsPracticedInPeriod > 0 ? `${sec.vocabulary.wordsPracticedInPeriod} in period` : undefined },
-              { label: 'Words Mastered', value: sec.vocabulary.wordsMastered, sub: sec.vocabulary.totalWordsLearned > 0 ? `${sec.vocabulary.masteredPercentOfLearned}% of learned` : undefined },
-              { label: 'Words to Review', value: sec.vocabulary.wordsToReview, sub: 'Due for revision' },
-              { label: 'Current Level', value: sec.vocabulary.currentLevel, sub: sec.vocabulary.nextLevel ? `Next: ${sec.vocabulary.nextLevel}` : undefined },
-            ]).map(({ label, value, sub }) => (
-              <div key={label} style={{ background: '#111', border: '1px solid #8b5cf620', borderRadius: 10, padding: '0.85rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
-                  <FaLanguage size={12} color="#8b5cf6" />
-                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: '#999' }}>{label}</span>
-                </div>
-                <div style={{ fontSize: '1.3rem', fontWeight: 900, color: '#ddd', lineHeight: 1 }}>{value}</div>
-                {sub && <div style={{ fontSize: '0.62rem', color: '#555', marginTop: 4, fontWeight: 600 }}>{sub}</div>}
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── 05 AI Interview ── */}
-        <div className="report-section" style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.25rem', marginBottom: '1rem' }}>
-          <SectionHeader num="05" title="AI Based Interview" sub="Topic Based · Resume Based" color="#a855f7" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-
-            {/* Topic Based */}
-            <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 12, padding: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <FaRobot size={13} color="#a855f7" />
-                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#fff' }}>Topic Based</span>
-                </div>
-                <span style={{ fontSize: '0.6rem', color: '#666' }}>{monthlyLimit} attempts/topic · this month</span>
-              </div>
-              {allTopics.length === 0 ? (
-                <div style={{ fontSize: '0.7rem', color: '#333', textAlign: 'center' as const, padding: '1rem 0' }}>No topics available yet</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '0.5rem' }}>
-                  {allTopics.map(t => {
-                    const usedPct = Math.round((t.usedThisMonth / monthlyLimit) * 100);
-                    const barColor = t.usedThisMonth >= monthlyLimit ? '#ef4444' : t.usedThisMonth > 0 ? '#a855f7' : '#1e1e1e';
-                    return (
-                      <div key={t.topic}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
-                          <span style={{ fontSize: '0.68rem', color: t.usedThisMonth > 0 ? '#c084fc' : '#555', fontWeight: t.usedThisMonth > 0 ? 700 : 400 }}>
-                            {t.topic}
-                          </span>
-                          <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-                            <span style={{ fontSize: '0.6rem', color: '#a855f7', fontWeight: 700 }}>{t.usedThisMonth}/{monthlyLimit}</span>
-                            <span style={{ fontSize: '0.58rem', color: t.remaining === 0 ? '#ef4444' : '#22c55e' }}>
-                              {t.remaining === 0 ? 'Full' : `${t.remaining} left`}
-                            </span>
-                          </div>
-                        </div>
-                        <div style={{ background: '#1a1a1a', borderRadius: 3, height: 4, overflow: 'hidden' }}>
-                          <div className="bar-fill-3" style={{ width: `${usedPct}%`, height: '100%', background: barColor, borderRadius: 3 }} />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-              {sec.selfInterview.sessions > 0 && (
-                <div style={{ marginTop: '0.75rem', paddingTop: '0.6rem', borderTop: '1px solid #1a1a1a', display: 'flex', gap: '1.25rem' }}>
-                  <div style={{ textAlign: 'center' as const }}>
-                    <div style={{ fontSize: '1rem', fontWeight: 800, color: '#a855f7' }}>{sec.selfInterview.sessions}</div>
-                    <div style={{ fontSize: '0.58rem', color: '#444' }}>Total Sessions</div>
-                  </div>
-                  <div style={{ textAlign: 'center' as const }}>
-                    <div style={{ fontSize: '1rem', fontWeight: 800, color: sec.selfInterview.avgScore > 0 ? scoreColor(sec.selfInterview.avgScore) : '#333' }}>
-                      {sec.selfInterview.avgScore > 0 ? `${sec.selfInterview.avgScore}%` : '—'}
-                    </div>
-                    <div style={{ fontSize: '0.58rem', color: '#444' }}>Avg Score</div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Resume Based */}
-            <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 12, padding: '1rem' }}>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <FaFileAlt size={13} color="#ec4899" />
-                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#fff' }}>Resume Based</span>
-                </div>
-                <span style={{ fontSize: '0.6rem', color: '#666' }}>{sec.resumeInterview.monthlyLimit} attempts · this month</span>
-              </div>
-
-              {/* Monthly usage meter */}
-              <div style={{ background: '#141414', borderRadius: 9, padding: '0.65rem 0.8rem', marginBottom: '0.65rem' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                  <span style={{ fontSize: '0.62rem', color: '#888' }}>Monthly usage</span>
-                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#ec4899' }}>
-                      {sec.resumeInterview.usedThisMonth}/{sec.resumeInterview.monthlyLimit}
-                    </span>
-                    <span style={{ fontSize: '0.6rem', color: sec.resumeInterview.remainingThisMonth === 0 ? '#ef4444' : '#22c55e', fontWeight: 600 }}>
-                      {sec.resumeInterview.remainingThisMonth === 0 ? 'Limit reached' : `${sec.resumeInterview.remainingThisMonth} remaining`}
-                    </span>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {Array.from({ length: sec.resumeInterview.monthlyLimit }).map((_, i) => (
-                    <div key={i} style={{
-                      flex: 1, height: 6, borderRadius: 3,
-                      background: i < sec.resumeInterview.usedThisMonth
-                        ? (sec.resumeInterview.usedThisMonth >= sec.resumeInterview.monthlyLimit ? '#ef4444' : '#ec4899')
-                        : '#1e1e1e',
-                    }} />
-                  ))}
-                </div>
-              </div>
-
-              {/* Attempt list */}
-              {sec.resumeInterview.sessions === 0 ? (
-                <div style={{ fontSize: '0.7rem', color: '#333', textAlign: 'center' as const, padding: '0.75rem 0' }}>No resume interviews yet</div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '0.35rem' }}>
-                  {(sec.resumeInterview.attempts || []).map((a, i) => (
-                    <div key={i} style={{
-                      display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                      background: '#141414', borderRadius: 7, padding: '0.45rem 0.7rem',
-                    }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                        <span style={{ fontSize: '0.65rem', color: '#ec4899', fontWeight: 700 }}>
-                          #{a.attemptNumber ?? i + 1}
-                        </span>
-                        <span style={{
-                          fontSize: '0.58rem', borderRadius: 4, padding: '1px 5px',
-                          color: a.isScored ? '#22c55e' : '#f59e0b',
-                          background: a.isScored ? 'rgba(34,197,94,0.1)' : 'rgba(245,158,11,0.1)',
-                          border: `1px solid ${a.isScored ? 'rgba(34,197,94,0.25)' : 'rgba(245,158,11,0.25)'}`,
-                        }}>
-                          {a.isScored ? 'Scored' : 'Pending'}
-                        </span>
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
-                        <span style={{ fontSize: '0.72rem', fontWeight: 800, color: a.totalScore != null ? scoreColor(a.totalScore) : '#444' }}>
-                          {a.totalScore != null ? `${Math.round(a.totalScore)}%` : '—'}
-                        </span>
-                        <span style={{ fontSize: '0.57rem', color: '#555' }}>
-                          {a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : ''}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* ── 05 Code Challenges ── */}
-        <div className="report-section" style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.25rem', marginBottom: '1rem' }}>
-          <SectionHeader num="06" title="Code Challenges" sub="Problem availability and student progress" color="#06b6d4" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-
-            {/* Availability */}
-            <div>
-              <div style={{ fontSize: '0.65rem', color: '#444', fontWeight: 700, letterSpacing: '0.06em', marginBottom: '0.55rem' }}>AVAILABLE PROBLEMS</div>
-              <div style={{ display: 'flex', flexDirection: 'column' as const, gap: '0.4rem' }}>
-                <DiffRow level="Easy"   available={rep.codeStats?.available.easy   ?? 0} color="#22c55e" />
-                <DiffRow level="Medium" available={rep.codeStats?.available.medium ?? 0} color="#f59e0b" />
-                <DiffRow level="Hard"   available={rep.codeStats?.available.hard   ?? 0} color="#ef4444" />
-              </div>
-              <div style={{ marginTop: '0.55rem', background: '#111', border: '1px solid #1e1e1e', borderRadius: 8, padding: '0.5rem 0.9rem', display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '0.72rem', color: '#555' }}>Total Available</span>
-                <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#06b6d4' }}>{totalCodeAvail}</span>
-              </div>
-            </div>
-
-            {/* Student progress */}
-            <div>
-              <div style={{ fontSize: '0.65rem', color: '#444', fontWeight: 700, letterSpacing: '0.06em', marginBottom: '0.55rem' }}>STUDENT PROGRESS</div>
-              <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 12, padding: '1rem', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: '0.4rem', height: 'calc(100% - 24px)' }}>
-                <FaCode size={20} color={rep.codeStats?.solved > 0 ? '#06b6d4' : '#222'} />
-                <div style={{ fontSize: '2rem', fontWeight: 900, color: rep.codeStats?.solved > 0 ? '#06b6d4' : '#222', lineHeight: 1 }}>
-                  {rep.codeStats?.solved ?? 0}
-                </div>
-                <div style={{ fontSize: '0.65rem', color: '#444' }}>Problems Solved</div>
-                {totalCodeAvail > 0 && (
-                  <>
-                    <div style={{ width: '100%', background: '#1a1a1a', borderRadius: 4, height: 5, overflow: 'hidden', marginTop: 4 }}>
-                      <div style={{
-                        width: pct(Math.round(((rep.codeStats?.solved ?? 0) / totalCodeAvail) * 100)),
-                        height: '100%', background: 'linear-gradient(90deg, #06b6d488, #06b6d4)', borderRadius: 4, animation: 'barFill 0.9s cubic-bezier(.22,.68,0,1.2) 0.3s both',
-                      }} />
-                    </div>
-                    <div style={{ fontSize: '0.62rem', color: '#06b6d4' }}>
-                      {Math.round(((rep.codeStats?.solved ?? 0) / totalCodeAvail) * 100)}% of total
-                    </div>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ── Assessments strip ── */}
-        {sec.assessment.sessions > 0 && (
-          <div className="report-section" style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.25rem', marginBottom: '1rem' }}>
-            <SectionHeader num="07" title="Assessments" sub="MCQ · Coding · TR · HR rounds" color="#f59e0b" />
-            <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' as const }}>
-              {[
-                { label: 'Attempted', value: sec.assessment.sessions,   color: '#06b6d4' },
-                { label: 'Passed',    value: sec.assessment.passed,     color: '#22c55e' },
-                { label: 'Failed',    value: sec.assessment.sessions - sec.assessment.passed, color: '#ef4444' },
-                { label: 'Pass Rate', value: sec.assessment.sessions > 0 ? `${Math.round((sec.assessment.passed / sec.assessment.sessions) * 100)}%` : '—', color: '#f59e0b' },
-                { label: 'Avg Score', value: sec.assessment.avgScore > 0 ? `${sec.assessment.avgScore}%` : '—', color: scoreColor(sec.assessment.avgScore) },
-              ].map(item => (
-                <div key={item.label} style={{
-                  flex: '1 1 80px', background: '#141414', border: `1px solid ${item.color}20`,
-                  borderRadius: 9, padding: '0.7rem', textAlign: 'center' as const,
-                }}>
-                  <div style={{ fontSize: '1.2rem', fontWeight: 800, color: item.color }}>{item.value}</div>
-                  <div style={{ fontSize: '0.6rem', color: '#444', marginTop: 2 }}>{item.label}</div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* ── College Labs ── */}
-        <div className="report-section" style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.25rem', marginBottom: '1rem' }}>
-          <SectionHeader num="08" title="College Labs" sub="Available labs and student completion" color="#ef4444" />
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
-            <div>
-              <div style={{ fontSize: '0.65rem', color: '#444', fontWeight: 700, letterSpacing: '0.06em', marginBottom: '0.55rem' }}>AVAILABLE LABS</div>
-              <div style={{ background: '#111', border: '1px solid #ef444418', borderRadius: 9, padding: '1rem', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: '0.3rem', minHeight: 90 }}>
-                <FaFlask size={18} color={rep.activity.labsAvailable > 0 ? '#ef4444' : '#222'} />
-                <div style={{ fontSize: '1.8rem', fontWeight: 900, color: rep.activity.labsAvailable > 0 ? '#ef4444' : '#222', lineHeight: 1 }}>{rep.activity.labsAvailable}</div>
-                <div style={{ fontSize: '0.62rem', color: '#444' }}>Total Labs</div>
-              </div>
-            </div>
-            <div>
-              <div style={{ fontSize: '0.65rem', color: '#444', fontWeight: 700, letterSpacing: '0.06em', marginBottom: '0.55rem' }}>STUDENT PROGRESS</div>
-              <div style={{ background: '#111', border: '1px solid #22c55e18', borderRadius: 9, padding: '1rem', display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: '0.3rem', minHeight: 90 }}>
-                <FaCheckCircle size={18} color={rep.activity.labsCompleted > 0 ? '#22c55e' : '#222'} />
-                <div style={{ fontSize: '1.8rem', fontWeight: 900, color: rep.activity.labsCompleted > 0 ? '#22c55e' : '#222', lineHeight: 1 }}>{rep.activity.labsCompleted}</div>
-                <div style={{ fontSize: '0.62rem', color: '#444' }}>Labs Completed</div>
-              </div>
-            </div>
-          </div>
-          {rep.activity.labsAvailable > 0 && (
-            <div style={{ marginTop: '0.75rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                <span style={{ fontSize: '0.62rem', color: '#444' }}>Completion rate</span>
-                <span style={{ fontSize: '0.62rem', color: '#22c55e' }}>
-                  {Math.round((rep.activity.labsCompleted / rep.activity.labsAvailable) * 100)}%
-                </span>
-              </div>
-              <div style={{ background: '#1a1a1a', borderRadius: 4, height: 6, overflow: 'hidden' }}>
-                <div style={{
-                  width: pct(Math.round((rep.activity.labsCompleted / rep.activity.labsAvailable) * 100)),
-                  height: '100%', background: 'linear-gradient(90deg, #22c55e88, #22c55e)', borderRadius: 4, animation: 'barFill 0.9s cubic-bezier(.22,.68,0,1.2) 0.3s both',
-                }} />
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* ── Freelance Tasks ── */}
-        <div className="report-section" style={{ background: '#0d0d0d', border: '1px solid #1a1a1a', borderRadius: 14, padding: '1.25rem', marginBottom: '1rem' }}>
-          <SectionHeader num="09" title="Freelance Tasks" sub="Institute tasks · Assigned · Completed" color="#f59e0b" />
-
-          {/* 3-stat summary */}
-          <div style={{ display: 'flex', gap: '0.6rem', marginBottom: '1rem', flexWrap: 'wrap' as const }}>
-            {[
-              { label: 'Available',  value: rep.activity.freelanceAvailable,  color: '#f59e0b', icon: FaStar },
-              { label: 'Assigned',   value: rep.activity.freelanceAssigned,   color: '#3b82f6', icon: FaFileAlt },
-              { label: 'Completed',  value: rep.activity.freelanceCompleted,  color: '#22c55e', icon: FaCheckCircle },
-            ].map(item => (
-              <div key={item.label} style={{
-                flex: '1 1 90px', background: '#141414', border: `1px solid ${item.color}20`,
-                borderRadius: 10, padding: '0.85rem', display: 'flex', alignItems: 'center', gap: '0.65rem',
-              }}>
-                <div style={{ width: 36, height: 36, borderRadius: 8, background: `${item.color}10`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <item.icon size={15} color={item.color} />
-                </div>
-                <div>
-                  <div style={{ fontSize: '1.4rem', fontWeight: 900, color: item.value > 0 ? item.color : '#333', lineHeight: 1 }}>{item.value}</div>
-                  <div style={{ fontSize: '0.6rem', color: '#444', marginTop: 2 }}>{item.label}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Progress bars */}
-          {rep.activity.freelanceAvailable > 0 && (
-            <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 9, padding: '0.85rem 1rem', display: 'flex', flexDirection: 'column' as const, gap: '0.6rem' }}>
-              {[
-                { label: 'Assigned rate',   value: rep.activity.freelanceAssigned,  total: rep.activity.freelanceAvailable, color: '#3b82f6' },
-                { label: 'Completion rate', value: rep.activity.freelanceCompleted, total: rep.activity.freelanceAvailable, color: '#22c55e' },
-              ].map(bar => (
-                <div key={bar.label}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{ fontSize: '0.62rem', color: '#444' }}>{bar.label}</span>
-                    <span style={{ fontSize: '0.62rem', color: bar.color, fontWeight: 700 }}>
-                      {bar.value} / {bar.total} ({Math.round((bar.value / bar.total) * 100)}%)
-                    </span>
-                  </div>
-                  <div style={{ background: '#1a1a1a', borderRadius: 4, height: 5, overflow: 'hidden' }}>
-                    <div className="bar-fill" style={{ width: pct(Math.round((bar.value / bar.total) * 100)), height: '100%', background: `linear-gradient(90deg, ${bar.color}88, ${bar.color})`, borderRadius: 4 }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-      </div>
-    )
+      const html = renderToStaticMarkup(
+        <StudentReportsSheet rows={rows} periodFrom={periodFrom} periodTo={periodTo} branch={branchFilter} year={yearFilter} />
+      )
+      pw.document.open()
+      pw.document.write(`<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Student Performance Summary · ${periodFrom && periodTo ? `${periodFrom} to ${periodTo}` : 'All time'}</title>
+  <style>
+    body { margin: 0; background: #ffffff; }
+    @media print { body { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; } }
+  </style>
+</head>
+<body>${html}</body>
+</html>`)
+      pw.document.close()
+      pw.onload = () => { setTimeout(() => { pw.focus(); pw.print() }, 300) }
+    } catch (error) {
+      console.error('Export failed', error)
+      pw.close()
+      alert('Could not prepare the export. Please try again.')
+    } finally {
+      setExportProgress(null)
+    }
   }
 
   /* ── Table UI ── */
   return (
-    <div style={{ color: '#fff' }}>
-
-      {/* Top bar */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem', gap: '0.75rem', flexWrap: 'wrap' as const }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-          <div style={{ background: 'rgba(239,68,68,0.1)', borderRadius: 8, padding: '6px 8px', display: 'flex' }}>
-            <FaUserGraduate size={14} color="#ef4444" />
-          </div>
+    <div className="student-reports-dashboard">
+      <header className="sr-header">
+        <div className="sr-heading">
+          <span className="sr-heading-icon"><FaUserGraduate /></span>
           <div>
-            <div style={{ fontSize: '0.9rem', fontWeight: 700, color: '#fff' }}>Student Reports</div>
-            <div style={{ fontSize: '0.68rem', color: '#555' }}>
-              {loadingList ? 'Loading…' : `${filtered.length} student${filtered.length !== 1 ? 's' : ''}`}
-            </div>
+            <h2>Student Reports</h2>
+            <p>Unified performance reports across all EKLAV modules</p>
           </div>
         </div>
-        <div style={{ position: 'relative' as const, flex: '0 1 320px' }}>
-          <FaSearch size={11} style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', color: '#444' }} />
-          <input value={searchTerm} onChange={e => { setSearchTerm(e.target.value); setPage(1) }}
-            placeholder="Search by name, email or roll no…"
-            style={{ width: '100%', background: '#141414', border: '1px solid #222', borderRadius: 8, padding: '8px 10px 8px 30px', color: '#fff', fontSize: '0.81rem', outline: 'none' }} />
+        <div className="sr-header-controls">
+          <DateRangePicker from={periodFrom} to={periodTo} onChange={(from, to) => { setPeriodFrom(from); setPeriodTo(to) }} />
+          <HeaderSelect label="Filter by branch" value={branchFilter} options={toOptions('All Branches', branches)} onChange={branch => { setBranchFilter(branch); setPage(1) }} />
+          <HeaderSelect label="Filter by joining year" value={yearFilter} options={toOptions('All Years', years)} onChange={year => { setYearFilter(year); setPage(1) }} />
+          <button type="button" className="sr-export-button" onClick={exportStudents} disabled={loadingList || filtered.length === 0 || !!exportProgress} title="Download a PDF summary of every student in the current filter">
+            {exportProgress
+              ? <><span className="sr-button-loader" /> Preparing {exportProgress.done}/{exportProgress.total}</>
+              : <><FaFileDownload /> Export PDF</>}
+          </button>
         </div>
-      </div>
+      </header>
 
-      {/* Table */}
-      <div style={{ background: '#0f0f0f', border: '1px solid #1a1a1a', borderRadius: 14, overflow: 'hidden' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '40px 1fr 180px 140px 140px 160px', padding: '0.6rem 1rem', borderBottom: '1px solid #1a1a1a', background: '#141414' }}>
-          {['#', 'Student', 'Roll / Branch', 'From', 'To', 'Actions'].map(h => (
-            <div key={h} style={{ fontSize: '0.65rem', color: '#444', fontWeight: 700, letterSpacing: '0.06em' }}>{h}</div>
-          ))}
-        </div>
+      <section className="sr-summary" aria-label="Student report summary">
+        <article className="sr-summary-card sr-card-orange">
+          <span className="sr-summary-icon sr-icon-orange"><FaUsers /></span>
+          <div><strong>{loadingList ? '—' : allStudents.length}</strong><span>Total Students</span></div>
+        </article>
+        <article className="sr-summary-card sr-card-green">
+          <span className="sr-summary-icon sr-icon-green"><FaCheckCircle /></span>
+          <div><strong>{statusCounts['on-track']} <small>({currentPageReports.length ? Math.round(statusCounts['on-track'] / currentPageReports.length * 100) : 0}%)</small></strong><span>On Track · This Page</span></div>
+        </article>
+        <article className="sr-summary-card sr-card-amber">
+          <span className="sr-summary-icon sr-icon-amber"><FaExclamationTriangle /></span>
+          <div><strong>{statusCounts['needs-attention']} <small>({currentPageReports.length ? Math.round(statusCounts['needs-attention'] / currentPageReports.length * 100) : 0}%)</small></strong><span>Needs Attention · This Page</span></div>
+        </article>
+        <article className="sr-summary-card sr-card-red sr-summary-note">
+          <span className="sr-summary-icon sr-icon-red"><FaExclamationTriangle /></span>
+          <div><strong>{statusCounts['at-risk']} <small>({currentPageReports.length ? Math.round(statusCounts['at-risk'] / currentPageReports.length * 100) : 0}%)</small></strong><span>At Risk · This Page</span></div>
+        </article>
+        <article className="sr-summary-card sr-card-green sr-average-card">
+          <span className="sr-average-ring" style={{ background: `conic-gradient(#31d866 ${averagePerformance * 3.6}deg, #303438 0deg)` }}>
+            <span>{currentPageReports.length ? `${averagePerformance}%` : '—'}</span>
+          </span>
+          <div><strong>Average Performance</strong><span>{currentPageReports.length} reports loaded on this page</span></div>
+        </article>
+      </section>
 
-        {loadingList && (
-          <div style={{ padding: '2.5rem', textAlign: 'center' as const }}>
-            <div style={{ width: 20, height: 20, border: '2px solid #ff6b00', borderTop: '2px solid transparent', borderRadius: '50%', animation: 'spin 0.7s linear infinite', margin: '0 auto 8px' }} />
-            <div style={{ color: '#444', fontSize: '0.78rem' }}>Loading students…</div>
+      <section className="sr-table-panel" aria-label="Student performance reports">
+        <div className="sr-toolbar">
+          <div className="sr-search">
+            <FaSearch aria-hidden="true" />
+            <input
+              aria-label="Search students"
+              value={searchTerm}
+              onChange={e => { setSearchTerm(e.target.value); setPage(1) }}
+              placeholder="Search by name, roll number or email"
+            />
           </div>
-        )}
-        {!loadingList && paginated.length === 0 && (
-          <div style={{ padding: '2.5rem', textAlign: 'center' as const, color: '#333', fontSize: '0.8rem' }}>No students found</div>
-        )}
+          <div className="sr-filters sr-report-filters">
+            <HeaderSelect label="Filter table by branch" prefix="Branch:" value={branchFilter} options={toOptions('All', branches)} onChange={branch => { setBranchFilter(branch); setPage(1) }} />
+            <HeaderSelect label="Filter table by joining year" prefix="Year:" value={yearFilter} options={toOptions('All', years)} onChange={year => { setYearFilter(year); setPage(1) }} />
+            <HeaderSelect label="Filter by report status" prefix="Status:" value={statusFilter} options={STATUS_OPTIONS} onChange={setStatusFilter} />
+            <HeaderSelect label="Filter by performance" prefix="Performance:" value={performanceFilter} options={PERFORMANCE_OPTIONS} onChange={setPerformanceFilter} />
+            <span className="sr-result-count">
+              {filtered.length ? `${(page - 1) * PAGE_SIZE + 1}–${Math.min(page * PAGE_SIZE, filtered.length)} of ${filtered.length}` : '0 students'}
+            </span>
+            {filtered.length > PAGE_SIZE && (
+              <span className="sr-compact-pagination">
+                <button type="button" onClick={() => setPage(current => Math.max(1, current - 1))} disabled={page === 1} aria-label="Previous page"><FaChevronLeft /></button>
+                <button type="button" onClick={() => setPage(current => Math.min(totalPages, current + 1))} disabled={page === totalPages} aria-label="Next page"><FaChevronRight /></button>
+              </span>
+            )}
+          </div>
+        </div>
 
-        {!loadingList && paginated.map((s, i) => {
-          const row = getRow(s._id)
-          return (
-            <div key={s._id}
-              style={{ display: 'grid', gridTemplateColumns: '40px 1fr 180px 140px 140px 160px', padding: '0.65rem 1rem', borderBottom: '1px solid #141414', alignItems: 'center', transition: 'background 0.15s' }}
-              onMouseEnter={e => (e.currentTarget.style.background = '#111')}
-              onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-              <div style={{ fontSize: '0.72rem', color: '#333', fontWeight: 600 }}>{(page - 1) * PAGE_SIZE + i + 1}</div>
-              <div>
-                <div style={{ fontSize: '0.82rem', color: '#ddd', fontWeight: 600, whiteSpace: 'nowrap' as const, overflow: 'hidden', textOverflow: 'ellipsis' }}>{sName(s)}</div>
-                <div style={{ fontSize: '0.67rem', color: '#444', marginTop: 1 }}>{s.email}</div>
-              </div>
-              <div>
-                {s.rollNumber && <div style={{ fontSize: '0.72rem', color: '#777' }}>{s.rollNumber}</div>}
-                {s.branch    && <div style={{ fontSize: '0.67rem', color: '#444' }}>{s.branch}</div>}
-                {!s.rollNumber && !s.branch && <span style={{ color: '#2a2a2a', fontSize: '0.7rem' }}>—</span>}
-              </div>
-              <div>
-                <input type="date" value={row.from} onChange={e => setRow(s._id, { from: e.target.value })}
-                  style={{ background: '#141414', border: '1px solid #222', borderRadius: 6, padding: '5px 7px', color: '#aaa', fontSize: '0.72rem', outline: 'none', colorScheme: 'dark', width: '100%' }} />
-              </div>
-              <div>
-                <input type="date" value={row.to} onChange={e => setRow(s._id, { to: e.target.value })}
-                  style={{ background: '#141414', border: '1px solid #222', borderRadius: 6, padding: '5px 7px', color: '#aaa', fontSize: '0.72rem', outline: 'none', colorScheme: 'dark', width: '100%' }} />
-              </div>
-              <div style={{ display: 'flex', gap: '0.4rem' }}>
-                <button onClick={() => generateReport(s, 'preview')} disabled={row.loading}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: '#1a1a1a', border: '1px solid #2a2a2a', color: '#aaa', borderRadius: 6, padding: '5px 10px', fontSize: '0.72rem', fontWeight: 600, cursor: row.loading ? 'not-allowed' : 'pointer', opacity: row.loading ? 0.6 : 1 }}>
-                  {row.loading
-                    ? <div style={{ width: 10, height: 10, border: '1.5px solid #aaa6', borderTop: '1.5px solid #aaa', borderRadius: '50%', animation: 'spin 0.7s linear infinite' }} />
-                    : <FaEye size={10} />}
-                  Preview
-                </button>
-                <button onClick={() => generateReport(s, 'download')} disabled={row.loading}
-                  style={{ display: 'flex', alignItems: 'center', gap: '0.3rem', background: 'rgba(255,107,0,0.08)', border: '1px solid rgba(255,107,0,0.2)', color: '#ff6b00', borderRadius: 6, padding: '5px 10px', fontSize: '0.72rem', fontWeight: 600, cursor: row.loading ? 'not-allowed' : 'pointer', opacity: row.loading ? 0.6 : 1 }}>
-                  <FaFileDownload size={10} /> PDF
-                </button>
-              </div>
+        <div className="sr-table-scroll">
+          <div className="sr-table">
+            <div className="sr-table-head">
+              {['#', 'Student', 'Roll / Branch', 'Daily Engagement', 'Course Progress', 'AI Interview', 'English Practice', 'Assessments', 'Code Challenge', 'Overall', 'Rank', 'Status', 'Actions'].map(heading => heading === 'Rank' ? (
+                <div key={heading} aria-sort={rankSort === 'asc' ? 'ascending' : rankSort === 'desc' ? 'descending' : 'none'}>
+                  <button type="button" className={`sr-sort-button${rankSort !== 'none' ? ' is-active' : ''}`} onClick={cycleRankSort} title="Sort by rank">
+                    Rank {rankSort === 'asc' ? <FaSortUp /> : rankSort === 'desc' ? <FaSortDown /> : <FaSort />}
+                  </button>
+                </div>
+              ) : (
+                <div key={heading}>{heading}</div>
+              ))}
             </div>
-          )
-        })}
+
+            {loadingList && (
+              <div className="sr-empty">
+                <span className="sr-loader" />
+                <span>Loading students…</span>
+              </div>
+            )}
+            {!loadingList && filtered.length === 0 && (
+              <div className="sr-empty">
+                <FaUserGraduate />
+                <span>No students match your filters.</span>
+              </div>
+            )}
+            {!loadingList && filtered.length > 0 && displayedStudents.length === 0 && (
+              <div className="sr-empty">
+                <FaFilter />
+                <span>No students on this page match the selected status or performance filter.</span>
+              </div>
+            )}
+
+            {!loadingList && displayedStudents.map(student => {
+              const row = getRow(student._id)
+              const displayName = sName(student)
+              const initials = displayName.split(/\s+/).slice(0, 2).map(part => part[0]).join('').toUpperCase()
+              const studentReport = performanceReports[student._id]
+              const metrics = studentReport ? reportMetrics(studentReport, daysOf(studentReport)) : []
+              const score = studentReport?.overallScore
+              const status = studentReport ? statusOf(studentReport) : null
+              return (
+                <div className="sr-table-row" key={student._id}>
+                  <div className="sr-row-number">{filtered.indexOf(student) + 1}</div>
+                  <div className="sr-student-cell">
+                    <span className="sr-avatar">{initials}</span>
+                    <button type="button" className={`sr-student-copy${selectedStudent?._id === student._id ? ' is-selected' : ''}`} onClick={() => { setSelectedStudentId(student._id); setDetailClosed(false) }}>
+                      <strong>{displayName}</strong>
+                      <small>{student.email}</small>
+                    </button>
+                  </div>
+                  <div className="sr-branch-cell">
+                    <strong>{student.rollNumber || '—'}</strong>
+                    <small>{student.branch || 'Branch not set'}</small>
+                  </div>
+                  {metrics.length > 0
+                    ? metrics.map(metric => (
+                      <div className="sr-score-cell" key={metric.key} title={metric.detail}>
+                        <strong>{metric.score}%</strong>
+                        <span><i style={{ width: `${Math.min(100, Math.max(0, metric.score))}%`, background: scoreColor(metric.score) }} /></span>
+                      </div>
+                    ))
+                    : (
+                      <div className="sr-metric-placeholder" style={{ gridColumn: 'span 6' }}>
+                        {loadingReportIds.has(student._id) ? 'Loading performance…' : reportLoadErrors[student._id] || 'No performance data'}
+                      </div>
+                    )}
+                  <div className="sr-overall-score">
+                    {score == null ? '—' : <span style={{ color: scoreColor(score) }}>{Math.round(score)}%</span>}
+                  </div>
+                  <div className="sr-rank-cell">
+                    {(() => {
+                      const rank = studentReport ? rankText(withLiveRank(studentReport, student._id)) : null
+                      return rank ? <><strong>{rank.label}</strong><small>{rank.total}</small></> : <small>—</small>
+                    })()}
+                  </div>
+                  <div className="sr-status-cell">
+                    {status
+                      ? <span className={`sr-status-pill sr-status-${status}`}>{STATUS_LABELS[status]}</span>
+                      : <span className="sr-status-pill sr-status-pending">{loadingReportIds.has(student._id) ? 'Loading' : 'Unavailable'}</span>}
+                  </div>
+                  <div className="sr-actions">
+                    <button type="button" className="sr-view-button" onClick={() => generateReport(student, 'preview')} disabled={row.loading}>
+                      {row.loading ? <span className="sr-button-loader" /> : <FaEye />}
+                      View
+                    </button>
+                    <button type="button" className="sr-pdf-button" onClick={() => generateReport(student, 'download')} disabled={row.loading}>
+                      <FaFileDownload /> PDF
+                    </button>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
 
         {!loadingList && filtered.length > PAGE_SIZE && (
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0.75rem 1rem', borderTop: '1px solid #1a1a1a', background: '#0d0d0d' }}>
-            <div style={{ fontSize: '0.72rem', color: '#444' }}>
-              Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}
-            </div>
-            <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-              <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
-                style={{ background: '#141414', border: '1px solid #222', color: page === 1 ? '#2a2a2a' : '#888', borderRadius: 6, padding: '4px 8px', cursor: page === 1 ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center' }}>
-                <FaChevronLeft size={10} />
-              </button>
+          <div className="sr-pagination">
+            <span>Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, filtered.length)} of {filtered.length}</span>
+            <div className="sr-pagination-controls">
+              <button type="button" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} aria-label="Previous page"><FaChevronLeft /></button>
               {Array.from({ length: Math.min(5, totalPages) }, (_, k) => {
-                const p = page <= 3 ? k + 1 : page - 2 + k
-                if (p < 1 || p > totalPages) return null
-                return (
-                  <button key={p} onClick={() => setPage(p)}
-                    style={{ background: p === page ? '#ff6b00' : '#141414', border: `1px solid ${p === page ? '#ff6b00' : '#222'}`, color: p === page ? '#fff' : '#666', borderRadius: 6, padding: '4px 9px', fontSize: '0.72rem', fontWeight: p === page ? 700 : 400, cursor: 'pointer', minWidth: 28, textAlign: 'center' as const }}>
-                    {p}
-                  </button>
-                )
+                const pageNumber = page <= 3 ? k + 1 : page - 2 + k
+                if (pageNumber < 1 || pageNumber > totalPages) return null
+                return <button type="button" key={pageNumber} className={pageNumber === page ? 'active' : ''} onClick={() => setPage(pageNumber)}>{pageNumber}</button>
               })}
-              <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                style={{ background: '#141414', border: '1px solid #222', color: page === totalPages ? '#2a2a2a' : '#888', borderRadius: 6, padding: '4px 8px', cursor: page === totalPages ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center' }}>
-                <FaChevronRight size={10} />
-              </button>
+              <button type="button" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages} aria-label="Next page"><FaChevronRight /></button>
             </div>
           </div>
         )}
-      </div>
+      </section>
+
+      {!detailClosed && <section className="sr-student-detail" aria-label="Selected student performance details">
+        {!selectedStudent ? (
+          <div className="sr-empty">Select a student to view the detailed report.</div>
+        ) : !selectedReport ? (
+          <div className="sr-detail-loading">
+            {loadingReportIds.has(selectedStudent._id)
+              ? <><span className="sr-loader" /> Loading {sName(selectedStudent)}’s performance report…</>
+              : <><FaExclamationTriangle /> {reportLoadErrors[selectedStudent._id] || 'Performance report is not available for this student.'}</>}
+          </div>
+        ) : (
+          <StudentDetailPanel
+            key={selectedStudent._id}
+            student={selectedStudent}
+            report={selectedReport}
+            metrics={reportMetrics(selectedReport, daysOf(selectedReport))}
+            periodDays={daysOf(selectedReport)}
+            onDownload={() => generateReport(selectedStudent, 'download')}
+            onClose={() => setDetailClosed(true)}
+            loading={getRow(selectedStudent._id).loading}
+          />
+        )}
+      </section>}
 
       {/* Report Modal */}
       <Modal show={showModal} onHide={() => setShowModal(false)} fullscreen>
@@ -1097,13 +870,22 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
             </button>
           )}
         </Modal.Header>
-        <Modal.Body style={{ background: '#080808', padding: '1.5rem', overflowY: 'auto' as const }}>
+        <Modal.Body style={{ background: '#2a2d31', padding: '1.5rem', overflowY: 'auto' as const }}>
           {modalError && (
             <div style={{ background: '#1a0a0a', border: '1px solid #5a1a1a', borderRadius: 8, padding: '10px 14px', color: '#ef4444', fontSize: '0.8rem', marginBottom: '1rem' }}>
               {modalError}
             </div>
           )}
-          {report && <ReportBody rep={report} />}
+          {report && (
+            <div ref={printRef}>
+              <StudentReportDocument
+                report={report}
+                metrics={reportMetrics(report, daysOf(report))}
+                periodDays={daysOf(report)}
+                trend={trend}
+              />
+            </div>
+          )}
         </Modal.Body>
       </Modal>
 

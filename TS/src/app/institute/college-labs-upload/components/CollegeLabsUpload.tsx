@@ -1,8 +1,31 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import { Alert, Badge, Button, Modal } from 'react-bootstrap'
-import { BsCloudUpload, BsDownload, BsTrash, BsPeopleFill, BsCheckCircleFill, BsXCircleFill, BsEye, BsFunnel } from 'react-icons/bs'
+import { Modal } from 'react-bootstrap'
+import {
+  FaCheckCircle,
+  FaClipboardList,
+  FaCloudUploadAlt,
+  FaDownload,
+  FaExclamationTriangle,
+  FaEye,
+  FaFileExcel,
+  FaFlask,
+  FaHourglassHalf,
+  FaInfoCircle,
+  FaPercentage,
+  FaSpinner,
+  FaSyncAlt,
+  FaTimes,
+  FaTrash,
+  FaTrophy,
+  FaUserGraduate,
+  FaUsers,
+} from 'react-icons/fa'
 import * as XLSX from 'xlsx'
 import { useAuthContext } from '@/context/useAuthContext'
+import {
+  AdminPage, PageHeader, StatCards, Tabs, SearchInput, AdminSelect, TableFooter, EmptyState, ProgressBar,
+  toOptions, initialsOf, type SelectOption,
+} from '@/components/admin-ui'
 
 /* ── Types ── */
 type LabTestCase = { input: string; expectedOutput: string }
@@ -39,22 +62,26 @@ type ProgressData = {
   students: StudentProgress[]
 }
 
+type Tab = 'upload' | 'progress'
 type StatusFilter = 'all' | 'complete' | 'inprogress' | 'notstarted'
 
 const REQUIRED_COLUMNS = ['title', 'difficulty', 'description', 'testcase1input', 'testcase1output']
-const DIFF_COLOR: Record<string, string> = { Advanced: 'danger', Intermediate: 'warning', Beginner: 'success' }
-
-const STATUS_FILTER_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: 'all', label: 'All Students' },
-  { value: 'complete', label: '100% Complete' },
-  { value: 'inprogress', label: 'In Progress' },
-  { value: 'notstarted', label: 'Not Started' },
-]
+const BRANCHES = ['CSE', 'ECE', 'EEE', 'IT', 'Mechanical', 'Civil', 'Chemical', 'Aerospace', 'Biomedical']
+const DIFFICULTIES = ['Beginner', 'Intermediate', 'Advanced']
+const DIFF_BADGE: Record<string, string> = { Beginner: 'aui-badge-green', Intermediate: 'aui-badge-amber', Advanced: 'aui-badge-red' }
+const PAGE_SIZES = [10, 25, 50]
 
 const fmt = (dateStr: string | null) => {
   if (!dateStr) return '—'
   return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
 }
+
+const statusOf = (pct: number): StatusFilter => (pct >= 100 ? 'complete' : pct > 0 ? 'inprogress' : 'notstarted')
+const completionBadge = (pct: number) => (pct >= 100 ? 'aui-badge-green' : pct > 0 ? 'aui-badge-amber' : 'aui-badge-muted')
+
+const DifficultyBadge = ({ value }: { value: string }) => (
+  <span className={`aui-badge ${DIFF_BADGE[value] || 'aui-badge-muted'}`}>{value || '—'}</span>
+)
 
 /* ── Component ── */
 const CollegeLabsUpload = () => {
@@ -62,30 +89,43 @@ const CollegeLabsUpload = () => {
   const token = user?.token
   const baseURL = import.meta.env.VITE_API_BASE_URL
 
-  /* upload tab state */
-  const [programs, setPrograms] = useState<LabProgram[]>([])
+  const [activeTab, setActiveTab] = useState<Tab>('upload')
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
-  const [selectedFileName, setSelectedFileName] = useState('')
-  const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [uploading, setUploading] = useState(false)
+
+  /* saved programs */
+  const [programs, setPrograms] = useState<LabProgram[]>([])
+  const [programsLoading, setProgramsLoading] = useState(true)
+  const [programSearch, setProgramSearch] = useState('')
+  const [diffFilter, setDiffFilter] = useState('')
+  const [branchFilter, setBranchFilter] = useState('')
+  const [yearFilter, setYearFilter] = useState('')
+  const [programPage, setProgramPage] = useState(1)
+  const [programPageSize, setProgramPageSize] = useState(10)
+  const [programToDelete, setProgramToDelete] = useState<LabProgram | null>(null)
+  const [deleting, setDeleting] = useState(false)
+
+  /* upload — file is validated locally first, then sent to S3 and processed */
   const [branch, setBranch] = useState('CSE')
   const currentYear = new Date().getFullYear()
   const JOINING_YEARS = Array.from({ length: 8 }, (_, i) => String(currentYear - i))
   const [year, setYear] = useState(String(currentYear - 2))
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [preview, setPreview] = useState<LabProgram[]>([])
+  const [uploading, setUploading] = useState(false)
+  const [dragging, setDragging] = useState(false)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
-  const totalPrograms = useMemo(() => programs.length, [programs])
 
-  /* progress tab state */
-  const [activeTab, setActiveTab] = useState<'upload' | 'progress'>('upload')
+  /* student progress */
   const [progressData, setProgressData] = useState<ProgressData | null>(null)
   const [progressLoading, setProgressLoading] = useState(false)
   const [progressError, setProgressError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [showFilterMenu, setShowFilterMenu] = useState(false)
+  const [studentPage, setStudentPage] = useState(1)
+  const [studentPageSize, setStudentPageSize] = useState(10)
 
-  /* modal state */
+  /* student detail modal */
   const [modalStudent, setModalStudent] = useState<StudentProgress | null>(null)
   const [modalFilter, setModalFilter] = useState<'all' | 'done' | 'todo'>('all')
 
@@ -112,7 +152,12 @@ const CollegeLabsUpload = () => {
     const res = await fetch(`${baseURL}/api/institute/college-labs`, { headers: { Authorization: `Bearer ${token}` } })
     const data = await res.json()
     if (!res.ok || !data.success) throw new Error(data.message || 'Failed to fetch labs')
-    setPrograms(Array.isArray(data.data) ? data.data.map((p: any) => ({ ...p, id: p._id || p.id })) : [])
+    setPrograms(Array.isArray(data.data) ? data.data.map((p: any) => ({ ...p, id: p._id || p.id, testCases: p.testCases || [] })) : [])
+  }
+
+  const resetFile = () => {
+    setSelectedFile(null); setPreview([])
+    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const handleBulkFile = async (file: File) => {
@@ -122,9 +167,9 @@ const CollegeLabsUpload = () => {
       const workbook = XLSX.read(arrayBuffer, { type: 'array' })
       const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
       const rows: Record<string, any>[] = XLSX.utils.sheet_to_json(firstSheet, { defval: '', raw: false })
-      if (!rows.length) { setError('File is empty.'); return }
+      if (!rows.length) { resetFile(); setError('File is empty.'); return }
       const missingColumns = validateColumns(rows[0])
-      if (missingColumns.length) { setError(`Missing required columns: ${missingColumns.join(', ')}`); return }
+      if (missingColumns.length) { resetFile(); setError(`Missing required columns: ${missingColumns.join(', ')}`); return }
 
       const mapped: LabProgram[] = rows.map((row, index) => {
         const title = getCellValue(row, 'title')
@@ -140,9 +185,9 @@ const CollegeLabsUpload = () => {
         return { id: `${Date.now()}-${index}`, title, difficulty, description, testCases, branch, year }
       }).filter(Boolean) as LabProgram[]
 
-      setPrograms(mapped); setSelectedFile(file); setSelectedFileName(file.name)
-      setMessage(`Validated ${mapped.length} rows. Click "Upload Bulk File" to save.`)
+      setPreview(mapped); setSelectedFile(file)
     } catch {
+      resetFile()
       setError('Failed to parse file. Please upload a valid Excel/CSV file.')
     }
   }
@@ -151,16 +196,17 @@ const CollegeLabsUpload = () => {
     const file = e.target.files?.[0]; if (file) handleBulkFile(file)
   }
 
-  const removeProgram = async (id: string) => {
-    if (!window.confirm('Delete this program permanently?')) return
-    // If it's a temp local ID (not yet saved), just filter from state
-    const isLocalOnly = id.includes('-') && !id.match(/^[a-f\d]{24}$/i)
-    if (isLocalOnly) {
-      setPrograms(prev => prev.filter(p => p.id !== id))
-      return
-    }
+  const onDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault(); setDragging(false)
+    const file = e.dataTransfer.files?.[0]; if (file) handleBulkFile(file)
+  }
+
+  // Confirmed from the in-app dialog (replaces the browser confirm box)
+  const removeProgram = async () => {
+    if (!programToDelete) return
+    setDeleting(true)
     try {
-      const res = await fetch(`${baseURL}/api/institute/college-labs/${id}`, {
+      const res = await fetch(`${baseURL}/api/institute/college-labs/${programToDelete.id}`, {
         method: 'DELETE',
         headers: { Authorization: `Bearer ${token}` },
       })
@@ -169,15 +215,13 @@ const CollegeLabsUpload = () => {
         setError(d.message || 'Failed to delete program')
         return
       }
-      setPrograms(prev => prev.filter(p => p.id !== id))
+      setPrograms(prev => prev.filter(p => p.id !== programToDelete.id))
+      setMessage(`"${programToDelete.title}" deleted.`)
     } catch {
       setError('Failed to delete program')
+    } finally {
+      setDeleting(false); setProgramToDelete(null)
     }
-  }
-  const clearAll = () => {
-    setPrograms([]); setSelectedFileName(''); setSelectedFile(null)
-    setMessage('Cleared current bulk list.')
-    if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
   const uploadBulkFile = async () => {
@@ -208,9 +252,9 @@ const CollegeLabsUpload = () => {
 
       await fetchPrograms()
       setMessage(`Upload complete: ${processData.stats?.validRows || 0} processed, ${processData.stats?.skippedRows || 0} skipped.`)
-      setSelectedFile(null)
-      if (fileInputRef.current) fileInputRef.current.value = ''
+      resetFile()
     } catch (err: any) {
+      setMessage('')
       setError(err.message || 'Bulk upload failed')
     } finally { setUploading(false) }
   }
@@ -240,25 +284,48 @@ const CollegeLabsUpload = () => {
     } finally { setProgressLoading(false) }
   }
 
+  /* ── Derived data ── */
+  const programBranches = useMemo(() => [...new Set(programs.map(p => p.branch).filter(Boolean))].sort(), [programs])
+  const programYears = useMemo(() => [...new Set(programs.map(p => p.year).filter(Boolean))].sort().reverse(), [programs])
+
+  const filteredPrograms = useMemo(() => {
+    const q = programSearch.trim().toLowerCase()
+    return programs.filter(p =>
+      (!q || p.title.toLowerCase().includes(q) || (p.description || '').toLowerCase().includes(q)) &&
+      (!diffFilter || p.difficulty === diffFilter) &&
+      (!branchFilter || p.branch === branchFilter) &&
+      (!yearFilter || p.year === yearFilter))
+  }, [programs, programSearch, diffFilter, branchFilter, yearFilter])
+
+  const students = progressData?.students ?? []
+
+  const statusCounts = useMemo(() => {
+    const counts = { all: students.length, complete: 0, inprogress: 0, notstarted: 0 }
+    students.forEach(s => { counts[statusOf(s.percentage)] += 1 })
+    return counts
+  }, [students])
+
+  const statusOptions: SelectOption[] = [
+    { value: 'all', label: `All students (${statusCounts.all})` },
+    { value: 'complete', label: `Completed (${statusCounts.complete})` },
+    { value: 'inprogress', label: `In progress (${statusCounts.inprogress})` },
+    { value: 'notstarted', label: `Not started (${statusCounts.notstarted})` },
+  ]
+
   const filteredStudents = useMemo(() => {
-    if (!progressData) return []
-    const q = search.toLowerCase()
-    return progressData.students.filter(s => {
-      const matchSearch = s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q)
-      const matchStatus =
-        statusFilter === 'all' ? true :
-        statusFilter === 'complete' ? s.percentage === 100 :
-        statusFilter === 'inprogress' ? s.percentage > 0 && s.percentage < 100 :
-        statusFilter === 'notstarted' ? s.percentage === 0 : true
-      return matchSearch && matchStatus
-    })
-  }, [progressData, search, statusFilter])
+    const q = search.trim().toLowerCase()
+    return students.filter(s =>
+      (!q || s.name.toLowerCase().includes(q) || s.email.toLowerCase().includes(q)) &&
+      (statusFilter === 'all' || statusOf(s.percentage) === statusFilter))
+  }, [students, search, statusFilter])
 
   const avgCompletion = useMemo(() => {
-    if (!progressData?.students.length) return 0
-    const sum = progressData.students.reduce((acc, s) => acc + s.percentage, 0)
-    return Math.round(sum / progressData.students.length)
-  }, [progressData])
+    if (!students.length) return 0
+    return Math.round(students.reduce((acc, s) => acc + s.percentage, 0) / students.length)
+  }, [students])
+
+  const pagedPrograms = filteredPrograms.slice((programPage - 1) * programPageSize, programPage * programPageSize)
+  const pagedStudents = filteredStudents.slice((studentPage - 1) * studentPageSize, studentPage * studentPageSize)
 
   const modalPrograms = useMemo(() => {
     if (!modalStudent) return []
@@ -270,538 +337,529 @@ const CollegeLabsUpload = () => {
   /* ── Effects ── */
   useEffect(() => {
     if (!token) return
-    fetchPrograms().catch(err => setError(err.message || 'Failed to load labs'))
-  }, [token])
+    fetchPrograms().catch(err => setError(err.message || 'Failed to load labs')).finally(() => setProgramsLoading(false))
+    fetchProgress() // header stats need it on either tab
+  }, [token]) // eslint-disable-line
 
-  useEffect(() => {
-    if (activeTab === 'progress' && !progressData && !progressLoading) fetchProgress()
-  }, [activeTab])
+  useEffect(() => { setProgramPage(1) }, [programSearch, diffFilter, branchFilter, yearFilter, programPageSize])
+  useEffect(() => { setStudentPage(1) }, [search, statusFilter, studentPageSize])
+
+  const programFiltersActive = !!(programSearch || diffFilter || branchFilter || yearFilter)
+  const clearProgramFilters = () => { setProgramSearch(''); setDiffFilter(''); setBranchFilter(''); setYearFilter('') }
 
   /* ── Render ── */
   return (
-    <div className="college-labs-upload" onClick={() => setShowFilterMenu(false)}>
+    <AdminPage className="cl-page">
+      <PageHeader
+        icon={FaFlask}
+        title="College Labs"
+        stats={
+          <StatCards
+            inline
+            items={[
+              { label: 'Lab Programs', value: programsLoading ? '—' : programs.length, icon: FaClipboardList, tone: 'orange' },
+              { label: 'Students', value: progressData ? progressData.totalStudents : '—', icon: FaUsers, tone: 'blue' },
+              { label: 'Avg Completion', value: progressData ? `${avgCompletion}%` : '—', icon: FaPercentage, tone: 'green' },
+              { label: 'Fully Completed', value: progressData ? statusCounts.complete : '—', icon: FaTrophy, tone: 'purple' },
+            ]}
+          />
+        }
+        actions={
+          <Tabs<Tab>
+            value={activeTab}
+            onChange={setActiveTab}
+            items={[
+              { value: 'upload', label: 'Lab Programs', icon: FaCloudUploadAlt, count: programs.length },
+              { value: 'progress', label: 'Student Progress', icon: FaUserGraduate, count: progressData?.totalStudents ?? '—' },
+            ]}
+          />
+        }
+      />
 
-      {/* Tab Bar */}
-      <div className="tab-bar">
-        <button className={`tab-btn ${activeTab === 'upload' ? 'active' : ''}`} onClick={() => setActiveTab('upload')}>
-          <BsCloudUpload className="me-2" /> Upload Labs
-        </button>
-        <button className={`tab-btn ${activeTab === 'progress' ? 'active' : ''}`} onClick={() => setActiveTab('progress')}>
-          <BsPeopleFill className="me-2" /> Student Progress
-        </button>
-      </div>
+      {error && (
+        <div className="aui-alert"><FaExclamationTriangle /> <span>{error}</span>
+          <button type="button" className="aui-alert-close" onClick={() => setError('')} aria-label="Dismiss"><FaTimes size={11} /></button>
+        </div>
+      )}
+      {message && (
+        <div className={`aui-alert ${uploading ? 'aui-alert-info' : 'aui-alert-success'}`}>
+          {uploading ? <FaSpinner className="aui-spin" /> : <FaCheckCircle />} <span>{message}</span>
+          {!uploading && <button type="button" className="aui-alert-close" onClick={() => setMessage('')} aria-label="Dismiss"><FaTimes size={11} /></button>}
+        </div>
+      )}
 
-      {/* ── UPLOAD TAB ── */}
+      {/* ── LAB PROGRAMS TAB ── */}
       {activeTab === 'upload' && (
         <>
-          <div className="header-row">
-            <div>
-              <h4>College Lab Programs Upload</h4>
-              <p>Upload lab programs in bulk using Excel or CSV.</p>
+          <div className="aui-card">
+            <div className="aui-toolbar">
+              <div className="aui-toolbar-title">
+                <h3>Bulk Upload</h3>
+                <p>Add lab programs from an Excel or CSV file</p>
+              </div>
+              <div className="aui-toolbar-filters">
+                <button type="button" className="aui-btn" onClick={downloadTemplate}><FaDownload size={11} /> Download Template</button>
+              </div>
             </div>
-            <Badge bg="dark" className="count-badge">Total: {totalPrograms}</Badge>
+
+            <div className="cl-upload">
+              {/* Step 1 — batch tag */}
+              <div className="cl-step">
+                <div className="cl-step-head"><span>1</span> Choose the batch</div>
+                <div className="aui-field">
+                  <label className="aui-label">Branch</label>
+                  <AdminSelect label="Branch" value={branch} options={BRANCHES.map(b => ({ value: b, label: b }))} onChange={setBranch} />
+                </div>
+                <div className="aui-field">
+                  <label className="aui-label">Joining Year</label>
+                  <AdminSelect label="Joining year" value={year} options={JOINING_YEARS.map(y => ({ value: y, label: y }))} onChange={setYear} />
+                </div>
+                <p className="aui-hint cl-tag-hint">
+                  <FaInfoCircle /> <span>Programs will be assigned to <b>{branch}</b> students who joined in <b>{year}</b>.</span>
+                </p>
+              </div>
+
+              {/* Step 2 — file */}
+              <div className="cl-step">
+                <div className="cl-step-head"><span>2</span> Add the file</div>
+                <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={onFileChange} className="d-none" />
+                {selectedFile ? (
+                  <div className="cl-file">
+                    <span className="cl-file-icon"><FaFileExcel /></span>
+                    <div className="aui-stack">
+                      <strong>{selectedFile.name}</strong>
+                      <small>{(selectedFile.size / 1024).toFixed(1)} KB · {preview.length} program{preview.length === 1 ? '' : 's'} found</small>
+                    </div>
+                    <span className="aui-badge aui-badge-green aui-badge-dot">Validated</span>
+                    <button type="button" className="aui-icon-btn" onClick={resetFile} disabled={uploading} aria-label="Remove file"><FaTimes size={11} /></button>
+                  </div>
+                ) : (
+                  <div
+                    className={`cl-drop${dragging ? ' is-dragging' : ''}`}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => fileInputRef.current?.click()}
+                    onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click() } }}
+                    onDragOver={e => { e.preventDefault(); setDragging(true) }}
+                    onDragLeave={() => setDragging(false)}
+                    onDrop={onDrop}
+                  >
+                    <span className="cl-drop-icon"><FaCloudUploadAlt /></span>
+                    <strong>Drop your file here, or <u>browse</u></strong>
+                    <small>.xlsx, .xls or .csv</small>
+                  </div>
+                )}
+                <div className="cl-columns">
+                  <span>Required columns</span>
+                  {REQUIRED_COLUMNS.map(col => <code key={col}>{col}</code>)}
+                  <span className="cl-columns-opt">Up to 5 test cases: testcase2input … testcase5output</span>
+                </div>
+              </div>
+            </div>
+
+            {preview.length > 0 && (
+              <>
+                <div className="cl-preview-head">
+                  <span>Preview</span>
+                  <small>{preview.length} program{preview.length === 1 ? '' : 's'} ready to upload</small>
+                </div>
+                <div className="aui-table-scroll cl-preview-scroll">
+                  <table className="aui-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 48 }}>#</th>
+                        <th>Program</th>
+                        <th style={{ width: 130 }}>Difficulty</th>
+                        <th style={{ width: 120 }}>Test Cases</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {preview.map((p, i) => (
+                        <tr key={p.id}>
+                          <td className="aui-num">{i + 1}</td>
+                          <td>
+                            <div className="aui-stack cl-program">
+                              <strong>{p.title}</strong>
+                              {p.description && <small title={p.description}>{p.description}</small>}
+                            </div>
+                          </td>
+                          <td><DifficultyBadge value={p.difficulty} /></td>
+                          <td><span className="aui-badge aui-badge-purple">{p.testCases.length} case{p.testCases.length === 1 ? '' : 's'}</span></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+
+            <div className="cl-upload-foot">
+              <span className="aui-hint">
+                {selectedFile ? <>Uploading tags every program with <b>{branch} · {year}</b></> : 'Choose a file to preview the programs before uploading'}
+              </span>
+              <div className="cl-upload-actions">
+                <button type="button" className="aui-btn" onClick={resetFile} disabled={!selectedFile || uploading}>Clear</button>
+                <button type="button" className="aui-btn aui-btn-primary" onClick={uploadBulkFile} disabled={!selectedFile || uploading}>
+                  {uploading ? <><FaSpinner className="aui-spin cl-spin-light" /> Uploading…</> : <><FaCloudUploadAlt /> Upload {preview.length || ''} Program{preview.length === 1 ? '' : 's'}</>}
+                </button>
+              </div>
+            </div>
           </div>
 
-          {error && <Alert variant="danger" onClose={() => setError('')} dismissible className="mb-3">{error}</Alert>}
-          {message && <Alert variant="info" onClose={() => setMessage('')} dismissible className="mb-3">{message}</Alert>}
-
-          {/* Branch + Year selectors */}
-          <div className="branch-year-row">
-            <div className="by-field">
-              <label className="by-label">Branch</label>
-              <select className="by-select" value={branch} onChange={e => setBranch(e.target.value)}>
-                {['CSE', 'ECE', 'EEE', 'IT', 'Mechanical', 'Civil', 'Chemical', 'Aerospace', 'Biomedical'].map(b => (
-                  <option key={b} value={b}>{b}</option>
-                ))}
-              </select>
+          <div className="aui-card">
+            <div className="aui-toolbar">
+              <div className="aui-toolbar-title">
+                <h3>Lab Programs</h3>
+                <p>{programFiltersActive ? `${filteredPrograms.length} of ${programs.length} programs` : `${programs.length} program${programs.length === 1 ? '' : 's'} uploaded`}</p>
+              </div>
+              <div className="aui-toolbar-filters">
+                <SearchInput value={programSearch} onChange={setProgramSearch} placeholder="Search programs…" />
+                <AdminSelect label="Difficulty" value={diffFilter} options={toOptions('All levels', DIFFICULTIES)} onChange={setDiffFilter} />
+                <AdminSelect label="Branch" value={branchFilter} options={toOptions('All branches', programBranches)} onChange={setBranchFilter} />
+                <AdminSelect label="Year" value={yearFilter} options={toOptions('All years', programYears)} onChange={setYearFilter} />
+              </div>
             </div>
-            <div className="by-field">
-              <label className="by-label">Joining Year</label>
-              <select className="by-select" value={year} onChange={e => setYear(e.target.value)}>
-                {JOINING_YEARS.map(y => (
-                  <option key={y} value={y}>{y}</option>
-                ))}
-              </select>
-            </div>
-            <div className="by-info">
-              <span className="by-badge">{branch}</span>
-              <span className="by-sep">·</span>
-              <span className="by-badge">{year}</span>
-              <span className="by-hint">Programs in this upload will be tagged to the selected branch &amp; year</span>
-            </div>
-          </div>
 
-          <div className="upload-box" onClick={() => fileInputRef.current?.click()}>
-            <input ref={fileInputRef} type="file" accept=".xlsx,.xls,.csv" onChange={onFileChange} className="d-none" />
-            <BsCloudUpload className="upload-icon" />
-            <div>
-              <div className="upload-title">Click to upload bulk labs file</div>
-              <div className="upload-subtitle">Supported: .xlsx, .xls, .csv</div>
-              <div className="upload-subtitle">Required: title, difficulty, description, testcase1input, testcase1output</div>
-              {!!selectedFileName && <div className="selected-file">Selected: {selectedFileName}</div>}
-            </div>
-          </div>
-
-          <div className="actions">
-            <Button variant="outline-light" onClick={downloadTemplate}><BsDownload className="me-2" />Download Template</Button>
-            <Button variant="warning" onClick={uploadBulkFile} disabled={!selectedFile || uploading}>{uploading ? 'Uploading...' : 'Upload Bulk File'}</Button>
-            <Button variant="outline-danger" onClick={clearAll}><BsTrash className="me-2" />Clear All</Button>
-          </div>
-
-          <div className="pro-table-wrap">
-            <table className="pro-table">
-              <thead>
-                <tr>
-                  <th style={{ width: 220 }}>Title</th>
-                  <th style={{ width: 130 }}>Difficulty</th>
-                  <th style={{ width: 90 }}>Branch</th>
-                  <th style={{ width: 100 }}>Year</th>
-                  <th>Description</th>
-                  <th style={{ width: 110 }}>Test Cases</th>
-                  <th style={{ width: 80 }}>Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {programs.length === 0 ? (
-                  <tr><td colSpan={7} className="pro-table-empty">No lab programs added yet.</td></tr>
-                ) : programs.map(p => (
-                  <tr key={p.id} className="pro-table-row">
-                    <td>
-                      <span className="pro-table-title">{p.title}</span>
-                    </td>
-                    <td>
-                      <span className={`diff-tag diff-${p.difficulty.toLowerCase()}`}>{p.difficulty}</span>
-                    </td>
-                    <td>
-                      <span className="by-tag by-tag-branch">{p.branch || '—'}</span>
-                    </td>
-                    <td>
-                      <span className="by-tag by-tag-year">{p.year || '—'}</span>
-                    </td>
-                    <td className="pro-table-desc">{p.description || '—'}</td>
-                    <td>
-                      <span className="tc-count">{p.testCases.length} cases</span>
-                    </td>
-                    <td className="pro-table-action">
-                      <button className="del-btn" onClick={() => removeProgram(p.id)} title="Remove"><BsTrash size={13} /></button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            {programsLoading ? (
+              <div className="aui-empty"><FaSpinner className="aui-spin" size={22} /> Loading lab programs…</div>
+            ) : filteredPrograms.length === 0 ? (
+              programs.length === 0
+                ? <EmptyState icon={FaClipboardList} title="No lab programs yet" text="Upload an Excel or CSV file above to add programs for a branch and batch." />
+                : <EmptyState icon={FaClipboardList} title="No programs match" text="Try a different search or filter." action={<button type="button" className="aui-btn aui-btn-sm" onClick={clearProgramFilters}>Clear filters</button>} />
+            ) : (
+              <>
+                <div className="aui-table-scroll">
+                  <table className="aui-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 48 }}>#</th>
+                        <th>Program</th>
+                        <th style={{ width: 130 }}>Difficulty</th>
+                        <th style={{ width: 170 }}>Batch</th>
+                        <th style={{ width: 120 }}>Test Cases</th>
+                        <th style={{ width: 80 }} className="text-end">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pagedPrograms.map((p, i) => (
+                        <tr key={p.id}>
+                          <td className="aui-num">{(programPage - 1) * programPageSize + i + 1}</td>
+                          <td>
+                            <div className="aui-stack cl-program">
+                              <strong>{p.title}</strong>
+                              {p.description && <small title={p.description}>{p.description}</small>}
+                            </div>
+                          </td>
+                          <td><DifficultyBadge value={p.difficulty} /></td>
+                          <td>
+                            <div className="cl-batch">
+                              <span className="aui-badge aui-badge-blue">{p.branch || '—'}</span>
+                              <span className="aui-badge aui-badge-muted">{p.year || '—'}</span>
+                            </div>
+                          </td>
+                          <td><span className="aui-badge aui-badge-purple">{p.testCases.length} case{p.testCases.length === 1 ? '' : 's'}</span></td>
+                          <td className="text-end">
+                            <button type="button" className="aui-icon-btn cl-delete" onClick={() => setProgramToDelete(p)} title="Delete program" aria-label={`Delete ${p.title}`}><FaTrash size={11} /></button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <TableFooter
+                  page={programPage}
+                  pageSize={programPageSize}
+                  total={filteredPrograms.length}
+                  onPageChange={setProgramPage}
+                  pageSizeOptions={PAGE_SIZES}
+                  onPageSizeChange={setProgramPageSize}
+                  noun="programs"
+                />
+              </>
+            )}
           </div>
         </>
       )}
 
       {/* ── STUDENT PROGRESS TAB ── */}
       {activeTab === 'progress' && (
-        <div className="progress-tab">
-          <div className="header-row" style={{ marginBottom: '1rem' }}>
-            <div>
-              <h4>Student Progress</h4>
-              <p>See how many programs each student has completed.</p>
+        <div className="aui-card">
+          <div className="aui-toolbar">
+            <div className="aui-toolbar-title">
+              <h3>Student Progress</h3>
+              <p>Programs completed by each student</p>
             </div>
-            <Button size="sm" variant="outline-warning" onClick={fetchProgress} disabled={progressLoading}>
-              {progressLoading ? 'Loading...' : 'Refresh'}
-            </Button>
+            <div className="aui-toolbar-filters">
+              <SearchInput value={search} onChange={setSearch} placeholder="Search name or email…" />
+              <AdminSelect label="Status" value={statusFilter} options={statusOptions} onChange={v => setStatusFilter(v as StatusFilter)} />
+              <button type="button" className="aui-btn" onClick={fetchProgress} disabled={progressLoading}>
+                <FaSyncAlt size={11} className={progressLoading ? 'aui-spin' : ''} /> Refresh
+              </button>
+            </div>
           </div>
 
-          {progressError && <Alert variant="danger" onClose={() => setProgressError('')} dismissible className="mb-3">{progressError}</Alert>}
-          {progressLoading && <div className="text-center py-5 text-secondary">Loading student progress...</div>}
+          {progressError && <div className="aui-alert cl-card-alert"><FaExclamationTriangle /> <span>{progressError}</span></div>}
 
-          {!progressLoading && progressData && (
+          {progressLoading && !progressData ? (
+            <div className="aui-empty"><FaSpinner className="aui-spin" size={22} /> Loading student progress…</div>
+          ) : !progressData ? (
+            <EmptyState icon={FaUserGraduate} title="Progress not loaded" text="Click Refresh to load student progress." />
+          ) : filteredStudents.length === 0 ? (
+            <EmptyState
+              icon={FaUserGraduate}
+              title={students.length ? 'No students match' : 'No students yet'}
+              text={students.length ? 'Try a different search or status.' : 'Students appear here once lab programs are assigned to their batch.'}
+            />
+          ) : (
             <>
-              {/* Summary cards */}
-              <div className="summary-cards">
-                <div className="summary-card">
-                  <div className="summary-value">{progressData.totalPrograms}</div>
-                  <div className="summary-label">Total Programs</div>
-                </div>
-                <div className="summary-card">
-                  <div className="summary-value">{progressData.totalStudents}</div>
-                  <div className="summary-label">Total Students</div>
-                </div>
-                <div className="summary-card">
-                  <div className="summary-value" style={{ color: avgCompletion >= 75 ? '#34d399' : avgCompletion >= 40 ? '#f59e0b' : '#f87171' }}>
-                    {avgCompletion}%
-                  </div>
-                  <div className="summary-label">Avg Completion</div>
-                </div>
-              </div>
-
-              {/* Search + Filter row */}
-              <div className="search-filter-row" onClick={e => e.stopPropagation()}>
-                <input
-                  type="text"
-                  className="progress-search"
-                  placeholder="Search by name or email..."
-                  value={search}
-                  onChange={e => setSearch(e.target.value)}
-                />
-                <div className="filter-wrap">
-                  <button
-                    className="filter-btn"
-                    onClick={e => { e.stopPropagation(); setShowFilterMenu(v => !v) }}
-                  >
-                    <BsFunnel size={13} className="me-1" />
-                    {STATUS_FILTER_OPTIONS.find(o => o.value === statusFilter)?.label}
-                  </button>
-                  {showFilterMenu && (
-                    <div className="filter-menu">
-                      {STATUS_FILTER_OPTIONS.map(opt => (
-                        <div
-                          key={opt.value}
-                          className={`filter-item ${statusFilter === opt.value ? 'active' : ''}`}
-                          onClick={() => { setStatusFilter(opt.value); setShowFilterMenu(false) }}
-                        >
-                          {opt.label}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Student table */}
-              <div className="pro-table-wrap">
-                <table className="pro-table">
+              <div className="aui-table-scroll">
+                <table className="aui-table">
                   <thead>
                     <tr>
+                      <th style={{ width: 48 }}>#</th>
                       <th>Student</th>
-                      <th style={{ width: 220 }}>Progress</th>
-                      <th style={{ width: 130 }}>Completed</th>
-                      <th style={{ width: 90 }}>Score</th>
-                      <th style={{ width: 100 }}>Action</th>
+                      <th style={{ width: 240 }}>Progress</th>
+                      <th style={{ width: 170 }}>Programs</th>
+                      <th style={{ width: 110 }}>Completion</th>
+                      <th style={{ width: 100 }} className="text-end">Action</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredStudents.length === 0 ? (
-                      <tr><td colSpan={5} className="pro-table-empty">No students found.</td></tr>
-                    ) : filteredStudents.map(s => {
-                      const pct = s.percentage
-                      const barColor = pct === 100 ? '#34d399' : pct > 0 ? '#f59e0b' : '#6b7280'
-                      const scoreStyle = pct === 100
-                        ? { background: '#052e16', color: '#34d399', border: '1px solid #166534' }
-                        : pct > 0
-                        ? { background: '#1c1200', color: '#fbbf24', border: '1px solid #78350f' }
-                        : { background: '#111', color: '#6b7280', border: '1px solid #2c2c2c' }
-                      return (
-                        <tr key={s.studentId} className="pro-table-row">
-                          <td>
-                            <div className="student-cell">
-                              <div className="student-avatar">{s.name.charAt(0).toUpperCase()}</div>
-                              <div>
-                                <div className="pro-table-title">{s.name}</div>
-                                <div className="pro-table-sub">{s.email}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td>
-                            <div className="prog-bar-wrap-cell">
-                              <div className="prog-bar-bg">
-                                <div className="prog-bar-fill" style={{ width: `${pct}%`, background: barColor }} />
-                              </div>
-                              <span className="prog-fraction">{s.completed}/{s.total}</span>
-                            </div>
-                          </td>
-                          <td>
-                            <div className="completed-cell">
-                              <span className="completed-done" style={{ color: '#34d399' }}>{s.completed} done</span>
-                              <span className="completed-sep">·</span>
-                              <span className="completed-todo" style={{ color: '#f87171' }}>{s.total - s.completed} left</span>
-                            </div>
-                          </td>
-                          <td>
-                            <span className="score-badge" style={scoreStyle}>{pct}%</span>
-                          </td>
-                          <td className="pro-table-action">
-                            <button className="view-btn" onClick={() => { setModalStudent(s); setModalFilter('all') }}>
-                              <BsEye size={12} /> View
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
-
-          {!progressLoading && !progressData && !progressError && (
-            <div className="text-center py-5 text-secondary">Click Refresh to load student progress.</div>
-          )}
-        </div>
-      )}
-
-      {/* ── PROGRAM DETAIL MODAL ── */}
-      <Modal show={!!modalStudent} onHide={() => setModalStudent(null)} centered contentClassName="modal-pro" dialogClassName="modal-75" backdropClassName="modal-blur-backdrop">
-        {modalStudent && (() => {
-          const doneCount = modalStudent.programs.filter(p => p.completed).length
-          const todoCount = modalStudent.programs.filter(p => !p.completed).length
-          const pct = modalStudent.percentage
-          const barColor = pct === 100 ? '#34d399' : pct > 0 ? '#f59e0b' : '#6b7280'
-          const initials = modalStudent.name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2)
-          return (
-            <>
-              {/* Header */}
-              <div className="mpro-header">
-                <div className="mpro-avatar">{initials}</div>
-                <div className="mpro-identity">
-                  <div className="mpro-name">{modalStudent.name}</div>
-                  <div className="mpro-email">{modalStudent.email}</div>
-                </div>
-                <button className="mpro-close" onClick={() => setModalStudent(null)}>×</button>
-              </div>
-
-              {/* Stats strip */}
-              <div className="mpro-stats">
-                <div className="mpro-stat">
-                  <span className="mpro-stat-val" style={{ color: '#34d399' }}>{doneCount}</span>
-                  <span className="mpro-stat-lbl">Completed</span>
-                </div>
-                <div className="mpro-stat-divider" />
-                <div className="mpro-stat">
-                  <span className="mpro-stat-val" style={{ color: '#f87171' }}>{todoCount}</span>
-                  <span className="mpro-stat-lbl">Pending</span>
-                </div>
-                <div className="mpro-stat-divider" />
-                <div className="mpro-stat">
-                  <span className="mpro-stat-val" style={{ color: barColor }}>{pct}%</span>
-                  <span className="mpro-stat-lbl">Completion</span>
-                </div>
-                <div className="mpro-bar-wrap">
-                  <div className="mpro-bar-track">
-                    <div className="mpro-bar-fill" style={{ width: `${pct}%`, background: barColor }} />
-                  </div>
-                  <span className="mpro-bar-label">{modalStudent.completed} / {modalStudent.total}</span>
-                </div>
-              </div>
-
-              {/* Filter pills */}
-              <div className="mpro-pills">
-                {(['all', 'done', 'todo'] as const).map(f => (
-                  <button
-                    key={f}
-                    className={`mpro-pill ${modalFilter === f ? 'active' : ''}`}
-                    onClick={() => setModalFilter(f)}
-                  >
-                    {f === 'all' ? `All  ${modalStudent.programs.length}` : f === 'done' ? `Completed  ${doneCount}` : `Pending  ${todoCount}`}
-                  </button>
-                ))}
-              </div>
-
-              {/* Table */}
-              <div className="mpro-table-wrap">
-                <table className="mpro-table">
-                  <thead>
-                    <tr>
-                      <th style={{ width: 44 }}>#</th>
-                      <th>Program Title</th>
-                      <th style={{ width: 115 }}>Difficulty</th>
-                      <th style={{ width: 100 }}>Status</th>
-                      <th style={{ width: 100 }}>Language</th>
-                      <th style={{ width: 125 }}>Completed On</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {modalPrograms.length === 0 ? (
-                      <tr><td colSpan={6} className="mpro-empty">No programs to show.</td></tr>
-                    ) : modalPrograms.map((prog, idx) => (
-                      <tr key={prog.labId} className={prog.completed ? 'row-done' : 'row-todo'}>
-                        <td className="mpro-num">{idx + 1}</td>
-                        <td className="mpro-title">{prog.title}</td>
+                    {pagedStudents.map((s, i) => (
+                      <tr key={s.studentId}>
+                        <td className="aui-num">{(studentPage - 1) * studentPageSize + i + 1}</td>
                         <td>
-                          <span className={`diff-tag diff-${(prog.difficulty || '').toLowerCase()}`}>{prog.difficulty}</span>
+                          <div className="aui-person">
+                            <span className="aui-avatar">{initialsOf(s.name)}</span>
+                            <div className="aui-stack">
+                              <strong>{s.name}</strong>
+                              <small>{s.email}</small>
+                            </div>
+                          </div>
                         </td>
+                        <td><ProgressBar value={s.percentage} label={`${s.completed}/${s.total}`} /></td>
                         <td>
-                          {prog.completed
-                            ? <span className="status-done"><BsCheckCircleFill size={11} /> Done</span>
-                            : <span className="status-pending"><BsXCircleFill size={11} /> Pending</span>}
+                          <span className="cl-split">
+                            <b className="is-done">{s.completed}</b> done <i>·</i> <b className="is-left">{s.total - s.completed}</b> left
+                          </span>
                         </td>
-                        <td className="mpro-lang">{prog.language || '—'}</td>
-                        <td className="mpro-date">{fmt(prog.submittedAt)}</td>
+                        <td><span className={`aui-badge ${completionBadge(s.percentage)}`}>{s.percentage}%</span></td>
+                        <td className="text-end">
+                          <button type="button" className="aui-btn aui-btn-sm aui-btn-soft" onClick={() => { setModalStudent(s); setModalFilter('all') }}>
+                            <FaEye size={11} /> View
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
-
-              {/* Footer */}
-              <div className="mpro-footer">
-                <button className="mpro-close-btn" onClick={() => setModalStudent(null)}>Close</button>
-              </div>
+              <TableFooter
+                page={studentPage}
+                pageSize={studentPageSize}
+                total={filteredStudents.length}
+                onPageChange={setStudentPage}
+                pageSizeOptions={PAGE_SIZES}
+                onPageSizeChange={setStudentPageSize}
+                noun="students"
+              />
             </>
+          )}
+        </div>
+      )}
+
+      {/* ── STUDENT DETAIL MODAL ── */}
+      <Modal show={!!modalStudent} onHide={() => setModalStudent(null)} centered scrollable dialogClassName="cl-dialog" contentClassName="aui-modal" backdropClassName="aui-backdrop">
+        {modalStudent && (() => {
+          const doneCount = modalStudent.programs.filter(p => p.completed).length
+          const todoCount = modalStudent.programs.length - doneCount
+          return (
+            <div className="aui-page cl-modal">
+              <div className="aui-modal-head">
+                <span className="aui-avatar cl-modal-avatar">{initialsOf(modalStudent.name)}</span>
+                <div>
+                  <h3>{modalStudent.name}</h3>
+                  <p>{modalStudent.email}</p>
+                </div>
+                <button type="button" className="aui-icon-btn" onClick={() => setModalStudent(null)} aria-label="Close"><FaTimes size={12} /></button>
+              </div>
+
+              <div className="aui-modal-body">
+                <div className="aui-tiles">
+                  <div className="aui-tile">
+                    <div className="aui-tile-head"><span className="aui-tile-icon cl-tone-green"><FaCheckCircle /></span> Completed</div>
+                    <div className="aui-tile-value">{doneCount}<small>programs</small></div>
+                  </div>
+                  <div className="aui-tile">
+                    <div className="aui-tile-head"><span className="aui-tile-icon cl-tone-red"><FaHourglassHalf /></span> Pending</div>
+                    <div className="aui-tile-value">{todoCount}<small>programs</small></div>
+                  </div>
+                  <div className="aui-tile">
+                    <div className="aui-tile-head"><span className="aui-tile-icon cl-tone-orange"><FaPercentage /></span> Completion</div>
+                    <ProgressBar value={modalStudent.percentage} label={`${modalStudent.percentage}%`} />
+                    <div className="aui-tile-foot">{modalStudent.completed} of {modalStudent.total} programs</div>
+                  </div>
+                </div>
+
+                <div className="cl-modal-bar">
+                  <span className="aui-section-label">Programs</span>
+                  <Tabs
+                    small
+                    label="Program status"
+                    value={modalFilter}
+                    onChange={setModalFilter}
+                    items={[
+                      { value: 'all', label: 'All', count: modalStudent.programs.length },
+                      { value: 'done', label: 'Completed', count: doneCount },
+                      { value: 'todo', label: 'Pending', count: todoCount },
+                    ]}
+                  />
+                </div>
+
+                <div className="aui-card cl-modal-table">
+                  {modalPrograms.length === 0 ? (
+                    <EmptyState icon={FaClipboardList} title="Nothing here" text={modalFilter === 'done' ? 'No programs completed yet.' : 'No programs to show.'} />
+                  ) : (
+                    <div className="aui-table-scroll">
+                      <table className="aui-table">
+                        <thead>
+                          <tr>
+                            <th style={{ width: 44 }}>#</th>
+                            <th>Program</th>
+                            <th style={{ width: 120 }}>Difficulty</th>
+                            <th style={{ width: 110 }}>Status</th>
+                            <th style={{ width: 110 }}>Language</th>
+                            <th style={{ width: 125 }}>Completed On</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {modalPrograms.map((prog, idx) => (
+                            <tr key={prog.labId}>
+                              <td className="aui-num">{idx + 1}</td>
+                              <td className="cl-modal-title">{prog.title}</td>
+                              <td><DifficultyBadge value={prog.difficulty} /></td>
+                              <td>
+                                {prog.completed
+                                  ? <span className="aui-badge aui-badge-green aui-badge-dot">Done</span>
+                                  : <span className="aui-badge aui-badge-red aui-badge-dot">Pending</span>}
+                              </td>
+                              <td>{prog.language ? <span className="aui-badge aui-badge-blue">{prog.language}</span> : <span className="aui-num">—</span>}</td>
+                              <td className="aui-num">{fmt(prog.submittedAt)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="aui-modal-foot">
+                <button type="button" className="aui-btn" onClick={() => setModalStudent(null)}>Close</button>
+              </div>
+            </div>
           )
         })()}
       </Modal>
 
+      {/* ── DELETE CONFIRM ── */}
+      <Modal show={!!programToDelete} onHide={() => !deleting && setProgramToDelete(null)} centered contentClassName="aui-modal" backdropClassName="aui-backdrop">
+        <div className="aui-page">
+          <div className="aui-modal-body cl-confirm">
+            <span className="cl-confirm-icon"><FaTrash /></span>
+            <h3>Delete this program?</h3>
+            <p><b>{programToDelete?.title}</b> will be removed from the {programToDelete?.branch} · {programToDelete?.year} labs. This can’t be undone.</p>
+          </div>
+          <div className="aui-modal-foot">
+            <button type="button" className="aui-btn" onClick={() => setProgramToDelete(null)} disabled={deleting}>Cancel</button>
+            <button type="button" className="aui-btn aui-btn-danger" onClick={removeProgram} disabled={deleting}>
+              {deleting ? <><FaSpinner className="aui-spin" /> Deleting…</> : <><FaTrash size={11} /> Delete Program</>}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       <style>{`
-        .college-labs-upload { padding: 1.25rem; background: #0a0a0a; border-radius: 1rem; }
+        .cl-page .aui-alert { margin-top: 1.25rem; margin-bottom: 0; }
 
-        /* Tabs */
-        .tab-bar { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 1px solid #2c2c2c; padding-bottom: 0.5rem; }
-        .tab-btn { background: transparent; border: none; color: #9ca3af; font-size: 0.88rem; font-weight: 600; padding: 0.4rem 0.9rem; border-radius: 6px; cursor: pointer; display: flex; align-items: center; transition: all 0.15s; }
-        .tab-btn:hover { color: #ff7a00; background: #15181d; }
-        .tab-btn.active { color: #ff7a00; background: #1a1000; border: 1px solid #ff7a0055; }
+        /* Upload card */
+        .cl-upload { display: grid; grid-template-columns: minmax(240px, 320px) minmax(0, 1fr); gap: 1.25rem; padding: 1.1rem; }
+        .cl-step-head { display: flex; align-items: center; gap: 8px; margin-bottom: 0.85rem; color: #fff; font-size: 0.85rem; font-weight: 700; }
+        .cl-step-head span { display: grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; background: rgba(255,122,0,0.15); color: #ff9a3c; font-size: 0.7rem; font-weight: 800; }
+        .cl-step .aui-field { margin-bottom: 0.85rem; }
+        .cl-tag-hint { display: flex; gap: 7px; align-items: flex-start; line-height: 1.45; }
+        .cl-tag-hint svg { flex: 0 0 auto; margin-top: 2px; color: #ff9a3c; }
+        .cl-tag-hint b { color: #e5e7eb; }
 
-        /* Branch + Year selectors */
-        .branch-year-row { display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem; padding: 0.85rem 1.1rem; background: #0d0d0d; border: 1px solid #1f1f1f; border-radius: 10px; flex-wrap: wrap; }
-        .by-field { display: flex; flex-direction: column; gap: 4px; }
-        .by-label { color: #6b7280; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
-        .by-select { background: #141414; border: 1px solid #2a2a2a; color: #e5e7eb; border-radius: 8px; padding: 6px 12px; font-size: 0.83rem; cursor: pointer; outline: none; min-width: 130px; }
-        .by-select:focus { border-color: #ff7a00; }
-        .by-info { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-left: 0.5rem; }
-        .by-badge { background: #1a1000; border: 1px solid #ff7a0044; color: #ff7a00; border-radius: 6px; padding: 3px 10px; font-size: 0.73rem; font-weight: 700; }
-        .by-sep { color: #333; }
-        .by-hint { color: #444; font-size: 0.7rem; margin-left: 0.25rem; }
-        .by-tag { display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.68rem; font-weight: 700; white-space: nowrap; }
-        .by-tag-branch { background: #0c1a2e; color: #60a5fa; border: 1px solid #1e3a5f; }
-        .by-tag-year { background: #1a0e00; color: #fb923c; border: 1px solid #7c2d12; }
+        .cl-drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 150px; padding: 1.25rem; border: 1.5px dashed #3a3f45; border-radius: 12px; background: #111315; color: #9aa0a6; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+        .cl-drop:hover, .cl-drop:focus-visible, .cl-drop.is-dragging { border-color: rgba(255,122,0,0.7); background: rgba(255,122,0,0.05); outline: none; }
+        .cl-drop strong { color: #e5e7eb; font-size: 0.88rem; font-weight: 650; }
+        .cl-drop strong u { color: #ff9a3c; text-decoration: none; }
+        .cl-drop small { color: #6b7280; font-size: 0.74rem; }
+        .cl-drop-icon { display: grid; place-items: center; width: 46px; height: 46px; margin-bottom: 4px; border: 1px solid rgba(255,122,0,0.25); border-radius: 13px; background: rgba(255,122,0,0.1); color: #ff7a00; font-size: 1.25rem; }
 
-        /* Upload tab */
-        .header-row { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; margin-bottom: 1rem; }
-        .header-row h4 { color: #ff7a00; margin: 0; font-weight: 700; }
-        .header-row p { margin: 0.25rem 0 0; color: #9ca3af; }
-        .upload-box { border: 1px dashed #4b5563; border-radius: 0.75rem; padding: 1rem; display: flex; align-items: center; gap: 0.9rem; cursor: pointer; background: #101215; transition: all 0.2s; }
-        .upload-box:hover { border-color: #ff7a00; background: #15181d; }
-        .upload-icon { font-size: 1.6rem; color: #ff7a00; }
-        .upload-title { color: #f9fafb; font-weight: 600; }
-        .upload-subtitle { color: #9ca3af; font-size: 0.85rem; }
-        .selected-file { color: #34d399; font-size: 0.85rem; margin-top: 0.15rem; }
-        .count-badge { border: 1px solid #2c2c2c; color: #ff7a00; }
-        .actions { margin-top: 0.9rem; display: flex; justify-content: flex-end; gap: 0.5rem; }
+        .cl-file { display: flex; align-items: center; gap: 12px; min-height: 76px; padding: 0.85rem 1rem; border: 1px solid rgba(49,216,102,0.25); border-radius: 12px; background: rgba(49,216,102,0.05); }
+        .cl-file .aui-stack { flex: 1; }
+        .cl-file-icon { display: grid; place-items: center; width: 40px; height: 40px; flex: 0 0 40px; border-radius: 10px; background: rgba(49,216,102,0.13); color: #45dd75; font-size: 1.1rem; }
 
-        /* ── Pro Table (shared) ── */
-        .pro-table-wrap { margin-top: 1rem; border: 1px solid #1f1f1f; border-radius: 12px; overflow: hidden; background: #0d0d0d; }
-        .pro-table { width: 100%; border-collapse: collapse; font-size: 0.83rem; }
-        .pro-table thead { background: #111; }
-        .pro-table th { padding: 0.7rem 1rem; color: #6b7280; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; border-bottom: 1px solid #1f1f1f; white-space: nowrap; }
-        .pro-table td { padding: 0.85rem 1rem; border-bottom: 1px solid #141414; vertical-align: middle; }
-        .pro-table tbody tr:last-child td { border-bottom: none; }
-        .pro-table-row { transition: background 0.12s; }
-        .pro-table-row:hover td { background: #111 !important; }
-        .pro-table-title { color: #e5e7eb; font-weight: 600; font-size: 0.85rem; }
-        .pro-table-sub { color: #6b7280; font-size: 0.75rem; margin-top: 2px; }
-        .pro-table-desc { color: #9ca3af; font-size: 0.82rem; max-width: 340px; }
-        .pro-table-action { text-align: center; }
-        .pro-table-empty { text-align: center; color: #4b5563; padding: 2.5rem !important; font-size: 0.85rem; }
+        .cl-columns { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 0.8rem; color: #6b7280; font-size: 0.72rem; }
+        .cl-columns > span:first-child { margin-right: 2px; color: #9da2a8; font-weight: 650; }
+        .cl-columns code { padding: 2px 7px; border: 1px solid #2c3034; border-radius: 6px; background: #17191c; color: #d1d5db; font-size: 0.7rem; }
+        .cl-columns-opt { flex-basis: 100%; }
 
-        /* Upload table extras */
-        .tc-wrap { display: flex; flex-direction: column; gap: 3px; }
-        .tc-count { display: inline-block; background: #0c2a3a; color: #38bdf8; border: 1px solid #0e4c6a; border-radius: 10px; font-size: 0.68rem; font-weight: 700; padding: 2px 8px; margin-bottom: 3px; }
-        .tc-line { font-size: 0.75rem; color: #9ca3af; display: flex; gap: 5px; }
-        .tc-lbl { color: #4b5563; font-weight: 700; min-width: 22px; }
-        .del-btn { background: #1a0505; border: 1px solid #7f1d1d; color: #f87171; border-radius: 7px; padding: 5px 9px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; }
-        .del-btn:hover { background: #3b0a0a; border-color: #f87171; color: #fca5a5; }
+        .cl-preview-head { display: flex; align-items: baseline; gap: 10px; padding: 0.7rem 1.1rem; border-top: 1px solid #25282b; background: #111315; }
+        .cl-preview-head span { color: #fff; font-size: 0.82rem; font-weight: 700; }
+        .cl-preview-head small { color: #858a90; font-size: 0.74rem; }
+        .cl-preview-scroll { max-height: 300px; overflow-y: auto; border-radius: 0; border-top: 1px solid #25282b; }
+        .cl-preview-scroll thead th { position: sticky; top: 0; z-index: 1; background: #17191b; }
 
-        /* Progress table extras */
-        .student-cell { display: flex; align-items: center; gap: 10px; }
-        .student-avatar { width: 34px; height: 34px; border-radius: 50%; background: linear-gradient(135deg, #ff7a00, #ff4500); color: #fff; font-size: 0.85rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-        .prog-bar-wrap-cell { display: flex; align-items: center; gap: 8px; }
-        .prog-bar-bg { flex: 1; height: 6px; background: #1f1f1f; border-radius: 4px; overflow: hidden; }
-        .prog-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
-        .prog-fraction { font-size: 0.72rem; color: #6b7280; white-space: nowrap; }
-        .completed-cell { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; font-weight: 600; }
-        .completed-sep { color: #3f3f3f; }
-        .score-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 700; }
-        .view-btn { background: #0a1929; border: 1px solid #1e4976; color: #60a5fa; border-radius: 7px; padding: 5px 12px; cursor: pointer; font-size: 0.78rem; font-weight: 600; display: inline-flex; align-items: center; gap: 5px; transition: all 0.15s; }
-        .view-btn:hover { background: #112240; border-color: #60a5fa; color: #93c5fd; }
+        .cl-upload-foot { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 0.75rem; padding: 0.8rem 1.1rem; border-top: 1px solid #25282b; }
+        .cl-upload-foot b { color: #e5e7eb; }
+        .cl-upload-actions { display: flex; gap: 8px; }
+        .cl-spin-light { color: #fff; }
 
-        /* Progress tab */
-        .summary-cards { display: flex; gap: 1rem; margin-bottom: 1rem; }
-        .summary-card { flex: 1; background: #101215; border: 1px solid #2c2c2c; border-radius: 10px; padding: 0.9rem 1.2rem; text-align: center; }
-        .summary-value { font-size: 1.6rem; font-weight: 800; color: #ff7a00; }
-        .summary-label { font-size: 0.72rem; color: #9ca3af; margin-top: 0.2rem; text-transform: uppercase; letter-spacing: 0.5px; }
+        /* Tables */
+        .cl-program { max-width: 520px; }
+        .cl-program small { white-space: nowrap; }
+        .cl-batch { display: flex; gap: 6px; }
+        .cl-delete:hover { border-color: rgba(251,95,103,0.55) !important; color: #fb737a !important; }
+        .cl-split { color: #858a90; font-size: 0.76rem; white-space: nowrap; }
+        .cl-split b { font-weight: 700; }
+        .cl-split .is-done { color: #45dd75; }
+        .cl-split .is-left { color: #fb737a; }
+        .cl-split i { margin: 0 3px; color: #3f444a; font-style: normal; }
+        .cl-card-alert { margin: 0.8rem !important; }
 
-        /* Search + Filter */
-        .search-filter-row { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; align-items: center; }
-        .progress-search { flex: 1; background: #101215; border: 1px solid #2c2c2c; border-radius: 8px; padding: 0.5rem 0.9rem; color: #f9fafb; font-size: 0.88rem; outline: none; }
-        .progress-search:focus { border-color: #ff7a00; }
-        .filter-wrap { position: relative; }
-        .filter-btn { background: #101215; border: 1px solid #2c2c2c; border-radius: 8px; padding: 0.48rem 0.9rem; color: #d1d5db; font-size: 0.82rem; font-weight: 600; cursor: pointer; display: flex; align-items: center; white-space: nowrap; transition: all 0.15s; }
-        .filter-btn:hover { border-color: #ff7a00; color: #ff7a00; }
-        .filter-menu { position: absolute; right: 0; top: calc(100% + 4px); background: #1a1a1a; border: 1px solid #2c2c2c; border-radius: 8px; z-index: 100; min-width: 160px; overflow: hidden; box-shadow: 0 8px 24px #00000066; }
-        .filter-item { padding: 0.5rem 1rem; font-size: 0.82rem; color: #d1d5db; cursor: pointer; transition: background 0.1s; }
-        .filter-item:hover { background: #252525; color: #fff; }
-        .filter-item.active { background: #1a1000; color: #ff7a00; font-weight: 600; }
+        /* Student modal */
+        .cl-dialog { max-width: 960px; }
+        .cl-modal { display: flex; flex-direction: column; min-height: 0; max-height: calc(100vh - 3.5rem); }
+        .cl-modal-avatar { width: 42px; height: 42px; flex-basis: 42px; font-size: 0.85rem; }
+        .cl-modal .aui-tile .aui-progress { margin-top: 2px; }
+        .cl-tone-green { background: rgba(49,216,102,0.13); color: #45dd75; }
+        .cl-tone-red { background: rgba(251,95,103,0.13); color: #fb737a; }
+        .cl-tone-orange { background: rgba(255,122,0,0.13); color: #ff9a3c; }
+        .cl-modal-bar { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; margin: 1.1rem 0 0.65rem; }
+        .cl-modal-bar .aui-section-label { margin: 0; }
+        .cl-modal-table { margin-top: 0 !important; overflow: hidden; }
+        .cl-modal-table .aui-table-scroll { border-radius: 12px; }
+        .cl-modal-title { color: #eceef0 !important; font-weight: 600; }
 
+        /* Delete confirm */
+        .cl-confirm { padding: 1.5rem 1.5rem 1.1rem; text-align: center; }
+        .cl-confirm-icon { display: inline-grid; place-items: center; width: 48px; height: 48px; margin-bottom: 0.75rem; border: 1px solid rgba(251,95,103,0.3); border-radius: 14px; background: rgba(251,95,103,0.12); color: #fb737a; font-size: 1.05rem; }
+        .cl-confirm h3 { margin: 0 0 0.4rem; color: #fff; font-size: 1.05rem; font-weight: 750; }
+        .cl-confirm p { margin: 0; color: #9aa0a6; font-size: 0.82rem; line-height: 1.5; }
+        .cl-confirm p b { color: #e5e7eb; }
 
-        /* ── Backdrop blur ── */
-        .modal-blur-backdrop { backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); background: rgba(0,0,0,0.7) !important; opacity: 1 !important; }
-
-        /* ── Modal size ── */
-        .modal-75 { width: 75vw !important; max-width: 75vw !important; }
-        .modal-75 .modal-pro { height: 75vh; display: flex; flex-direction: column; }
-
-        /* ── Pro Modal shell ── */
-        .modal-pro { background: #0d0d0d; border: 1px solid #1f1f1f; border-radius: 16px !important; overflow: hidden; box-shadow: 0 32px 80px rgba(0,0,0,0.8); }
-
-        /* Header */
-        .mpro-header { display: flex; align-items: center; gap: 1rem; padding: 1.25rem 1.5rem 1rem; border-bottom: 1px solid #1a1a1a; background: linear-gradient(135deg, #111 0%, #0d0d0d 100%); position: relative; }
-        .mpro-avatar { width: 44px; height: 44px; border-radius: 50%; background: linear-gradient(135deg, #ff7a00, #ff4500); color: #fff; font-size: 1rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 0 0 3px #1a1000; }
-        .mpro-identity { flex: 1; min-width: 0; }
-        .mpro-name { color: #f9fafb; font-weight: 700; font-size: 1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .mpro-email { color: #6b7280; font-size: 0.78rem; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .mpro-close { background: none; border: none; color: #6b7280; font-size: 1.4rem; line-height: 1; cursor: pointer; padding: 0 0.25rem; transition: color 0.15s; }
-        .mpro-close:hover { color: #f9fafb; }
-
-        /* Stats strip */
-        .mpro-stats { display: flex; align-items: center; gap: 0; padding: 0.85rem 1.5rem; background: #0a0a0a; border-bottom: 1px solid #1a1a1a; }
-        .mpro-stat { display: flex; flex-direction: column; align-items: center; min-width: 70px; }
-        .mpro-stat-val { font-size: 1.3rem; font-weight: 800; line-height: 1.1; }
-        .mpro-stat-lbl { font-size: 0.68rem; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px; margin-top: 2px; }
-        .mpro-stat-divider { width: 1px; height: 36px; background: #1f1f1f; margin: 0 1rem; }
-        .mpro-bar-wrap { flex: 1; margin-left: 1.5rem; display: flex; flex-direction: column; gap: 6px; }
-        .mpro-bar-track { height: 6px; background: #1f1f1f; border-radius: 4px; overflow: hidden; }
-        .mpro-bar-fill { height: 100%; border-radius: 4px; transition: width 0.4s ease; }
-        .mpro-bar-label { font-size: 0.72rem; color: #6b7280; text-align: right; }
-
-        /* Filter pills */
-        .mpro-pills { display: flex; gap: 0.5rem; padding: 0.85rem 1.5rem 0.5rem; background: #0a0a0a; }
-        .mpro-pill { background: #111; border: 1px solid #222; border-radius: 20px; padding: 0.28rem 0.9rem; font-size: 0.78rem; font-weight: 600; color: #9ca3af; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
-        .mpro-pill:hover { color: #f9fafb; border-color: #3f3f3f; }
-        .mpro-pill.active { color: #ff7a00; border-color: #ff7a00; background: #1a0e00; }
-
-        /* Table */
-        .mpro-table-wrap { flex: 1; overflow-y: auto; background: #0a0a0a; min-height: 0; }
-        .mpro-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-        .mpro-table thead { position: sticky; top: 0; z-index: 2; background: #111; }
-        .mpro-table th { padding: 0.6rem 0.9rem; color: #6b7280; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid #1f1f1f; white-space: nowrap; }
-        .mpro-table td { padding: 0.65rem 0.9rem; border-bottom: 1px solid #141414; vertical-align: middle; }
-        .mpro-table tbody tr { transition: background 0.12s; }
-        .mpro-table tbody tr:hover td { background: #111 !important; }
-        .row-done td { background: #050e05; }
-        .row-todo td { background: #0a0a0a; }
-        .mpro-num { color: #3f3f3f; text-align: center; font-size: 0.75rem; font-weight: 600; }
-        .mpro-title { color: #e5e7eb; font-weight: 500; }
-        .mpro-lang { color: #60a5fa; font-size: 0.78rem; }
-        .mpro-date { color: #6b7280; font-size: 0.76rem; white-space: nowrap; }
-        .mpro-empty { text-align: center; color: #4b5563; padding: 2rem !important; }
-
-        /* Difficulty tags */
-        .diff-tag { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 0.68rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
-        .diff-beginner { background: #052e16; color: #4ade80; }
-        .diff-intermediate { background: #1c1200; color: #fbbf24; }
-        .diff-advanced { background: #1f0a0a; color: #f87171; }
-
-        /* Status */
-        .status-done { display: inline-flex; align-items: center; gap: 5px; color: #34d399; font-weight: 600; font-size: 0.78rem; }
-        .status-pending { display: inline-flex; align-items: center; gap: 5px; color: #f87171; font-weight: 600; font-size: 0.78rem; }
-
-        /* Footer */
-        .mpro-footer { display: flex; justify-content: flex-end; padding: 0.85rem 1.5rem; background: #0a0a0a; border-top: 1px solid #1a1a1a; }
-        .mpro-close-btn { background: #1a1a1a; border: 1px solid #2c2c2c; color: #9ca3af; border-radius: 8px; padding: 0.4rem 1.2rem; font-size: 0.82rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
-        .mpro-close-btn:hover { background: #252525; color: #f9fafb; border-color: #3f3f3f; }
-
-        @media (max-width: 900px) {
-          .header-row { flex-direction: column; align-items: flex-start; }
-          .actions { width: 100%; flex-direction: column; }
-          .summary-cards { flex-direction: column; }
-          .search-filter-row { flex-direction: column; align-items: stretch; }
+        @media (max-width: 991.98px) {
+          .cl-upload { grid-template-columns: 1fr; }
+        }
+        @media (max-width: 575.98px) {
+          .cl-upload-foot { flex-direction: column; align-items: stretch; }
+          .cl-upload-actions { justify-content: flex-end; }
         }
       `}</style>
-    </div>
+    </AdminPage>
   )
 }
 

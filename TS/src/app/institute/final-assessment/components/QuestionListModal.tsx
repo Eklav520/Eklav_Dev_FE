@@ -137,7 +137,13 @@ export default function QuestionListModal({ show, onHide, examId, roundType, rou
                         <Form.Control size="sm" value={editData.correctAnswer} onChange={e => setEditData((d: any) => ({ ...d, correctAnswer: e.target.value }))}
                           style={{ background: '#111', border: '1px solid #333', color: '#fff' }} />
                       ) : (
-                        <span style={{ fontSize: '0.82rem', color: '#28a745' }}>{getAnswer(q)}</span>
+                        q.questionType === 'CODE' ? (
+                          <span style={{ fontSize: '0.82rem', color: '#60a5fa' }}>
+                            CODE · {q.codeTestCases?.length || 0} test case{q.codeTestCases?.length === 1 ? '' : 's'}
+                          </span>
+                        ) : (
+                          <span style={{ fontSize: '0.82rem', color: '#28a745' }}>{getAnswer(q)}</span>
+                        )
                       )}
                     </td>
                   )}
@@ -156,7 +162,8 @@ export default function QuestionListModal({ show, onHide, examId, roundType, rou
                         </div>
                       ) : (
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <Button size="sm" onClick={() => handleEdit(q)}
+                          <Button size="sm" onClick={() => handleEdit(q)} disabled={q.questionType === 'CODE'}
+                            title={q.questionType === 'CODE' ? 'Edit programming questions through the upload sheet' : 'Edit question'}
                             style={{ background: '#ff6b35', border: 'none', padding: '2px 8px', fontSize: '0.75rem' }}>
                             <FaEdit />
                           </Button>

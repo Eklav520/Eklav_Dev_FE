@@ -836,7 +836,16 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                         <p style={{ margin: 0, fontSize: '0.88rem', color: '#e0e0e0', lineHeight: 1.6, fontWeight: 500 }}>{ans.questionText}</p>
                       </div>
                       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-                        {(ans.options || []).map((opt: any) => {
+                        {ans.questionType === 'CODE' ? (
+                          <div style={{ width: '100%' }}>
+                            <div style={{ color: '#aaa', fontSize: '0.8rem', marginBottom: 8 }}>
+                              Language: {ans.language || 'Not selected'} · Tests passed: {ans.codePassedTests}/{ans.codeTotalTests}
+                            </div>
+                            <pre style={{ margin: 0, padding: 12, maxHeight: 300, overflow: 'auto', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', borderRadius: 8, background: '#080808', border: '1px solid #252525', color: '#ddd', fontSize: '0.78rem' }}>
+                              {ans.selectedOption || 'No code submitted'}
+                            </pre>
+                          </div>
+                        ) : (ans.options || []).map((opt: any) => {
                           const key = opt.key || opt;
                           const text = opt.text || opt;
                           const isSelected = ans.selectedOption === key;
@@ -848,7 +857,7 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
                           );
                         })}
                       </div>
-                      {ans.isCorrect === null && <div style={{ fontSize: '0.75rem', color: '#555', marginTop: 6 }}>Answer: {ans.selectedOption || '—'} (auto-correct unavailable)</div>}
+                      {ans.isCorrect === null && ans.questionType !== 'CODE' && <div style={{ fontSize: '0.75rem', color: '#555', marginTop: 6 }}>Answer: {ans.selectedOption || '—'} (auto-correct unavailable)</div>}
                     </div>
                   ))}
                 </div>

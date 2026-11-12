@@ -1,181 +1,124 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { createPortal } from 'react-dom'
+import React, { useState, useEffect, useCallback, useMemo } from 'react'
+import { Modal } from 'react-bootstrap'
+import {
+  FaCalculator, FaUsers, FaPercentage, FaTrophy, FaStopwatch, FaChevronLeft, FaChevronRight,
+  FaSyncAlt, FaSpinner, FaExclamationTriangle, FaInbox, FaEye, FaTimes, FaCheckCircle, FaTimesCircle,
+  FaCalendarAlt, FaLayerGroup, FaChartLine, FaMedal,
+} from 'react-icons/fa'
 import PageMetaData from '@/components/PageMetaData'
 import { useAuthContext } from '@/context/useAuthContext'
+import {
+  AdminPage, PageHeader, StatCards, SearchInput, AdminSelect, TableFooter, EmptyState, ProgressBar,
+  initialsOf, scoreBadgeClass, toOptions,
+} from '@/components/admin-ui'
+
+const PAGE_SIZE = 20
 
 function formatSecs(s: number) {
-  const m = Math.floor(s / 60).toString().padStart(2, '0')
-  const sec = (s % 60).toString().padStart(2, '0')
+  const m = Math.floor((s || 0) / 60).toString().padStart(2, '0')
+  const sec = ((s || 0) % 60).toString().padStart(2, '0')
   return `${m}:${sec}`
 }
 
-const CAT: Record<string, { color: string; bg: string }> = {
-  Aptitude:  { color: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
-  Reasoning: { color: '#a78bfa', bg: 'rgba(167,139,250,0.12)' },
-  Technical: { color: '#34d399', bg: 'rgba(52,211,153,0.12)' },
-  Puzzle:    { color: '#fb923c', bg: 'rgba(251,146,60,0.12)' },
+const CATEGORY_BADGE: Record<string, string> = {
+  Aptitude: 'aui-badge-blue', Reasoning: 'aui-badge-purple', Technical: 'aui-badge-green', Puzzle: 'aui-badge-orange',
 }
+const pctLabel = (p: number) => p >= 70 ? 'Excellent' : p >= 40 ? 'Average' : 'Needs improvement'
+const pctColor = (p: number) => p >= 70 ? '#45dd75' : p >= 40 ? '#f4b43f' : '#fb737a'
 
-const CAT_ICON: Record<string, string> = {
-  Aptitude: '🧮', Reasoning: '🧩', Technical: '💻', Puzzle: '🔮',
-}
+/* Local YYYY-MM-DD (toISOString would shift the day for IST evenings) */
+const ymd = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const shiftDay = (date: string, days: number) => { const d = new Date(`${date}T00:00:00`); d.setDate(d.getDate() + days); return ymd(d) }
+const longDate = (date: string) => new Date(`${date}T00:00:00`).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' })
 
-const MEDAL: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉' }
-const pctColor = (p: number) => p >= 70 ? '#34d399' : p >= 40 ? '#fbbf24' : '#f87171'
-const pctLabel = (p: number) => p >= 70 ? 'Excellent' : p >= 40 ? 'Average' : 'Needs Improvement'
+const RankBadge = ({ rank }: { rank: number }) => (
+  <span className={`apa-rank${rank <= 3 ? ` is-top is-${rank}` : ''}`}>
+    {rank <= 3 && <FaMedal size={9} />}#{rank}
+  </span>
+)
 
-// ── Student Detail Modal ──────────────────────────────────────────────────────
+// ── Student detail modal ──────────────────────────────────────────────────────
 const StudentModal: React.FC<{ attempt: any; onClose: () => void }> = ({ attempt, onClose }) => {
-  const cat = CAT[attempt.category] ?? { color: '#888', bg: 'rgba(136,136,136,0.1)' }
-  const p = attempt.percentage ?? 0
-  const circumference = 2 * Math.PI * 54
+  const p = attempt?.percentage ?? 0
+  const circumference = 2 * Math.PI * 46
+  const wrong = Math.max(0, (attempt?.total ?? 0) - (attempt?.score ?? 0))
 
-  return createPortal(
-    <div
-      onClick={onClose}
-      style={{
-        position: 'fixed', inset: 0, zIndex: 99999,
-        background: 'rgba(0,0,0,0.7)',
-        backdropFilter: 'blur(8px)',
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        padding: '20px',
-      }}
-    >
-      <div
-        onClick={e => e.stopPropagation()}
-        style={{
-          width: '100%', maxWidth: 720,
-          background: '#0e0e1c',
-          border: '1px solid #1e1e30',
-          borderRadius: 20,
-          boxShadow: '0 24px 80px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,122,0,0.08)',
-          overflow: 'hidden',
-          animation: 'ia-modal-in 0.22s cubic-bezier(0.34,1.56,0.64,1)',
-        }}
-      >
-        <style>{`
-          @keyframes ia-modal-in { from { opacity:0; transform:scale(0.92) translateY(12px); } to { opacity:1; transform:scale(1) translateY(0); } }
-        `}</style>
-
-        {/* Header */}
-        <div style={{
-          padding: '22px 28px',
-          background: `linear-gradient(135deg, ${cat.bg}, rgba(14,14,28,0))`,
-          borderBottom: '1px solid #1a1a2a',
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-            <div style={{
-              width: 50, height: 50, borderRadius: 14, fontSize: 24,
-              background: cat.bg, border: `1.5px solid ${cat.color}44`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              {CAT_ICON[attempt.category] ?? '📝'}
-            </div>
+  return (
+    <Modal show={!!attempt} onHide={onClose} centered size="lg" contentClassName="aui-modal" backdropClassName="aui-backdrop">
+      {attempt && (
+        <div className="aui-page">
+          <div className="aui-modal-head">
+            <span className="aui-avatar apa-modal-avatar">{initialsOf(attempt.studentName)}</span>
             <div>
-              <div style={{ fontWeight: 900, fontSize: 18, color: '#e0e0f0' }}>{attempt.studentName}</div>
-              <div style={{ fontSize: 12, color: '#44445a', marginTop: 2 }}>{attempt.studentEmail}</div>
+              <h3>{attempt.studentName}</h3>
+              <p>{attempt.studentEmail}</p>
             </div>
+            <RankBadge rank={attempt.rank} />
+            <button type="button" className="aui-icon-btn" onClick={onClose} aria-label="Close"><FaTimes size={12} /></button>
           </div>
-          <button
-            onClick={onClose}
-            style={{
-              width: 34, height: 34, borderRadius: 10, border: '1px solid #2a2a3a',
-              background: 'transparent', color: '#555', fontSize: 18, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              lineHeight: 1,
-            }}
-          >✕</button>
-        </div>
 
-        {/* Body */}
-        <div style={{ padding: '28px 28px 32px' }}>
-
-          {/* Score ring + stats */}
-          <div style={{ display: 'flex', gap: 24, alignItems: 'center', marginBottom: 28, flexWrap: 'wrap' }}>
-
-            {/* Circular progress */}
-            <div style={{ flexShrink: 0, position: 'relative', width: 130, height: 130 }}>
-              <svg width="130" height="130" style={{ transform: 'rotate(-90deg)' }}>
-                <circle cx="65" cy="65" r="54" fill="none" stroke="#161626" strokeWidth="10" />
-                <circle cx="65" cy="65" r="54" fill="none"
-                  stroke={pctColor(p)} strokeWidth="10"
-                  strokeDasharray={circumference}
-                  strokeDashoffset={circumference * (1 - p / 100)}
-                  strokeLinecap="round"
-                  style={{ transition: 'stroke-dashoffset 0.8s ease' }}
-                />
-              </svg>
-              <div style={{
-                position: 'absolute', inset: 0,
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <div style={{ fontSize: 26, fontWeight: 900, color: pctColor(p), lineHeight: 1 }}>{p}%</div>
-                <div style={{ fontSize: 10, color: '#44445a', marginTop: 3, fontWeight: 600, textTransform: 'uppercase', letterSpacing: 0.5 }}>Score</div>
+          <div className="aui-modal-body">
+            <div className="apa-summary">
+              <div className="apa-ring">
+                <svg width="112" height="112" viewBox="0 0 112 112">
+                  <circle cx="56" cy="56" r="46" fill="none" stroke="#23262a" strokeWidth="9" />
+                  <circle cx="56" cy="56" r="46" fill="none" stroke={pctColor(p)} strokeWidth="9" strokeLinecap="round"
+                    strokeDasharray={circumference} strokeDashoffset={circumference * (1 - p / 100)} transform="rotate(-90 56 56)" />
+                </svg>
+                <div><strong style={{ color: pctColor(p) }}>{p}%</strong><small>Score</small></div>
               </div>
-            </div>
 
-            {/* Right stats grid */}
-            <div style={{ flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-              {[
-                { label: 'Marks Scored', val: `${attempt.score} / ${attempt.total}`, color: pctColor(p), icon: '📝' },
-                { label: 'Rank', val: MEDAL[attempt.rank] ? `${MEDAL[attempt.rank]} #${attempt.rank}` : `#${attempt.rank}`, color: attempt.rank <= 3 ? '#fbbf24' : '#e0e0f0', icon: '🏆' },
-                { label: 'Time Taken', val: formatSecs(attempt.timeTakenSeconds), color: '#6366f1', icon: '⏱️', mono: true },
-                { label: 'Performance', val: pctLabel(p), color: pctColor(p), icon: '📊' },
-              ].map(item => (
-                <div key={item.label} style={{
-                  background: '#12121e', border: '1px solid #1a1a2a',
-                  borderRadius: 12, padding: '14px 16px',
-                }}>
-                  <div style={{ fontSize: 10, color: '#44445a', textTransform: 'uppercase', letterSpacing: 0.7, fontWeight: 600, marginBottom: 6 }}>
-                    {item.icon} {item.label}
-                  </div>
-                  <div style={{
-                    fontSize: 18, fontWeight: 900, color: item.color,
-                    fontFamily: (item as any).mono ? 'monospace' : 'inherit',
-                  }}>{item.val}</div>
+              <div className="aui-tiles apa-tiles">
+                <div className="aui-tile">
+                  <div className="aui-tile-head"><span className="aui-tile-icon apa-tone-green"><FaCheckCircle /></span> Marks</div>
+                  <div className="aui-tile-value">{attempt.score}<small>of {attempt.total}</small></div>
                 </div>
-              ))}
+                <div className="aui-tile">
+                  <div className="aui-tile-head"><span className="aui-tile-icon apa-tone-amber"><FaTrophy /></span> Rank</div>
+                  <div className="aui-tile-value">#{attempt.rank}<small>today</small></div>
+                </div>
+                <div className="aui-tile">
+                  <div className="aui-tile-head"><span className="aui-tile-icon apa-tone-blue"><FaStopwatch /></span> Time Taken</div>
+                  <div className="aui-tile-value apa-mono">{formatSecs(attempt.timeTakenSeconds)}</div>
+                </div>
+                <div className="aui-tile">
+                  <div className="aui-tile-head"><span className="aui-tile-icon apa-tone-orange"><FaChartLine /></span> Performance</div>
+                  <div className="aui-tile-value apa-perf" style={{ color: pctColor(p) }}>{pctLabel(p)}</div>
+                </div>
+              </div>
+            </div>
+
+            <div className="aui-section-label">Score breakdown</div>
+            <div className="apa-breakdown">
+              <div className="apa-split">
+                <div className="is-correct" style={{ width: `${attempt.total ? (attempt.score / attempt.total) * 100 : 0}%` }} />
+                <div className="is-wrong" style={{ width: `${attempt.total ? (wrong / attempt.total) * 100 : 0}%` }} />
+              </div>
+              <div className="apa-legend">
+                <span><i className="is-correct" /> {attempt.score} correct</span>
+                <span><i className="is-wrong" /> {wrong} wrong</span>
+                <span className="apa-legend-total">{attempt.total} questions</span>
+              </div>
+            </div>
+
+            <div className="apa-meta">
+              <div>
+                <small><FaLayerGroup size={10} /> Category</small>
+                <span className={`aui-badge ${CATEGORY_BADGE[attempt.category] || 'aui-badge-muted'}`}>{attempt.category || '—'}</span>
+              </div>
+              <div>
+                <small><FaCalendarAlt size={10} /> Submitted</small>
+                <strong>{new Date(attempt.submittedAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>
+              </div>
             </div>
           </div>
 
-          {/* Progress bar */}
-          <div style={{ marginBottom: 24 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-              <span style={{ fontSize: 11, color: '#44445a', textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 600 }}>Score Breakdown</span>
-              <span style={{ fontSize: 12, color: '#44445a' }}>{attempt.score} correct · {attempt.total - attempt.score} wrong · {attempt.total} total</span>
-            </div>
-            <div style={{ height: 10, borderRadius: 20, background: '#161626', overflow: 'hidden', display: 'flex' }}>
-              <div style={{ width: `${p}%`, background: `linear-gradient(90deg, ${pctColor(p)}, ${pctColor(p)}cc)`, borderRadius: 20, transition: 'width 0.8s ease' }} />
-            </div>
-          </div>
-
-          {/* Details row */}
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
-            <div style={{ flex: '1 1 180px', background: '#12121e', border: '1px solid #1a1a2a', borderRadius: 12, padding: '12px 16px' }}>
-              <div style={{ fontSize: 10, color: '#44445a', textTransform: 'uppercase', letterSpacing: 0.7, fontWeight: 600, marginBottom: 4 }}>Category</div>
-              <span style={{
-                fontSize: 13, fontWeight: 700, padding: '4px 12px', borderRadius: 20,
-                background: cat.bg, color: cat.color, border: `1px solid ${cat.color}33`,
-              }}>{attempt.category}</span>
-            </div>
-            <div style={{ flex: '1 1 180px', background: '#12121e', border: '1px solid #1a1a2a', borderRadius: 12, padding: '12px 16px' }}>
-              <div style={{ fontSize: 10, color: '#44445a', textTransform: 'uppercase', letterSpacing: 0.7, fontWeight: 600, marginBottom: 4 }}>Submitted At</div>
-              <div style={{ fontSize: 14, fontWeight: 700, color: '#e0e0f0' }}>
-                {new Date(attempt.submittedAt).toLocaleString('en-IN', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-              </div>
-            </div>
-            <div style={{ flex: '1 1 180px', background: '#12121e', border: '1px solid #1a1a2a', borderRadius: 12, padding: '12px 16px' }}>
-              <div style={{ fontSize: 10, color: '#44445a', textTransform: 'uppercase', letterSpacing: 0.7, fontWeight: 600, marginBottom: 4 }}>Correct Answers</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: '#34d399' }}>
-                {attempt.score}<span style={{ fontSize: 13, color: '#44445a', fontWeight: 400 }}> / {attempt.total}</span>
-              </div>
-            </div>
+          <div className="aui-modal-foot">
+            <button type="button" className="aui-btn" onClick={onClose}>Close</button>
           </div>
         </div>
-      </div>
-    </div>,
-    document.body
+      )}
+    </Modal>
   )
 }
 
@@ -185,13 +128,15 @@ const AptitudeAssessments: React.FC = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const token = user?.token
 
-  const today = new Date().toISOString().split('T')[0]
+  const today = ymd(new Date())
   const [date, setDate] = useState(today)
   const [page, setPage] = useState(1)
   const [data, setData] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [selected, setSelected] = useState<any>(null)
+  const [search, setSearch] = useState('')
+  const [category, setCategory] = useState('')
 
   const fetchResults = useCallback(async () => {
     if (!token) return
@@ -199,7 +144,7 @@ const AptitudeAssessments: React.FC = () => {
     setError('')
     try {
       const res = await fetch(
-        `${baseURL}/api/institute/daily-aptitude/results?date=${date}&page=${page}&limit=20`,
+        `${baseURL}/api/institute/daily-aptitude/results?date=${date}&page=${page}&limit=${PAGE_SIZE}`,
         { headers: { Authorization: `Bearer ${token}` } }
       )
       const json = await res.json()
@@ -214,159 +159,133 @@ const AptitudeAssessments: React.FC = () => {
 
   useEffect(() => { fetchResults() }, [fetchResults])
 
+  const changeDate = (next: string) => {
+    if (!next || next > today) return
+    setDate(next); setPage(1); setSearch(''); setCategory('')
+  }
+
+  const attempts: any[] = data?.attempts ?? []
+  const categories = useMemo(() => [...new Set(attempts.map(a => a.category).filter(Boolean))] as string[], [attempts])
+
+  const visible = useMemo(() => {
+    const q = search.trim().toLowerCase()
+    return attempts.filter(a =>
+      (!q || a.studentName?.toLowerCase().includes(q) || a.studentEmail?.toLowerCase().includes(q)) &&
+      (!category || a.category === category))
+  }, [attempts, search, category])
+
+  // Score stats come from the loaded page; the hint says so when there is more than one page
+  const pageStats = useMemo(() => {
+    if (!attempts.length) return null
+    const avg = Math.round(attempts.reduce((s, a) => s + (a.percentage ?? 0), 0) / attempts.length)
+    const top = Math.max(...attempts.map(a => a.percentage ?? 0))
+    const avgTime = Math.round(attempts.reduce((s, a) => s + (a.timeTakenSeconds ?? 0), 0) / attempts.length)
+    return { avg, top, avgTime }
+  }, [attempts])
+  const partial = (data?.pages ?? 1) > 1 ? 'this page' : undefined
+  const filtered = !!(search || category)
+
   return (
-    <>
+    <AdminPage>
       <PageMetaData title="Aptitude Assessments" />
-      <style>{`
-        @keyframes ia-spin { 0%{transform:rotate(0deg)} 100%{transform:rotate(360deg)} }
-        .ia-date::-webkit-calendar-picker-indicator { filter: brightness(0) invert(1); cursor: pointer; opacity: 0.8; }
-        .ia-row { cursor: pointer; transition: background 0.15s; }
-        .ia-row:hover td { background: rgba(255,122,0,0.06) !important; }
-        .ia-row:hover .ia-view-btn { opacity: 1 !important; }
-        .ia-page-btn:hover:not(:disabled) { border-color: #ff7a00 !important; color: #ff7a00 !important; }
-      `}</style>
 
-      {/* ── Page header ── */}
-      <div style={{ marginBottom: 28 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 6 }}>
-          <div style={{
-            width: 40, height: 40, borderRadius: 12,
-            background: 'rgba(255,122,0,0.12)', border: '1px solid rgba(255,122,0,0.25)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20,
-          }}>🧮</div>
-          <div>
-            <h4 style={{ fontWeight: 800, fontSize: 20, margin: 0, color: '#e0e0f0' }}>Aptitude Assessments</h4>
-            <p style={{ color: '#44445a', fontSize: 12, margin: 0 }}>Daily aptitude exam results for your institute's students</p>
-          </div>
-        </div>
-      </div>
-
-      {/* ── Controls ── */}
-      <div style={{ display: 'flex', gap: 12, alignItems: 'flex-end', marginBottom: 24, flexWrap: 'wrap' }}>
-        <div>
-          <div style={{ fontSize: 10, color: '#555', marginBottom: 6, textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 600 }}>Select Date</div>
-          <input
-            type="date" value={date} max={today} className="ia-date"
-            onChange={e => { setDate(e.target.value); setPage(1) }}
-            style={{
-              padding: '9px 14px', borderRadius: 10, fontSize: 13, fontWeight: 600,
-              border: '1.5px solid #2a2a3a', background: '#12121e', color: '#e0e0f0',
-              outline: 'none', cursor: 'pointer',
-            }}
+      <PageHeader
+        icon={FaCalculator}
+        title="Aptitude Assessments"
+        stats={
+          <StatCards
+            inline
+            loading={loading && !data}
+            items={[
+              { label: 'Attempts', value: data?.total ?? 0, icon: FaUsers, tone: 'orange' },
+              { label: 'Avg Score', value: pageStats ? `${pageStats.avg}%` : '—', icon: FaPercentage, tone: 'green', hint: partial },
+              { label: 'Top Score', value: pageStats ? `${pageStats.top}%` : '—', icon: FaTrophy, tone: 'amber' },
+              { label: 'Avg Time', value: pageStats ? formatSecs(pageStats.avgTime) : '—', icon: FaStopwatch, tone: 'blue', hint: partial },
+            ]}
           />
-        </div>
-        <button
-          onClick={fetchResults}
-          style={{
-            padding: '9px 22px', borderRadius: 10, border: 'none',
-            background: 'linear-gradient(135deg,#ff7a00,#ff9a3c)',
-            color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer',
-            boxShadow: '0 4px 14px rgba(255,122,0,0.25)',
-          }}
-        >↻ Refresh</button>
-      </div>
+        }
+      />
 
-      {/* ── Stat chips ── */}
-      {data && !loading && (
-        <div style={{ display: 'flex', gap: 12, marginBottom: 24, flexWrap: 'wrap' }}>
-          {[
-            { label: 'Date', val: new Date(date + 'T00:00:00').toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' }), icon: '📅', accent: '#ff7a00' },
-            { label: 'Total Attempts', val: data.total, icon: '👥', accent: '#6366f1' },
-            { label: 'Category', val: data.attempts?.[0]?.category || '—', icon: '📚', accent: '#34d399' },
-          ].map(item => (
-            <div key={item.label} style={{
-              flex: '1 1 180px',
-              background: '#0e0e1c', border: '1px solid #1a1a2a',
-              borderRadius: 14, padding: '14px 18px',
-              display: 'flex', alignItems: 'center', gap: 14,
-            }}>
-              <div style={{
-                width: 40, height: 40, borderRadius: 10, flexShrink: 0,
-                background: `${item.accent}15`, border: `1px solid ${item.accent}30`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
-              }}>{item.icon}</div>
-              <div>
-                <div style={{ fontSize: 10, color: '#44445a', textTransform: 'uppercase', letterSpacing: 0.8, fontWeight: 600, marginBottom: 3 }}>{item.label}</div>
-                <div style={{ fontSize: 16, fontWeight: 800, color: '#e0e0f0' }}>{item.val}</div>
-              </div>
+      {error && <div className="aui-alert"><FaExclamationTriangle /> <span>{error}</span></div>}
+
+      <div className="aui-card">
+        <div className="aui-toolbar">
+          <div className="apa-datebar">
+            <button type="button" className="aui-icon-btn" onClick={() => changeDate(shiftDay(date, -1))} aria-label="Previous day" title="Previous day"><FaChevronLeft size={11} /></button>
+            <input type="date" className="aui-date" value={date} max={today} onChange={e => changeDate(e.target.value)} aria-label="Exam date" />
+            <button type="button" className="aui-icon-btn" onClick={() => changeDate(shiftDay(date, 1))} disabled={date >= today} aria-label="Next day" title="Next day"><FaChevronRight size={11} /></button>
+            <div className="aui-toolbar-title apa-date-title">
+              <h3>{date === today ? 'Today' : longDate(date)}</h3>
+              <p>{date === today ? longDate(date) : <button type="button" className="apa-link" onClick={() => changeDate(today)}>Jump to today</button>}</p>
             </div>
-          ))}
-        </div>
-      )}
-
-      {/* ── Loading ── */}
-      {loading && (
-        <div style={{ display: 'flex', justifyContent: 'center', padding: '60px 0' }}>
-          <div style={{ width: 36, height: 36, border: '3px solid rgba(255,122,0,0.15)', borderTop: '3px solid #ff7a00', borderRadius: '50%', animation: 'ia-spin 0.8s linear infinite' }} />
-        </div>
-      )}
-
-      {/* ── Error ── */}
-      {error && (
-        <div style={{ background: 'rgba(248,113,113,0.08)', border: '1px solid rgba(248,113,113,0.2)', borderRadius: 12, padding: '14px 18px', color: '#f87171', marginBottom: 20, fontSize: 13 }}>
-          ⚠️ {error}
-        </div>
-      )}
-
-      {/* ── Table / Empty ── */}
-      {data && !loading && (
-        data.attempts.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '70px 0', color: '#33334a' }}>
-            <div style={{ fontSize: 48, marginBottom: 14 }}>📭</div>
-            <div style={{ fontSize: 14, fontWeight: 600, color: '#44445a' }}>No students from your institute attempted the exam on {date}.</div>
           </div>
+          <div className="aui-toolbar-filters">
+            <SearchInput value={search} onChange={setSearch} placeholder="Search student…" />
+            {categories.length > 1 && (
+              <AdminSelect label="Category" value={category} options={toOptions('All categories', categories)} onChange={setCategory} />
+            )}
+            <button type="button" className="aui-btn" onClick={fetchResults} disabled={loading}>
+              <FaSyncAlt size={11} className={loading ? 'aui-spin' : ''} /> Refresh
+            </button>
+          </div>
+        </div>
+
+        {loading && !data ? (
+          <div className="aui-empty"><FaSpinner className="aui-spin" size={22} /> Loading results…</div>
+        ) : !data || attempts.length === 0 ? (
+          <EmptyState
+            icon={FaInbox}
+            title="No attempts on this day"
+            text={`No students from your institute took the daily aptitude exam on ${longDate(date)}.`}
+            action={date !== today ? <button type="button" className="aui-btn aui-btn-sm" onClick={() => changeDate(today)}>Go to today</button> : undefined}
+          />
+        ) : visible.length === 0 ? (
+          <EmptyState
+            icon={FaInbox}
+            title="No students match"
+            text="Try a different name or category."
+            action={<button type="button" className="aui-btn aui-btn-sm" onClick={() => { setSearch(''); setCategory('') }}>Clear filters</button>}
+          />
         ) : (
           <>
-            <div style={{ borderRadius: 14, border: '1px solid #1a1a2a', overflow: 'hidden' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <div className={`aui-table-scroll${loading ? ' apa-busy' : ''}`}>
+              <table className="aui-table">
                 <thead>
-                  <tr style={{ background: '#0a0a18' }}>
-                    {['Rank', 'Student', 'Email', 'Category', 'Score', '%', 'Time', 'Submitted', ''].map(h => (
-                      <th key={h} style={{
-                        padding: '12px 16px', textAlign: 'left', fontWeight: 700,
-                        color: '#44445a', fontSize: 10, textTransform: 'uppercase', letterSpacing: 0.8,
-                        borderBottom: '1px solid #1a1a2a', whiteSpace: 'nowrap',
-                      }}>{h}</th>
-                    ))}
+                  <tr>
+                    <th style={{ width: 90 }}>Rank</th>
+                    <th>Student</th>
+                    <th style={{ width: 130 }}>Category</th>
+                    <th style={{ width: 220 }}>Score</th>
+                    <th style={{ width: 100 }}>Result</th>
+                    <th style={{ width: 90 }}>Time</th>
+                    <th style={{ width: 110 }}>Submitted</th>
+                    <th style={{ width: 90 }} className="text-end">Action</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {data.attempts.map((a: any, i: number) => {
-                    const cat = CAT[a.category] ?? { color: '#888', bg: 'rgba(136,136,136,0.1)' }
+                  {visible.map((a, i) => {
                     const p = a.percentage ?? 0
                     return (
-                      <tr key={i} className="ia-row" onClick={() => setSelected(a)} style={{ borderBottom: '1px solid #111120' }}>
-                        <td style={{ padding: '13px 16px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            {MEDAL[a.rank] && <span style={{ fontSize: 16 }}>{MEDAL[a.rank]}</span>}
-                            <span style={{ fontWeight: 800, fontSize: 14, color: a.rank <= 3 ? '#fbbf24' : '#44445a' }}>#{a.rank}</span>
+                      <tr key={`${a.studentEmail}-${i}`} className="apa-row" onClick={() => setSelected(a)}>
+                        <td><RankBadge rank={a.rank} /></td>
+                        <td>
+                          <div className="aui-person">
+                            <span className="aui-avatar">{initialsOf(a.studentName)}</span>
+                            <div className="aui-stack">
+                              <strong>{a.studentName}</strong>
+                              <small>{a.studentEmail}</small>
+                            </div>
                           </div>
                         </td>
-                        <td style={{ padding: '13px 16px', fontWeight: 700, color: '#e0e0f0' }}>{a.studentName}</td>
-                        <td style={{ padding: '13px 16px', color: '#44445a', fontSize: 12 }}>{a.studentEmail}</td>
-                        <td style={{ padding: '13px 16px' }}>
-                          <span style={{ fontSize: 11, fontWeight: 700, padding: '3px 10px', borderRadius: 20, background: cat.bg, color: cat.color, border: `1px solid ${cat.color}33` }}>
-                            {a.category}
-                          </span>
-                        </td>
-                        <td style={{ padding: '13px 16px', fontWeight: 800, color: '#e0e0f0' }}>
-                          {a.score}<span style={{ color: '#33334a', fontWeight: 400 }}>/{a.total}</span>
-                        </td>
-                        <td style={{ padding: '13px 16px', fontWeight: 800, color: pctColor(p) }}>{p}%</td>
-                        <td style={{ padding: '13px 16px', fontFamily: 'monospace', fontSize: 12, color: '#6366f1', fontWeight: 700 }}>
-                          {formatSecs(a.timeTakenSeconds)}
-                        </td>
-                        <td style={{ padding: '13px 16px', color: '#33334a', fontSize: 12 }}>
-                          {new Date(a.submittedAt).toLocaleString('en-IN', { hour: '2-digit', minute: '2-digit', day: 'numeric', month: 'short' })}
-                        </td>
-                        <td style={{ padding: '13px 16px' }}>
-                          <span className="ia-view-btn" style={{
-                            opacity: 0, fontSize: 11, fontWeight: 700,
-                            padding: '4px 12px', borderRadius: 8,
-                            background: 'rgba(255,122,0,0.12)', color: '#ff7a00',
-                            border: '1px solid rgba(255,122,0,0.25)',
-                            transition: 'opacity 0.15s', whiteSpace: 'nowrap',
-                          }}>View →</span>
+                        <td><span className={`aui-badge ${CATEGORY_BADGE[a.category] || 'aui-badge-muted'}`}>{a.category || '—'}</span></td>
+                        <td><ProgressBar value={p} tone={p >= 70 ? 'green' : p >= 40 ? 'amber' : 'orange'} label={`${a.score}/${a.total}`} /></td>
+                        <td><span className={`aui-badge ${scoreBadgeClass(p >= 70 ? 80 : p >= 40 ? 50 : 0)}`}>{p}%</span></td>
+                        <td className="apa-mono">{formatSecs(a.timeTakenSeconds)}</td>
+                        <td className="aui-num">{new Date(a.submittedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}</td>
+                        <td className="text-end">
+                          <button type="button" className="aui-btn aui-btn-sm" onClick={e => { e.stopPropagation(); setSelected(a) }}>
+                            <FaEye size={11} /> View
+                          </button>
                         </td>
                       </tr>
                     )
@@ -374,30 +293,65 @@ const AptitudeAssessments: React.FC = () => {
                 </tbody>
               </table>
             </div>
-
-            {/* Pagination */}
-            {data.pages > 1 && (
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 20 }}>
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1} className="ia-page-btn"
-                  style={{ padding: '7px 18px', borderRadius: 9, border: '1px solid #1e1e30', background: 'transparent', cursor: page === 1 ? 'not-allowed' : 'pointer', color: page === 1 ? '#2a2a3a' : '#666', fontWeight: 700, fontSize: 13, transition: 'all 0.15s' }}>
-                  ‹ Prev
-                </button>
-                <span style={{ padding: '7px 14px', fontSize: 13, color: '#444', background: '#0a0a18', borderRadius: 9, border: '1px solid #1a1a28' }}>
-                  {page} / {data.pages}
-                </span>
-                <button onClick={() => setPage(p => Math.min(data.pages, p + 1))} disabled={page === data.pages} className="ia-page-btn"
-                  style={{ padding: '7px 18px', borderRadius: 9, border: '1px solid #1e1e30', background: 'transparent', cursor: page === data.pages ? 'not-allowed' : 'pointer', color: page === data.pages ? '#2a2a3a' : '#666', fontWeight: 700, fontSize: 13, transition: 'all 0.15s' }}>
-                  Next ›
-                </button>
-              </div>
-            )}
+            <TableFooter page={page} pageSize={PAGE_SIZE} total={data.total ?? attempts.length} onPageChange={setPage} noun="attempts" />
           </>
-        )
-      )}
+        )}
+      </div>
 
-      {/* ── Student detail modal ── */}
-      {selected && <StudentModal attempt={selected} onClose={() => setSelected(null)} />}
-    </>
+      <StudentModal attempt={selected} onClose={() => setSelected(null)} />
+
+      <style>{`
+        .apa-datebar { display: flex; align-items: center; gap: 8px; min-width: 0; }
+        .apa-date-title { margin-left: 6px; }
+        .apa-date-title h3 { white-space: nowrap; }
+        .apa-link { padding: 0; border: 0; background: none; color: #ff9a3c; font-size: 0.78rem; font-weight: 600; }
+        .apa-link:hover { color: #ffb15e; text-decoration: underline; }
+        .aui-icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .apa-row { cursor: pointer; }
+        .apa-busy { opacity: 0.55; pointer-events: none; transition: opacity 0.15s; }
+        .apa-mono { color: #c3c7ca; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 0.78rem; }
+
+        .apa-rank { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border: 1px solid #3a3e42; border-radius: 99px; background: #1b1e20; color: #9da2a6; font-size: 0.72rem; font-weight: 800; }
+        .apa-rank.is-1 { border-color: rgba(250,204,21,0.45); background: rgba(250,204,21,0.14); color: #facc15; }
+        .apa-rank.is-2 { border-color: rgba(203,213,225,0.4); background: rgba(203,213,225,0.1); color: #cbd5e1; }
+        .apa-rank.is-3 { border-color: rgba(217,119,6,0.45); background: rgba(217,119,6,0.14); color: #f59e0b; }
+
+        .apa-modal-avatar { width: 42px; height: 42px; flex-basis: 42px; font-size: 0.85rem; }
+        .apa-summary { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+        .apa-ring { position: relative; width: 112px; height: 112px; flex: 0 0 112px; }
+        .apa-ring > div { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .apa-ring strong { font-size: 1.5rem; font-weight: 850; line-height: 1; }
+        .apa-ring small { margin-top: 4px; color: #858a90; font-size: 0.62rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+        .apa-tiles { flex: 1; min-width: 260px; grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .apa-perf { font-size: 1rem; }
+        .aui-tile-value.apa-mono { color: #fff; font-size: 1.25rem; }
+        .apa-tone-green { background: rgba(49,216,102,0.13); color: #45dd75; }
+        .apa-tone-amber { background: rgba(246,170,36,0.14); color: #f4b43f; }
+        .apa-tone-blue { background: rgba(56,189,248,0.12); color: #38bdf8; }
+        .apa-tone-orange { background: rgba(255,122,0,0.13); color: #ff9a3c; }
+
+        .apa-breakdown { padding: 0.85rem 0.95rem; border: 1px solid #25282b; border-radius: 12px; background: #111315; }
+        .apa-split { display: flex; height: 10px; overflow: hidden; border-radius: 99px; background: #23262a; }
+        .apa-split .is-correct { background: #31d866; }
+        .apa-split .is-wrong { background: #fb5f67; opacity: 0.85; }
+        .apa-legend { display: flex; gap: 1rem; margin-top: 0.6rem; color: #a6abb0; font-size: 0.76rem; }
+        .apa-legend i { display: inline-block; width: 8px; height: 8px; margin-right: 5px; border-radius: 50%; }
+        .apa-legend i.is-correct { background: #31d866; }
+        .apa-legend i.is-wrong { background: #fb5f67; }
+        .apa-legend-total { margin-left: auto; color: #858a90; }
+
+        .apa-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 0.75rem; margin-top: 0.85rem; }
+        .apa-meta > div { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 0.75rem 0.95rem; border: 1px solid #25282b; border-radius: 12px; background: #111315; }
+        .apa-meta small { display: inline-flex; align-items: center; gap: 6px; color: #858a90; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+        .apa-meta strong { color: #eceef0; font-size: 0.86rem; }
+
+        @media (max-width: 575.98px) {
+          .apa-datebar { width: 100%; flex-wrap: wrap; }
+          .apa-meta { grid-template-columns: 1fr; }
+        }
+      `}</style>
+    </AdminPage>
   )
 }
 

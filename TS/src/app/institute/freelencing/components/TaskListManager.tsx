@@ -1,6 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Alert, Badge, Button, Card, Col, Form, Modal, Row, Spinner } from "react-bootstrap";
+import { Button, Col, Form, Modal, Row, Spinner } from "react-bootstrap";
 import { useAuthContext } from "@/context/useAuthContext";
+import { Link } from "react-router-dom";
+import {
+  FaTasks, FaSyncAlt, FaPlus, FaLayerGroup, FaDoorOpen, FaUsers, FaHourglassEnd, FaUserGraduate, FaCheckCircle,
+  FaExclamationTriangle, FaListUl, FaColumns, FaTimes, FaSpinner, FaSearch, FaPaperclip, FaEye, FaRegEdit, FaTrashAlt,
+} from "react-icons/fa";
+import { AdminPage, PageHeader, StatCards, SearchInput, AdminSelect, EmptyState, initialsOf } from "@/components/admin-ui";
 import ReactQuill from 'react-quill-new';
 import 'quill/dist/quill.snow.css';
 
@@ -90,6 +96,8 @@ type TaskSubmission = {
   aiEvaluation?: AiEvaluation | null;
 };
 
+type BoardColKey = 'todo' | 'inreview' | 'approved' | 'revision';
+
 type AllSubmission = {
   _id: string;
   taskId?: string;
@@ -174,6 +182,23 @@ const EXPERIENCE_LEVELS = [
   { value: "advanced", label: "Advanced (5+ years)", icon: "🚀" },
   { value: "expert", label: "Expert (8+ years)", icon: "🏆" },
 ];
+
+type SubGroup = { task: AllSubmission['task']; subs: AllSubmission[] };
+
+const TASK_STATUS: Record<"open" | "full" | "deadline-passed", { label: string; cls: string }> = {
+  open: { label: "Open", cls: "aui-badge-green" },
+  full: { label: "Full", cls: "aui-badge-blue" },
+  "deadline-passed": { label: "Deadline passed", cls: "aui-badge-red" },
+};
+
+const deadlineInfo = (deadline?: string) => {
+  if (!deadline) return { label: "", overdue: false, soon: false };
+  const days = Math.ceil((new Date(deadline).getTime() - Date.now()) / 86400000);
+  if (Number.isNaN(days)) return { label: "", overdue: false, soon: false };
+  if (days < 0) return { label: `Overdue by ${-days} day${days === -1 ? "" : "s"}`, overdue: true, soon: false };
+  if (days === 0) return { label: "Due today", overdue: false, soon: true };
+  return { label: `in ${days} day${days === 1 ? "" : "s"}`, overdue: false, soon: days <= 3 };
+};
 
 const toDateTimeLocalValue = (value?: string) => {
   if (!value) return "";
@@ -665,16 +690,8 @@ const TaskListManager = () => {
     return CATEGORIES.find(c => c.value === value)?.label || value || "-";
   };
 
-  const getCategoryIcon = (value: string) => {
-    return CATEGORIES.find(c => c.value === value)?.icon || "📁";
-  };
-
   const getExperienceLabel = (value: string) => {
     return EXPERIENCE_LEVELS.find(l => l.value === value)?.label || value || "-";
-  };
-
-  const getExperienceIcon = (value: string) => {
-    return EXPERIENCE_LEVELS.find(l => l.value === value)?.icon || "📌";
   };
 
   const getTaskMetrics = (task: FreelancingTask) => {
@@ -704,6 +721,77 @@ const TaskListManager = () => {
     };
   };
 
+  /* Board view: tasks/submissions grouped by review stage (shared by the toolbar chips and the columns) */
+  const boardData = useMemo(() => {
+    // Deduplicate submissions by _id
+    const seen = new Set<string>();
+    const uniqueSubs = boardSubmissions.filter(s => {
+      if (seen.has(s._id)) return false;
+      seen.add(s._id);
+      return true;
+    });
+
+    // Group submissions by task → each card = one task with its student list
+    const taskGroups: Record<string, SubGroup> = {};
+    uniqueSubs.forEach(s => {
+      const tid = String(s.taskId || s.task?._id || s._id);
+      if (!taskGroups[tid]) taskGroups[tid] = { task: s.task, subs: [] };
+      taskGroups[tid].subs.push(s);
+    });
+
+    // Count submissions per task
+    const subCountByTask: Record<string, number> = {};
+    uniqueSubs.forEach(s => {
+      const tid = String(s.taskId || '');
+      subCountByTask[tid] = (subCountByTask[tid] || 0) + 1;
+    });
+
+    // TO DO: tasks where enrolled students > submissions (some haven't submitted)
+    const todoTasks = tasks.filter(t => {
+      const { enrolledCount } = getTaskMetrics(t);
+      const submitted = subCountByTask[String(t._id)] || 0;
+      return enrolledCount > 0 && enrolledCount > submitted;
+    });
+
+    // Classify group by most-urgent student status
+    // Priority: any pending → inreview; any rejected (no pending) → revision; all approved → approved
+    const classifyGroup = (group: SubGroup): BoardColKey => {
+      const statuses = group.subs.map(s => s.adminReviewStatus || 'pending');
+      if (statuses.some(s => s === 'pending')) return 'inreview';
+      if (statuses.some(s => s === 'rejected')) return 'revision';
+      return 'approved';
+    };
+
+    const groups = Object.values(taskGroups);
+    const buckets: Record<BoardColKey, (SubGroup | FreelancingTask)[]> = {
+      todo: todoTasks,
+      inreview: groups.filter(g => classifyGroup(g) === 'inreview'),
+      approved: groups.filter(g => classifyGroup(g) === 'approved'),
+      revision: groups.filter(g => classifyGroup(g) === 'revision'),
+    };
+
+    const BOARD_COLS = [
+      { key: 'todo' as BoardColKey,     label: 'TO DO',           color: '#6b778c', desc: 'Enrolled, not yet submitted' },
+      { key: 'inreview' as BoardColKey,  label: 'IN REVIEW',       color: '#0052cc', desc: 'Awaiting your review' },
+      { key: 'approved' as BoardColKey,  label: 'APPROVED',         color: '#36b37e', desc: 'Work approved' },
+      { key: 'revision' as BoardColKey,  label: 'REVISION NEEDED',  color: '#de350b', desc: 'Sent back for revision' },
+    ];
+
+    return { buckets, BOARD_COLS };
+  }, [tasks, boardSubmissions]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const taskStats = useMemo(() => {
+    const counts = { total: tasks.length, open: 0, full: 0, overdue: 0, enrolled: 0 };
+    tasks.forEach(task => {
+      const { status, enrolledCount } = getTaskMetrics(task);
+      if (status === "open") counts.open += 1;
+      else if (status === "full") counts.full += 1;
+      else counts.overdue += 1;
+      counts.enrolled += enrolledCount;
+    });
+    return counts;
+  }, [tasks]); // eslint-disable-line react-hooks/exhaustive-deps
+
   const filteredTasks = useMemo(() => {
     const search = taskSearch.trim().toLowerCase();
 
@@ -724,186 +812,115 @@ const TaskListManager = () => {
   }, [sortedTasks, taskSearch, taskCategoryFilter, taskStatusFilter]);
 
   return (
-    <div className="task-manager-container">
-      <Card className="task-manager-card">
-        <Card.Body className="p-0">
-          <div className="header-section">
-            <div>
-              <h3 className="page-title">Task Management</h3>
-              <p className="page-subtitle">Manage and edit your freelance tasks</p>
-            </div>
-            <div className="header-actions">
-              {/* View toggle */}
-              <div className="view-toggle">
-                <button
-                  className={`view-toggle-btn${viewMode === 'list' ? ' active' : ''}`}
-                  onClick={() => setViewMode('list')}
-                  title="List view"
-                >
-                  ☰ List
-                </button>
-                <button
-                  className={`view-toggle-btn${viewMode === 'board' ? ' active' : ''}`}
-                  onClick={() => setViewMode('board')}
-                  title="Board view"
-                >
-                  ⊞ Board
-                </button>
-              </div>
+    <AdminPage>
+      <PageHeader
+        icon={FaTasks}
+        title="Internship Tasks"
+        stats={
+          <StatCards
+            inline
+            loading={loading}
+            items={[
+              { label: 'Total Tasks', value: taskStats.total, icon: FaLayerGroup, tone: 'orange' },
+              { label: 'Open', value: taskStats.open, icon: FaDoorOpen, tone: 'green' },
+              { label: 'Full', value: taskStats.full, icon: FaUsers, tone: 'blue' },
+              { label: 'Deadline Passed', value: taskStats.overdue, icon: FaHourglassEnd, tone: 'red' },
+              { label: 'Enrolled', value: taskStats.enrolled, icon: FaUserGraduate, tone: 'purple' },
+            ]}
+          />
+        }
+        actions={<>
+          <button
+            type="button"
+            className="aui-btn"
+            onClick={() => viewMode === 'board' ? fetchBoardSubmissions() : fetchTasks()}
+            disabled={loading || boardLoading}
+          >
+            <FaSyncAlt size={11} className={(loading || boardLoading) ? 'aui-spin' : ''} /> Refresh
+          </button>
+          <Link to="/institute/freelencing" className="aui-btn aui-btn-primary"><FaPlus size={11} /> Create Task</Link>
+        </>}
+      />
 
-              {viewMode === 'list' && (
-                <div className="task-filters">
-                  <Form.Control
-                    placeholder="Search tasks"
-                    value={taskSearch}
-                    onChange={(e) => setTaskSearch(e.target.value)}
-                    className="filter-control filter-search"
-                  />
-                  <Form.Select
-                    value={taskCategoryFilter}
-                    onChange={(e) => setTaskCategoryFilter(e.target.value)}
-                    className="filter-control"
-                  >
-                    <option value="all">All Categories</option>
-                    {CATEGORIES.map((category) => (
-                      <option key={category.value} value={category.value}>
-                        {category.label}
-                      </option>
-                    ))}
-                  </Form.Select>
-                  <Form.Select
-                    value={taskStatusFilter}
-                    onChange={(e) => setTaskStatusFilter(e.target.value as "all" | "open" | "full" | "deadline-passed")}
-                    className="filter-control"
-                  >
-                    <option value="all">All Status</option>
-                    <option value="open">Open</option>
-                    <option value="full">Full</option>
-                    <option value="deadline-passed">Deadline Passed</option>
-                  </Form.Select>
-                  <Button
-                    variant="outline-orange"
-                    className="filter-clear-btn"
-                    onClick={() => {
-                      setTaskSearch("");
-                      setTaskCategoryFilter("all");
-                      setTaskStatusFilter("all");
-                    }}
-                  >
-                    Clear
-                  </Button>
-                </div>
-              )}
+      {successMessage && (
+        <div className="aui-alert aui-alert-success"><FaCheckCircle /> {successMessage}</div>
+      )}
+      {errorMessage && (
+        <div className="aui-alert"><FaExclamationTriangle /> {errorMessage}</div>
+      )}
 
-              <Button
-                variant="outline-orange"
-                onClick={() => viewMode === 'board' ? fetchBoardSubmissions() : fetchTasks()}
-                disabled={loading || boardLoading}
-                className="refresh-btn"
-              >
-                {(loading || boardLoading) ? <Spinner animation="border" size="sm" /> : "↻ Refresh"}
-              </Button>
+      <div className="aui-card">
+        <div className="aui-toolbar">
+          <div className="tlm-toolbar-left">
+            <div className="tlm-view-toggle" role="tablist" aria-label="View">
+              <button type="button" role="tab" aria-selected={viewMode === 'list'} className={viewMode === 'list' ? 'is-active' : ''} onClick={() => setViewMode('list')}>
+                <FaListUl /> List
+              </button>
+              <button type="button" role="tab" aria-selected={viewMode === 'board'} className={viewMode === 'board' ? 'is-active' : ''} onClick={() => setViewMode('board')}>
+                <FaColumns /> Board
+              </button>
             </div>
+            {viewMode === 'list' && (
+              <SearchInput value={taskSearch} onChange={setTaskSearch} placeholder="Search by title, skill or description" />
+            )}
           </div>
-
-          {successMessage && (
-            <Alert variant="success" className="success-alert">
-              <span className="alert-icon">✓</span>
-              {successMessage}
-            </Alert>
+          {viewMode === 'list' ? (
+            <div className="aui-toolbar-filters">
+              <AdminSelect
+                label="Filter by category"
+                prefix="Category:"
+                value={taskCategoryFilter}
+                options={[{ value: 'all', label: 'All' }, ...CATEGORIES.map(c => ({ value: c.value, label: c.label }))]}
+                onChange={setTaskCategoryFilter}
+              />
+              <AdminSelect
+                label="Filter by status"
+                prefix="Status:"
+                value={taskStatusFilter}
+                options={[
+                  { value: 'all', label: 'All' },
+                  { value: 'open', label: 'Open' },
+                  { value: 'full', label: 'Full' },
+                  { value: 'deadline-passed', label: 'Deadline Passed' },
+                ]}
+                onChange={(value) => setTaskStatusFilter(value as "all" | "open" | "full" | "deadline-passed")}
+              />
+              {(taskSearch || taskCategoryFilter !== 'all' || taskStatusFilter !== 'all') && (
+                <button type="button" className="aui-btn aui-btn-danger" onClick={() => { setTaskSearch(""); setTaskCategoryFilter("all"); setTaskStatusFilter("all"); }}>
+                  <FaTimes size={10} /> Clear
+                </button>
+              )}
+              <span className="aui-count">{filteredTasks.length} of {sortedTasks.length}</span>
+            </div>
+          ) : (
+            <div className="tlm-stage-chips" aria-label="Board summary">
+              {boardData.BOARD_COLS.map(col => (
+                <span key={col.key} className="tlm-stage-chip" title={col.desc} style={{ borderColor: `${col.color}55`, background: `${col.color}14` }}>
+                  <i style={{ background: col.color }} />
+                  {col.label}
+                  <b style={{ color: col.color }}>{boardLoading || loading ? '—' : boardData.buckets[col.key].length}</b>
+                </span>
+              ))}
+            </div>
           )}
+        </div>
 
-          {errorMessage && (
-            <Alert variant="danger" className="error-alert">
-              <span className="alert-icon">⚠</span>
-              {errorMessage}
-            </Alert>
-          )}
-
-          {viewMode === 'board' ? (
-            boardLoading || loading ? (
-              <div className="loading-state">
-                <Spinner animation="border" variant="orange" />
-                <p>Loading board...</p>
-              </div>
-            ) : (() => {
+        {viewMode === 'board' ? (
+          boardLoading || loading ? (
+            <div className="aui-empty"><FaSpinner className="aui-spin" /><span>Loading board…</span></div>
+          ) : (
+            <div className="tlm-board-wrap">
+              {(() => {
               const formatDate = (d?: string) => {
                 if (!d) return '—';
                 const dt = new Date(d);
                 return isNaN(dt.getTime()) ? d : dt.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
               };
 
-              // Deduplicate submissions by _id
-              const seen = new Set<string>();
-              const uniqueSubs = boardSubmissions.filter(s => {
-                if (seen.has(s._id)) return false;
-                seen.add(s._id);
-                return true;
-              });
-
-              // Group submissions by task → each card = one task with its student list
-              type SubGroup = { task: AllSubmission['task']; subs: AllSubmission[] };
-              const taskGroups: Record<string, SubGroup> = {};
-              uniqueSubs.forEach(s => {
-                const tid = String(s.taskId || s.task?._id || s._id);
-                if (!taskGroups[tid]) taskGroups[tid] = { task: s.task, subs: [] };
-                taskGroups[tid].subs.push(s);
-              });
-
-              type ColKey = 'todo' | 'inreview' | 'approved' | 'revision';
-
-              // Count submissions per task
-              const subCountByTask: Record<string, number> = {};
-              uniqueSubs.forEach(s => {
-                const tid = String(s.taskId || '');
-                subCountByTask[tid] = (subCountByTask[tid] || 0) + 1;
-              });
-
-              // TO DO: tasks where enrolled students > submissions (some haven't submitted)
-              const todoTasks = tasks.filter(t => {
-                const { enrolledCount } = getTaskMetrics(t);
-                const submitted = subCountByTask[String(t._id)] || 0;
-                return enrolledCount > 0 && enrolledCount > submitted;
-              });
-
-              // Classify group by most-urgent student status
-              // Priority: any pending → inreview; any rejected (no pending) → revision; all approved → approved
-              const classifyGroup = (group: SubGroup): ColKey => {
-                const statuses = group.subs.map(s => s.adminReviewStatus || 'pending');
-                if (statuses.some(s => s === 'pending')) return 'inreview';
-                if (statuses.some(s => s === 'rejected')) return 'revision';
-                return 'approved';
-              };
-
-              const groups = Object.values(taskGroups);
-              const buckets: Record<ColKey, (SubGroup | FreelancingTask)[]> = {
-                todo: todoTasks,
-                inreview: groups.filter(g => classifyGroup(g) === 'inreview'),
-                approved: groups.filter(g => classifyGroup(g) === 'approved'),
-                revision: groups.filter(g => classifyGroup(g) === 'revision'),
-              };
-
-              const BOARD_COLS = [
-                { key: 'todo' as ColKey,     label: 'TO DO',           color: '#6b778c', desc: 'Enrolled, not yet submitted' },
-                { key: 'inreview' as ColKey,  label: 'IN REVIEW',       color: '#0052cc', desc: 'Awaiting your review' },
-                { key: 'approved' as ColKey,  label: 'APPROVED',         color: '#36b37e', desc: 'Work approved' },
-                { key: 'revision' as ColKey,  label: 'REVISION NEEDED',  color: '#de350b', desc: 'Sent back for revision' },
-              ];
+              const { buckets, BOARD_COLS } = boardData;
 
               return (
                 <div>
-                  {/* Stat row */}
-                  <div className="admin-board-stats" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
-                    {BOARD_COLS.map(col => (
-                      <div key={col.key} className="admin-board-stat">
-                        <span className="abs-dot" style={{ background: col.color }} />
-                        <span className="abs-label" style={{ color: col.color }}>{col.label}</span>
-                        <span className="abs-count" style={{ color: col.color }}>{buckets[col.key].length}</span>
-                        <span className="abs-desc">{col.desc}</span>
-                      </div>
-                    ))}
-                  </div>
-
                   {/* Kanban columns */}
                   <div className="admin-kanban-board" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
                     {BOARD_COLS.map(col => {
@@ -1054,121 +1071,108 @@ const TaskListManager = () => {
                   </div>
                 </div>
               );
-            })()
-          ) : loading ? (
-            <div className="loading-state">
-              <Spinner animation="border" variant="orange" />
-              <p>Loading tasks...</p>
+            })()}
             </div>
+          )
+        ) : loading ? (
+          <div className="aui-empty"><FaSpinner className="aui-spin" /><span>Loading tasks…</span></div>
+        ) : filteredTasks.length === 0 ? (
+          sortedTasks.length > 0 ? (
+            <EmptyState icon={FaSearch} title="No tasks match these filters" text="Try a different search, category or status." />
           ) : (
-            <div className="tasks-grid">
-              {filteredTasks.length > 0 ? (
-                filteredTasks.map((task) => {
-                  const { enrolledStudentsDetails, enrolledCount, spotsLeft } = getTaskMetrics(task);
-
+            <EmptyState
+              icon={FaTasks}
+              title="No tasks created yet"
+              text="Create your first internship task — students can enrol and submit their work here."
+              action={<Link to="/institute/freelencing" className="aui-btn aui-btn-primary"><FaPlus size={11} /> Create Task</Link>}
+            />
+          )
+        ) : (
+          <div className="aui-table-scroll">
+            <table className="aui-table tlm-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 44 }}>#</th>
+                  <th>Task</th>
+                  <th>Enrolment</th>
+                  <th>Budget</th>
+                  <th>Deadline</th>
+                  <th>Status</th>
+                  <th className="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredTasks.map((task, idx) => {
+                  const { enrolledStudentsDetails, enrolledCount, status } = getTaskMetrics(task);
+                  const max = task.maxStudents || 1;
+                  const fill = Math.min(100, Math.round((enrolledCount / max) * 100));
+                  const skills = task.skills || [];
+                  const due = deadlineInfo(task.deadline);
+                  const statusCfg = TASK_STATUS[status];
                   return (
-                    <Card key={task._id} className="task-card">
-                      <Card.Body>
-                        {/* Task Header */}
-                        <div className="task-header">
-                          <div className="task-title-section">
-                            <Badge className="category-badge">
-                              {getCategoryLabel(task.category || "")}
-                            </Badge>
-                            <h4 className="task-title">{task.title || "Untitled Task"}</h4>
+                    <tr key={task._id}>
+                      <td className="aui-num">{idx + 1}</td>
+                      <td>
+                        <div className="tlm-task">
+                          <strong title={task.title}>{task.title || "Untitled Task"}</strong>
+                          <div className="tlm-task-meta">
+                            {task.category && <span className="aui-badge aui-badge-orange">{getCategoryLabel(task.category)}</span>}
+                            {task.experience && <span className="tlm-muted">{getExperienceLabel(task.experience)}</span>}
+                            {task.attachments && task.attachments.length > 0 && (
+                              <span className="tlm-muted"><FaPaperclip size={9} /> {task.attachments.length}</span>
+                            )}
                           </div>
-                          <div className="task-actions">
-                            <Button
-                              variant="outline-orange"
-                              size="sm"
-                              onClick={() => openEditModal(task)}
-                              className="action-btn"
-                            >
-                              Edit
-                            </Button>
-                            <Button
-                              variant="orange"
-                              size="sm"
-                              onClick={() => openSubmissionsModal(task)}
-                              className="action-btn"
-                            >
-                              View
-                            </Button>
-                            <Button
-                              variant="outline-danger"
-                              size="sm"
-                              onClick={() => openDeleteModal(task)}
-                              className="action-btn"
-                            >
-                              Delete
-                            </Button>
-                          </div>
+                          {skills.length > 0 && (
+                            <div className="tlm-skills">
+                              {skills.slice(0, 3).map(skill => <span key={skill} className="aui-badge aui-badge-muted">{skill}</span>)}
+                              {skills.length > 3 && <span className="aui-badge aui-badge-muted" title={skills.slice(3).join(", ")}>+{skills.length - 3}</span>}
+                            </div>
+                          )}
                         </div>
-
-                      {/* Meta line */}
-                      <div className="task-meta">
-                        {task.amount ? `₹${task.amount.toLocaleString()}` : "No budget"}
-                        <span className="meta-sep">·</span>
-                        {task.deadline ? `Due ${new Date(task.deadline).toLocaleDateString()}` : "No deadline"}
-                        <span className="meta-sep">·</span>
-                        {enrolledCount}/{task.maxStudents || 1} enrolled
-                        {task.attachments && task.attachments.length > 0 && (
-                          <><span className="meta-sep">·</span>{task.attachments.length} file{task.attachments.length !== 1 ? "s" : ""}</>
-                        )}
-                      </div>
-
-                      {/* Combined pills row: emails + skills + spots */}
-                      <div className="task-pills">
-                        {enrolledStudentsDetails.length > 0
-                          ? enrolledStudentsDetails.map((student, idx) => (
-                              <span key={`${task._id}-e-${idx}`} className="task-pill pill-email" title={student.email || student.name}>
-                                {(student.email || student.name || "").split("@")[0]}
-                              </span>
-                            ))
-                          : <span className="task-pill pill-empty">No students yet</span>
-                        }
-                        {(task.skills || []).slice(0, 3).map((skill) => (
-                          <span key={`${task._id}-s-${skill}`} className="task-pill pill-skill" title={skill}>
-                            {skill.length > 15 ? skill.slice(0, 15) + "…" : skill}
-                          </span>
-                        ))}
-                        {(task.skills || []).length > 3 && (
-                          <span className="task-pill pill-more" title={(task.skills || []).slice(3).join(", ")}>
-                            +{(task.skills || []).length - 3}
-                          </span>
-                        )}
-                        {spotsLeft > 0 && (
-                          <span className="task-pill pill-spots">{spotsLeft} spot{spotsLeft !== 1 ? "s" : ""} left</span>
-                        )}
-                      </div>
-
-                        {/* Task Footer */}
-                        <div className="task-footer">
-                          <div className="experience-info">
-                            <span>{getExperienceIcon(task.experience || "")}</span>
-                            <span>{getExperienceLabel(task.experience || "")}</span>
+                      </td>
+                      <td>
+                        <div className="tlm-enrol">
+                          <div className="tlm-enrol-top">
+                            <strong>{enrolledCount}<small>/{max}</small></strong>
+                            <div className="tlm-avatars">
+                              {enrolledStudentsDetails.slice(0, 3).map((student, i) => (
+                                <span key={`${task._id}-a-${i}`} className="aui-avatar" title={student.email || student.name}>
+                                  {initialsOf(student.name || student.email || 'S')}
+                                </span>
+                              ))}
+                              {enrolledStudentsDetails.length > 3 && <span className="aui-avatar tlm-avatar-more">+{enrolledStudentsDetails.length - 3}</span>}
+                            </div>
                           </div>
-                          <div className="task-date">
-                            Created: {task.createdAt ? new Date(task.createdAt).toLocaleDateString() : "—"}
-                          </div>
+                          <span className="tlm-bar"><i style={{ width: `${fill}%`, background: fill >= 100 ? '#38bdf8' : '#ff7a00' }} /></span>
                         </div>
-                      </Card.Body>
-                    </Card>
+                      </td>
+                      <td>{task.amount ? <strong className="tlm-amount">₹{task.amount.toLocaleString('en-IN')}</strong> : <span className="tlm-muted">Unpaid</span>}</td>
+                      <td>
+                        {task.deadline ? (
+                          <div className="aui-stack">
+                            <strong>{new Date(task.deadline).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
+                            <small className={due.overdue ? 'tlm-overdue' : due.soon ? 'tlm-soon' : ''}>{due.label}</small>
+                          </div>
+                        ) : <span className="tlm-muted">No deadline</span>}
+                      </td>
+                      <td><span className={`aui-badge aui-badge-dot ${statusCfg.cls}`}>{statusCfg.label}</span></td>
+                      <td className="text-end">
+                        <div className="tlm-actions">
+                          <button type="button" className="aui-btn aui-btn-soft aui-btn-sm" onClick={() => openSubmissionsModal(task)}>
+                            <FaEye /> Submissions
+                          </button>
+                          <button type="button" className="aui-icon-btn" title="Edit task" onClick={() => openEditModal(task)}><FaRegEdit size={12} /></button>
+                          <button type="button" className="aui-icon-btn tlm-delete" title="Delete task" onClick={() => openDeleteModal(task)}><FaTrashAlt size={11} /></button>
+                        </div>
+                      </td>
+                    </tr>
                   );
-                })
-              ) : (
-                <div className="empty-state">
-                  <div className="empty-state-content">
-                    <span className="empty-icon">📋</span>
-                    <p>{sortedTasks.length > 0 ? "No tasks match the selected filters." : "No tasks created yet."}</p>
-                    <small>{sortedTasks.length > 0 ? "Try changing search/category/status filters." : "Create your first task to get started"}</small>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-        </Card.Body>
-      </Card>
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
 
       {/* Delete Confirmation Modal */}
       <Modal show={showDeleteModal} onHide={closeDeleteModal} centered size="sm" className="task-modal">
@@ -3229,8 +3233,55 @@ const TaskListManager = () => {
             max-height: 60vh;
           }
         }
+
+        /* ── Kit layout: list table, view toggle, board ── */
+        .tlm-toolbar-left { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; flex: 1 1 auto; }
+        .tlm-view-toggle { display: inline-flex; padding: 3px; border: 1px solid #34383d; border-radius: 8px; background: #17191c; }
+        .tlm-view-toggle button { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 0.75rem; border: 0; border-radius: 6px; background: none; color: #9aa0a6; font-size: 0.76rem; font-weight: 600; cursor: pointer; }
+        .tlm-view-toggle button:hover { color: #fff; }
+        .tlm-view-toggle button.is-active { background: #ff7a00; color: #fff; }
+        .aui-alert-success { border-color: rgba(49,216,102,0.3); background: rgba(49,216,102,0.1); color: #86efac; }
+
+        .tlm-table td { vertical-align: middle; }
+        .tlm-task { display: flex; flex-direction: column; gap: 5px; min-width: 260px; max-width: 420px; }
+        .tlm-task > strong { overflow: hidden; color: #eceef0; font-size: 0.86rem; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+        .tlm-task-meta, .tlm-skills { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+        .tlm-muted { display: inline-flex; align-items: center; gap: 4px; color: #858a90; font-size: 0.72rem; }
+        .tlm-enrol { display: flex; flex-direction: column; gap: 6px; min-width: 140px; }
+        .tlm-enrol-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+        .tlm-enrol-top strong { color: #eceef0; font-size: 0.84rem; }
+        .tlm-enrol-top strong small { color: #858a90; font-size: 0.72rem; }
+        .tlm-avatars { display: flex; }
+        .tlm-avatars .aui-avatar { width: 24px; height: 24px; flex-basis: 24px; margin-left: -6px; border-color: #0e1012; border-width: 2px; font-size: 0.56rem; }
+        .tlm-avatars .aui-avatar:first-child { margin-left: 0; }
+        .tlm-avatar-more { background: #1b1e21 !important; color: #cbd5e1 !important; }
+        .tlm-bar { display: block; height: 5px; overflow: hidden; border-radius: 99px; background: #2b2e31; }
+        .tlm-bar i { display: block; height: 100%; border-radius: inherit; animation: tlm-bar 0.9s cubic-bezier(0.22, 1, 0.36, 1) both; }
+        @keyframes tlm-bar { from { width: 0; } }
+        .tlm-amount { color: #f1f5f9; font-size: 0.84rem; }
+        .tlm-overdue { color: #fb737a !important; font-weight: 600; }
+        .tlm-soon { color: #f4b43f !important; font-weight: 600; }
+        .tlm-actions { display: inline-flex; align-items: center; gap: 6px; }
+        .tlm-delete:hover { border-color: rgba(251,95,103,0.55) !important; color: #fb737a !important; }
+
+        .tlm-board-wrap { padding: 1rem; }
+        .tlm-stage-chips { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 0.5rem; }
+        .tlm-stage-chip { display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 0.7rem; border: 1px solid; border-radius: 8px; color: #c9cdd1; font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; white-space: nowrap; }
+        .tlm-stage-chip i { width: 7px; height: 7px; border-radius: 50%; }
+        .tlm-stage-chip b { margin-left: 2px; font-size: 0.9rem; font-weight: 800; }
+        .tlm-board-wrap .admin-board-stats { margin-bottom: 1rem; gap: 0.75rem; }
+        .tlm-board-wrap .admin-board-stat { border: 1px solid #25282b; border-radius: 10px; background: #111315; }
+        .tlm-board-wrap .admin-kanban-board { gap: 0.75rem; }
+        .tlm-board-wrap .admin-kanban-col { border: 1px solid #25282b; border-radius: 12px; background: #111315; overflow: hidden; }
+        .tlm-board-wrap .admin-kanban-header { background: #17191b; border-bottom: 1px solid #25282b; }
+        .tlm-board-wrap .admin-kanban-card { border: 1px solid #25282b; border-radius: 10px; background: #0e1012; transition: border-color 0.15s; }
+        .tlm-board-wrap .admin-kanban-card:hover { border-color: #3a3e43; }
+        .tlm-board-wrap .admin-card-task-title { color: #eceef0; }
+        .tlm-board-wrap .admin-kanban-empty { color: #5b616a; border: 1px dashed #2a2e33; border-radius: 10px; }
+        .tlm-board-wrap .admin-view-subs-btn { border: 1px solid rgba(255,122,0,0.4); border-radius: 8px; background: rgba(255,122,0,0.1); color: #ff9a32; font-weight: 600; }
+        .tlm-board-wrap .admin-view-subs-btn:hover:not(:disabled) { background: rgba(255,122,0,0.19); color: #ffb15e; }
       `}</style>
-    </div>
+    </AdminPage>
   );
 };
 

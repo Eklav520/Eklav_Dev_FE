@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from "react"
 import { Button, Card, ProgressBar, Spinner, Alert, Modal } from "react-bootstrap"
+import Editor from "@monaco-editor/react"
 import { useAuthContext } from "@/context/useAuthContext"
 import { useGazeDetection } from "@/app/student/self-interview/components/useGazeDetection"
 import GazeScanOverlay from "@/app/student/self-interview/components/GazeScanOverlay"
@@ -27,9 +28,38 @@ type Option = {
 type Question = {
   id: string
   text: string
-  questionType: 'MCQ' | 'FILL'
+  questionType: 'MCQ' | 'FILL' | 'CODE'
   options: Option[]
-  correctAnswer?: string
+}
+
+const CODE_LANGUAGES = [
+  { value: 'javascript', label: 'JavaScript' },
+  { value: 'python', label: 'Python 3' },
+  { value: 'java', label: 'Java' },
+  { value: 'cpp', label: 'C++' },
+  { value: 'c', label: 'C' },
+  { value: 'csharp', label: 'C#' },
+  { value: 'php', label: 'PHP' },
+  { value: 'ruby', label: 'Ruby' },
+  { value: 'go', label: 'Go' },
+  { value: 'rust', label: 'Rust' },
+  { value: 'typescript', label: 'TypeScript' },
+  { value: 'assembly', label: 'Assembly' },
+]
+
+const CODE_STARTERS: Record<string, string> = {
+  javascript: '// Read input from stdin and write your answer to stdout.\n',
+  python: '# Read input from stdin and write your answer to stdout.\n',
+  java: 'import java.util.*;\n\nclass Main {\n  public static void main(String[] args) {\n    Scanner scanner = new Scanner(System.in);\n    // Write your solution here\n  }\n}\n',
+  cpp: '#include <iostream>\nusing namespace std;\n\nint main() {\n  // Read input and write your answer to stdout\n  return 0;\n}\n',
+  c: '#include <stdio.h>\n\nint main(void) {\n  // Read input and write your answer to stdout\n  return 0;\n}\n',
+  csharp: 'using System;\n\nclass Program {\n  static void Main() {\n    // Read input and write your answer to stdout\n  }\n}\n',
+  php: '<?php\n// Read input from stdin and write your answer to stdout\n',
+  ruby: '# Read input from stdin and write your answer to stdout\n',
+  go: 'package main\n\nimport "fmt"\n\nfunc main() {\n  // Read input and write your answer to stdout\n  fmt.Println()\n}\n',
+  rust: 'use std::io;\n\nfn main() {\n  // Read input and write your answer to stdout\n}\n',
+  typescript: '// Read input from stdin and write your answer to stdout.\n',
+  assembly: '',
 }
 
 export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSubmitRef, tabSwitchViolationCount = 0, onBeforeCameraRequest }: Props) {
@@ -43,6 +73,8 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
 
   const [current, setCurrent] = useState(0)
   const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [codeLanguages, setCodeLanguages] = useState<Record<string, string>>({})
+  const codeLanguagesRef = useRef(codeLanguages)
   const [timeLeft, setTimeLeft] = useState(duration)
   const [submitted, setSubmitted] = useState(false)
   const [showWarning, setShowWarning] = useState(false)
@@ -63,6 +95,10 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
   const questionsRef = useRef(questions)
   const submittingRef = useRef(false)
   const [submitting, setSubmitting] = useState(false)
+
+  useEffect(() => {
+    codeLanguagesRef.current = codeLanguages
+  }, [codeLanguages])
 
   // ── Gaze/head-pose proctoring (same detector as /student/self-interview) ──
   // Unlike tab-switch/window-blur (which shows a blocking modal and caps out
@@ -112,9 +148,9 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
 
   // Auto-save draft to localStorage on every answer change
   useEffect(() => {
-    if (submitted || Object.keys(answers).length === 0) return
-    localStorage.setItem(draftKey, JSON.stringify({ answers, current }))
-  }, [answers, current])
+    if (submitted || (Object.keys(answers).length === 0 && Object.keys(codeLanguages).length === 0)) return
+    localStorage.setItem(draftKey, JSON.stringify({ answers, current, codeLanguages }))
+  }, [answers, current, codeLanguages])
 
   // Restore draft once questions are loaded
   useEffect(() => {
@@ -122,9 +158,12 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
     const saved = localStorage.getItem(draftKey)
     if (!saved) return
     try {
-      const { answers: savedAnswers, current: savedCurrent } = JSON.parse(saved)
-      if (savedAnswers && Object.keys(savedAnswers).length > 0) {
-        setAnswers(savedAnswers)
+      const { answers: savedAnswers, current: savedCurrent, codeLanguages: savedLanguages } = JSON.parse(saved)
+      const hasAnswers = savedAnswers && typeof savedAnswers === 'object' && Object.keys(savedAnswers).length > 0
+      const hasLanguages = savedLanguages && typeof savedLanguages === 'object' && Object.keys(savedLanguages).length > 0
+      if (hasAnswers || hasLanguages) {
+        if (hasAnswers) setAnswers(savedAnswers)
+        if (hasLanguages) setCodeLanguages(savedLanguages)
         setCurrent(Math.min(savedCurrent ?? 0, questions.length - 1))
         setShowResumeBanner(true)
         setTimeout(() => setShowResumeBanner(false), 4000)
@@ -216,9 +255,8 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
         const formatted = (data.data || []).map((q: any) => ({
           id: q._id,
           text: q.text || q.question,
-          questionType: q.questionType === 'FILL' ? 'FILL' : 'MCQ',
+          questionType: q.questionType === 'FILL' || q.questionType === 'CODE' ? q.questionType : 'MCQ',
           options: q.options || [],
-          correctAnswer: q.correctAnswer || '',
         }))
 
         setQuestions(formatted)
@@ -380,6 +418,11 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
         qid: q.id,
         questionText: q.text,
         textAnswer: latestAnswers[q.id] || "",
+        ...(q.questionType === 'CODE' ? {
+          type: 'code',
+          codeAnswer: latestAnswers[q.id] || "",
+          language: codeLanguagesRef.current[q.id] || 'javascript',
+        } : {}),
         mediaPath: "",
         mediaType: "none",
         rating: 0,
@@ -660,6 +703,10 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
                 <span style={{ background: "rgba(40,167,69,0.15)", color: "#28a745", border: "1px solid #28a745", borderRadius: "20px", padding: "2px 12px", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.5px" }}>
                   ✏️ FILL IN THE BLANK
                 </span>
+              ) : questions[current].questionType === 'CODE' ? (
+                <span style={{ background: "rgba(59,130,246,0.15)", color: "#60a5fa", border: "1px solid #3b82f6", borderRadius: "20px", padding: "2px 12px", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.5px" }}>
+                  &lt;/&gt; PROGRAMMING
+                </span>
               ) : (
                 <span style={{ background: "rgba(255,107,53,0.15)", color: "#ff6b35", border: "1px solid #ff6b35", borderRadius: "20px", padding: "2px 12px", fontSize: "0.72rem", fontWeight: 700, letterSpacing: "0.5px" }}>
                   ☑️ MCQ
@@ -671,9 +718,59 @@ export default function StudentQuiz({ examId, duration = 600, onSubmit, forceSub
             </div>
           </Card>
 
-          {/* Answer area — MCQ or FILL */}
+          {/* Answer area — MCQ, FILL, or CODE */}
           <div className="mb-4">
-            {questions[current].questionType === 'FILL' ? (
+            {questions[current].questionType === 'CODE' ? (
+              <>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 10, flexWrap: "wrap" }}>
+                  <h6 style={{ color: "#888", margin: 0, fontSize: "0.9rem" }}>Write your program:</h6>
+                  <select
+                    value={codeLanguages[questions[current].id] || 'javascript'}
+                    onChange={e => {
+                      const questionId = questions[current].id
+                      const language = e.target.value
+                      codeLanguagesRef.current = { ...codeLanguagesRef.current, [questionId]: language }
+                      setCodeLanguages(prev => ({ ...prev, [questionId]: language }))
+                    }}
+                    disabled={submitted}
+                    aria-label="Programming language"
+                    style={{ background: "#111", color: "#fff", border: "1px solid #444", borderRadius: 6, padding: "7px 10px" }}
+                  >
+                    {CODE_LANGUAGES.map(language => (
+                      <option key={language.value} value={language.value}>{language.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div style={{ overflow: "hidden", border: "1px solid #333", borderRadius: 8 }}>
+                  <Editor
+                    height="360px"
+                    language={codeLanguages[questions[current].id] || 'javascript'}
+                    theme="vs-dark"
+                    value={answers[questions[current].id] ?? CODE_STARTERS[codeLanguages[questions[current].id] || 'javascript']}
+                    onChange={value => {
+                      if (submitted) return
+                      const q = questions[current]
+                      setAnswers(prev => ({ ...prev, [q.id]: value || "" }))
+                    }}
+                    onMount={editor => {
+                      editor.onDidFocusEditorText(() => setIsTypingAnswer(true))
+                      editor.onDidBlurEditorText(() => setIsTypingAnswer(false))
+                    }}
+                    options={{
+                      readOnly: submitted,
+                      minimap: { enabled: false },
+                      fontSize: 13,
+                      automaticLayout: true,
+                      scrollBeyondLastLine: false,
+                      wordWrap: "on",
+                    }}
+                  />
+                </div>
+                <div style={{ color: "#666", fontSize: "0.78rem", marginTop: 6 }}>
+                  Your program will be run against the question’s test cases when you submit the MCQ round.
+                </div>
+              </>
+            ) : questions[current].questionType === 'FILL' ? (
               <>
                 <h6 style={{ color: "#888", marginBottom: "12px", fontSize: "0.9rem" }}>Type your answer:</h6>
                 <div style={{

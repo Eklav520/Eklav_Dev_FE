@@ -1,17 +1,12 @@
 import PageMetaData from "@/components/PageMetaData"
-import { Card } from "react-bootstrap"
 import AdminTaskCreation from "./components/CreateTaskForm"
-
-
-
 
 const StudentAdminDetails = () => {
   return (
     <>
-      <PageMetaData title="Institute Details" />
-      <Card className="bg-transparent border rounded-4">
-        <AdminTaskCreation />
-      </Card>
+      <PageMetaData title="Create Internship Task" />
+      {/* No extra card — the layout's content card is the only frame, as on the other admin pages */}
+      <AdminTaskCreation />
     </>
   )
 }

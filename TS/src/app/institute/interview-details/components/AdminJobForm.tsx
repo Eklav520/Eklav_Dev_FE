@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react'
-import { Form, Button, Row, Col, Alert, Spinner } from 'react-bootstrap'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ReactQuill from 'react-quill-new'
 import 'quill/dist/quill.snow.css'
 import {
@@ -9,20 +8,28 @@ import {
   FaMapMarkerAlt,
   FaCalendarAlt,
   FaTag,
-  FaCode,
-  FaSave,
   FaCheckCircle,
-  FaTimesCircle,
+  FaExclamationTriangle,
   FaClock,
-  FaChartLine,
   FaUsers,
-  FaFileUpload,
   FaTimes,
   FaEdit,
   FaPlus,
-  FaSearch
+  FaSearch,
+  FaSpinner,
+  FaLayerGroup,
+  FaUserGraduate,
+  FaHourglassHalf,
+  FaCloudUploadAlt,
+  FaFileAlt,
+  FaListUl,
+  FaArrowLeft,
+  FaCheck,
 } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
+import {
+  AdminPage, PageHeader, StatCards, SearchInput, AdminSelect, EmptyState, initialsOf, type SelectOption,
+} from '@/components/admin-ui'
 
 interface ExistingJob {
   _id: string
@@ -41,6 +48,57 @@ interface ExistingJob {
   isExpired: boolean
 }
 
+const EMPTY_FORM = {
+  title: '',
+  company: '',
+  experience: '',
+  salary: '',
+  location: '',
+  skills: '',
+  highlights: '',
+  jobType: '',
+  domain: '',
+  expiryDate: '',
+  logo: '',
+  tag: ''
+}
+
+const JOB_TYPES: SelectOption[] = [
+  { value: '', label: 'Select job type' },
+  { value: 'Internship', label: 'Internship' },
+  { value: 'Fresher', label: 'Fresher' },
+  { value: 'Experienced', label: 'Experienced' },
+]
+
+const DOMAINS: SelectOption[] = [
+  { value: '', label: 'Select domain' },
+  { value: 'Tech', label: 'Tech' },
+  { value: 'Non-Tech', label: 'Non-Tech' },
+]
+
+const QUILL_MODULES = {
+  toolbar: [
+    [{ header: [false, 2, 3] }],
+    ['bold', 'italic', 'underline'],
+    [{ list: 'ordered' }, { list: 'bullet' }],
+    ['link'],
+    ['clean']
+  ]
+}
+
+const daysUntil = (dateStr: string) => {
+  const d = new Date(dateStr)
+  return isNaN(d.getTime()) ? null : Math.ceil((d.getTime() - Date.now()) / 86400000)
+}
+
+const FieldLabel: React.FC<{ htmlFor?: string; icon: React.ElementType; children: React.ReactNode; optional?: boolean }> = ({ htmlFor, icon: Icon, children, optional = true }) => (
+  <label className="aui-label" htmlFor={htmlFor}>
+    <Icon className="jof-label-icon" />
+    {children}
+    {optional && <span className="aui-optional">Optional</span>}
+  </label>
+)
+
 const AdminJobForm: React.FC = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext();
@@ -53,39 +111,29 @@ const AdminJobForm: React.FC = () => {
   const [showEditForm, setShowEditForm] = useState(false)
   const [jobTableSearch, setJobTableSearch] = useState('')
 
-  const [formData, setFormData] = useState({
-    title: '',
-    company: '',
-    experience: '',
-    salary: '',
-    location: '',
-    skills: '',
-    highlights: '',
-    jobType: '',
-    domain: '',
-    expiryDate: '',
-    logo: '',
-    tag: ''
-  })
+  const [formData, setFormData] = useState({ ...EMPTY_FORM })
 
   const [loading, setLoading] = useState(false)
   const [successMessage, setSuccessMessage] = useState('')
   const [errorMessage, setErrorMessage] = useState('')
   const [attachments, setAttachments] = useState<File[]>([])
+  const [dragOver, setDragOver] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    if (mode !== 'edit' || !token) return
+  // Active jobs are loaded up front (the header stats use them) and refreshed when opening "Manage Jobs"
+  const loadJobs = useCallback(() => {
+    if (!token) return
     setLoadingJobs(true)
-    setExistingJobs([])
-    setSelectedJobId('')
     fetch(`${baseURL}/jobs`, {
       headers: { Authorization: `Bearer ${token}` }
     })
       .then(r => r.json())
-      .then((jobs: ExistingJob[]) => setExistingJobs(jobs.filter(j => !j.isExpired)))
+      .then((jobs: ExistingJob[]) => setExistingJobs(Array.isArray(jobs) ? jobs.filter(j => !j.isExpired) : []))
       .catch(() => setExistingJobs([]))
       .finally(() => setLoadingJobs(false))
-  }, [mode, baseURL, token])
+  }, [baseURL, token])
+
+  useEffect(() => { loadJobs() }, [loadJobs])
 
   const handleJobSelect = (job: ExistingJob) => {
     setSelectedJobId(job._id)
@@ -107,25 +155,13 @@ const AdminJobForm: React.FC = () => {
     setSuccessMessage('')
     setErrorMessage('')
     setShowEditForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const cancelEdit = () => {
     setShowEditForm(false)
     setSelectedJobId('')
-    setFormData({
-      title: '',
-      company: '',
-      experience: '',
-      salary: '',
-      location: '',
-      skills: '',
-      highlights: '',
-      jobType: '',
-      domain: '',
-      expiryDate: '',
-      logo: '',
-      tag: ''
-    })
+    setFormData({ ...EMPTY_FORM })
     setAttachments([])
     setSuccessMessage('')
     setErrorMessage('')
@@ -136,37 +172,24 @@ const AdminJobForm: React.FC = () => {
     setSelectedJobId('')
     setShowEditForm(false)
     setJobTableSearch('')
-    setFormData({
-      title: '',
-      company: '',
-      experience: '',
-      salary: '',
-      location: '',
-      skills: '',
-      highlights: '',
-      jobType: '',
-      domain: '',
-      expiryDate: '',
-      logo: '',
-      tag: ''
-    })
+    setFormData({ ...EMPTY_FORM })
     setAttachments([])
     setSuccessMessage('')
     setErrorMessage('')
+    if (newMode === 'edit') loadJobs()
   }
 
   const filteredTableJobs = existingJobs.filter(j =>
-    j.title.toLowerCase().includes(jobTableSearch.toLowerCase()) ||
-    j.company.toLowerCase().includes(jobTableSearch.toLowerCase())
+    (j.title || '').toLowerCase().includes(jobTableSearch.toLowerCase()) ||
+    (j.company || '').toLowerCase().includes(jobTableSearch.toLowerCase())
   )
 
-  const formatExpiryDate = (dateStr: string) => {
-    const d = new Date(dateStr)
-    if (isNaN(d.getTime())) return '—'
-    const diff = Math.ceil((d.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
-    const label = d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
-    return diff <= 7 ? `${label} (${diff}d left)` : label
-  }
+  const jobStats = useMemo(() => ({
+    active: existingJobs.length,
+    internships: existingJobs.filter(j => j.jobType === 'Internship').length,
+    fresher: existingJobs.filter(j => j.jobType === 'Fresher').length,
+    expiring: existingJobs.filter(j => { const d = daysUntil(j.expiryDate); return d != null && d >= 0 && d <= 7 }).length,
+  }), [existingJobs])
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -177,10 +200,20 @@ const AdminJobForm: React.FC = () => {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
+  const setField = (name: keyof typeof EMPTY_FORM, value: string) =>
+    setFormData(prev => ({ ...prev, [name]: value }))
+
+  const addFiles = (files: File[]) => { if (files.length) setAttachments(prev => [...prev, ...files]) }
+
   const handleAttachmentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files ? Array.from(e.target.files) : []
-    setAttachments(prev => [...prev, ...selected])
+    addFiles(e.target.files ? Array.from(e.target.files) : [])
     e.target.value = ''
+  }
+
+  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault()
+    setDragOver(false)
+    addFiles(Array.from(e.dataTransfer.files || []))
   }
 
   const removeAttachment = (index: number) => {
@@ -197,8 +230,9 @@ const AdminJobForm: React.FC = () => {
       .split('T')[0]
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  // Only ever called from the Post/Update button — pressing Enter in a field must not publish a job
+  const handleSubmit = async () => {
+    if (loading) return
     setLoading(true)
     setErrorMessage('')
     setSuccessMessage('')
@@ -277,1002 +311,388 @@ const AdminJobForm: React.FC = () => {
       }
 
       if (isEdit) {
-        // Refresh the table with the updated job, then return to it
-        const refreshed = await fetch(`${baseURL}/jobs`, {
-          headers: { Authorization: `Bearer ${token}` }
-        }).then(r => r.json()).catch(() => existingJobs)
-        setExistingJobs(Array.isArray(refreshed) ? refreshed.filter((j: any) => !j.isExpired) : existingJobs)
         setShowEditForm(false)
         setSelectedJobId('')
         setSuccessMessage('Job updated successfully')
       } else {
         setSuccessMessage('Job posted successfully')
       }
+      loadJobs()
 
-      setFormData({
-        title: '',
-        company: '',
-        experience: '',
-        salary: '',
-        location: '',
-        skills: '',
-        highlights: '',
-        jobType: '',
-        domain: '',
-        expiryDate: '',
-        logo: '',
-        tag: ''
-      })
+      setFormData({ ...EMPTY_FORM })
       setAttachments([])
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } catch (err: any) {
       setErrorMessage(err.message || 'Something went wrong')
+      window.scrollTo({ top: 0, behavior: 'smooth' })
     } finally {
       setLoading(false)
     }
   }
 
-  return (
-    <div className="job-form-container">
-      <div className="form-wrapper">
-        {/* Header */}
-        <div className="form-header">
-          <div className="header-icon-wrapper">
-            {mode === 'edit' ? <FaEdit className="header-icon" /> : <FaBriefcase className="header-icon" />}
-          </div>
-          <div className="header-text">
-            <h4 className="form-title">{mode === 'edit' ? 'Update Existing Job' : 'Post New Job Opportunity'}</h4>
-            <p className="form-subtitle">{mode === 'edit' ? 'Edit and update an active job listing' : 'Create and publish job listings for candidates'}</p>
-          </div>
-        </div>
+  const skillList = formData.skills.split(',').map(s => s.trim()).filter(Boolean)
+  const previewExpiry = formData.expiryDate ? daysUntil(formData.expiryDate) : null
+  const showForm = mode === 'create' || showEditForm
 
-        {/* Mode Toggle */}
-        <div className="mode-toggle">
-          <button
-            type="button"
-            className={`mode-btn ${mode === 'create' ? 'mode-btn-active' : ''}`}
-            onClick={() => switchMode('create')}
-          >
-            <FaPlus className="me-2" />
-            Post New Job
-          </button>
-          <button
-            type="button"
-            className={`mode-btn ${mode === 'edit' ? 'mode-btn-active' : ''}`}
-            onClick={() => switchMode('edit')}
-          >
-            <FaEdit className="me-2" />
-            Update Existing Job
-          </button>
-        </div>
-
-        {/* Jobs Table (edit mode, before a job is selected) */}
-        {mode === 'edit' && !showEditForm && (
-          <>
-            {successMessage && (
-              <Alert className="success-alert" style={{ marginBottom: '1rem' }}>
-                <FaCheckCircle className="alert-icon" />
-                <div>
-                  <strong>Success!</strong>
-                  <p>{successMessage}</p>
-                </div>
-              </Alert>
-            )}
-
-            <div className="jobs-table-wrapper">
-            {loadingJobs ? (
-              <div className="d-flex align-items-center gap-2 py-3" style={{ color: '#8a8a8a' }}>
-                <Spinner size="sm" animation="border" style={{ color: '#ff7a00' }} />
-                <span>Loading active jobs...</span>
-              </div>
-            ) : (
-              <>
-                <div className="table-toolbar">
-                  <span className="table-count">{filteredTableJobs.length} active job{filteredTableJobs.length !== 1 ? 's' : ''}</span>
-                  <div className="table-search-wrapper">
-                    <FaSearch className="table-search-icon" />
-                    <input
-                      className="table-search-input"
-                      type="text"
-                      placeholder="Search by title or company..."
-                      value={jobTableSearch}
-                      onChange={e => setJobTableSearch(e.target.value)}
-                    />
-                  </div>
-                </div>
-
-                {filteredTableJobs.length === 0 ? (
-                  <p className="table-empty">
-                    {existingJobs.length === 0 ? 'No active (non-expired) jobs found.' : 'No jobs match your search.'}
-                  </p>
-                ) : (
-                  <div className="table-scroll">
-                    <table className="jobs-table">
-                      <thead>
-                        <tr>
-                          <th>#</th>
-                          <th>Job Title</th>
-                          <th>Company</th>
-                          <th>Type</th>
-                          <th>Domain</th>
-                          <th>Expires</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredTableJobs.map((job, idx) => (
-                          <tr key={job._id} className={selectedJobId === job._id ? 'row-selected' : ''}>
-                            <td className="td-num">{idx + 1}</td>
-                            <td className="td-title">{job.title}</td>
-                            <td>{job.company}</td>
-                            <td><span className="job-badge">{job.jobType}</span></td>
-                            <td><span className="job-badge job-badge-dim">{job.domain}</span></td>
-                            <td className="td-expiry">{formatExpiryDate(job.expiryDate)}</td>
-                            <td>
-                              <button
-                                type="button"
-                                className="edit-action-btn"
-                                onClick={() => handleJobSelect(job)}
-                              >
-                                <FaEdit className="me-1" /> Edit
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </>
-            )}
+  const renderForm = () => (
+    <div className="jof-layout">
+      {/* Form */}
+      <form className="aui-card jof-form" onSubmit={(e) => e.preventDefault()} noValidate>
+        <div className="aui-toolbar">
+          <div className="aui-toolbar-title jof-form-title">
+            <span className="aui-heading-icon jof-form-icon">{showEditForm ? <FaEdit /> : <FaBriefcase />}</span>
+            <div>
+              <h3>{showEditForm ? `Editing: ${formData.title || 'Untitled job'}` : 'Post a New Job'}</h3>
+              <p>{showEditForm ? (formData.company || 'Update the details and save') : 'Students see this listing on their Jobs page'}</p>
             </div>
-          </>
-        )}
+          </div>
+          {showEditForm && (
+            <button type="button" className="aui-btn" onClick={cancelEdit} disabled={loading}>
+              <FaArrowLeft size={10} /> Back to jobs
+            </button>
+          )}
+        </div>
 
-        {/* Alerts + Form — always in create mode, or after selecting a job in edit mode */}
-        {(mode === 'create' || showEditForm) && (
-          <>
-            {showEditForm && (
-              <div className="edit-form-banner">
-                <FaEdit className="me-2" />
-                Editing: <strong className="ms-1">{formData.title}</strong>
-                <span className="ms-1 text-muted">— {formData.company}</span>
-              </div>
-            )}
+        <div className="jof-form-body">
+          <div className="jof-section-label">Job Details</div>
+          <div className="aui-field-row">
+            <div className="aui-field">
+              <FieldLabel htmlFor="job-title" icon={FaBriefcase}>Job Title</FieldLabel>
+              <input id="job-title" className="aui-input" name="title" value={formData.title} onChange={handleChange} placeholder="e.g., Senior React Developer" />
+            </div>
+            <div className="aui-field">
+              <FieldLabel htmlFor="job-company" icon={FaBuilding}>Company</FieldLabel>
+              <input id="job-company" className="aui-input" name="company" value={formData.company} onChange={handleChange} placeholder="Company name" />
+            </div>
+          </div>
+          <div className="aui-field-row">
+            <div className="aui-field">
+              <FieldLabel icon={FaUsers}>Job Type</FieldLabel>
+              <AdminSelect label="Job type" value={formData.jobType} options={JOB_TYPES} onChange={v => setField('jobType', v)} />
+            </div>
+            <div className="aui-field">
+              <FieldLabel icon={FaLayerGroup}>Domain</FieldLabel>
+              <AdminSelect label="Domain" value={formData.domain} options={DOMAINS} onChange={v => setField('domain', v)} />
+            </div>
+          </div>
 
-            {successMessage && (
-              <Alert className="success-alert">
-                <FaCheckCircle className="alert-icon" />
-                <div>
-                  <strong>Success!</strong>
-                  <p>{successMessage}</p>
-                </div>
-              </Alert>
-            )}
+          <div className="jof-section-label">Compensation, Location &amp; Timeline</div>
+          <div className="aui-field-row">
+            <div className="aui-field">
+              <FieldLabel htmlFor="job-exp" icon={FaClock}>Experience</FieldLabel>
+              <input id="job-exp" className="aui-input" name="experience" value={formData.experience} onChange={handleChange} placeholder="e.g., 0–2 years" />
+            </div>
+            <div className="aui-field">
+              <FieldLabel htmlFor="job-salary" icon={FaMoneyBillWave}>Salary</FieldLabel>
+              <input id="job-salary" className="aui-input" name="salary" value={formData.salary} onChange={handleChange} placeholder="e.g., ₹5,00,000 – ₹8,00,000" />
+            </div>
+          </div>
+          <div className="aui-field-row">
+            <div className="aui-field">
+              <FieldLabel htmlFor="job-location" icon={FaMapMarkerAlt}>Location</FieldLabel>
+              <input id="job-location" className="aui-input" name="location" value={formData.location} onChange={handleChange} placeholder="e.g., Bangalore, Remote, Hybrid" />
+            </div>
+            <div className="aui-field">
+              <FieldLabel htmlFor="job-expiry" icon={FaCalendarAlt}>Expiry Date</FieldLabel>
+              <input id="job-expiry" className="aui-input" type="date" name="expiryDate" value={formData.expiryDate} onChange={handleChange} />
+              <p className="aui-hint">Defaults to 30 days from today if left empty.</p>
+            </div>
+          </div>
+          <div className="aui-field">
+            <FieldLabel htmlFor="job-tag" icon={FaTag}>Tag</FieldLabel>
+            <input id="job-tag" className="aui-input" name="tag" value={formData.tag} onChange={handleChange} placeholder="e.g., Women Preferred, Urgent Hiring" />
+          </div>
 
-            {errorMessage && (
-              <Alert className="error-alert">
-                <FaTimesCircle className="alert-icon" />
-                <div>
-                  <strong>Error!</strong>
-                  <p>{errorMessage}</p>
-                </div>
-              </Alert>
-            )}
-          </>
-        )}
-
-        {(mode === 'create' || showEditForm) && <Form onSubmit={handleSubmit}>
-          <Row>
-            <Col md={6}>
-              <Form.Group className="form-group-custom">
-                <Form.Label className="form-label-custom">
-                  <FaBriefcase className="label-icon" />
-                  Job Title
-                </Form.Label>
-                <Form.Control
-                  name="title"
-                  value={formData.title}
-                  onChange={handleChange}
-                  placeholder="e.g., Senior React Developer"
-                  className="form-control-custom"
-                />
-              </Form.Group>
-
-              <Form.Group className="form-group-custom">
-                <Form.Label className="form-label-custom">
-                  <FaBuilding className="label-icon" />
-                  Company
-                </Form.Label>
-                <Form.Control
-                  name="company"
-                  value={formData.company}
-                  onChange={handleChange}
-                  placeholder="Company name"
-                  className="form-control-custom"
-                />
-              </Form.Group>
-
-              <Form.Group className="form-group-custom">
-                <Form.Label className="form-label-custom">
-                  <FaUsers className="label-icon" />
-                  Job Type
-                </Form.Label>
-                <Form.Select
-                  name="jobType"
-                  value={formData.jobType}
-                  onChange={handleChange}
-                  className="form-select-custom"
-                >
-                  <option value="">Select job type</option>
-                  <option>Internship</option>
-                  <option>Fresher</option>
-                  <option>Experienced</option>
-                </Form.Select>
-              </Form.Group>
-
-              <Form.Group className="form-group-custom">
-                <Form.Label className="form-label-custom">
-                  <FaChartLine className="label-icon" />
-                  Domain
-                </Form.Label>
-                <Form.Select
-                  name="domain"
-                  value={formData.domain}
-                  onChange={handleChange}
-                  className="form-select-custom"
-                >
-                  <option value="">Select domain</option>
-                  <option>Tech</option>
-                  <option>Non-Tech</option>
-                </Form.Select>
-              </Form.Group>
-
-              <Form.Group className="form-group-custom">
-                <Form.Label className="form-label-custom">
-                  <FaClock className="label-icon" />
-                  Experience
-                </Form.Label>
-                <Form.Control
-                  name="experience"
-                  value={formData.experience}
-                  placeholder="e.g., 0–2 years, 3-5 years"
-                  onChange={handleChange}
-                  className="form-control-custom"
-                />
-              </Form.Group>
-            </Col>
-
-            <Col md={6}>
-              <Form.Group className="form-group-custom">
-                <Form.Label className="form-label-custom">
-                  <FaMoneyBillWave className="label-icon" />
-                  Salary
-                </Form.Label>
-                <Form.Control
-                  name="salary"
-                  value={formData.salary}
-                  placeholder="e.g., ₹5,00,000 - ₹8,00,000"
-                  onChange={handleChange}
-                  className="form-control-custom"
-                />
-              </Form.Group>
-
-              <Form.Group className="form-group-custom">
-                <Form.Label className="form-label-custom">
-                  <FaMapMarkerAlt className="label-icon" />
-                  Location
-                </Form.Label>
-                <Form.Control
-                  name="location"
-                  value={formData.location}
-                  placeholder="e.g., Bangalore, Remote, Hybrid"
-                  onChange={handleChange}
-                  className="form-control-custom"
-                />
-              </Form.Group>
-
-              <Form.Group className="form-group-custom">
-                <Form.Label className="form-label-custom">
-                  <FaCalendarAlt className="label-icon" />
-                  Expiry Date
-                </Form.Label>
-                <Form.Control
-                  type="date"
-                  name="expiryDate"
-                  value={formData.expiryDate}
-                  onChange={handleChange}
-                  className="form-control-custom"
-                />
-              </Form.Group>
-
-              <Form.Group className="form-group-custom">
-                <Form.Label className="form-label-custom">
-                  <FaTag className="label-icon" />
-                  Tag
-                </Form.Label>
-                <Form.Control
-                  name="tag"
-                  value={formData.tag}
-                  placeholder="e.g., Women Preferred, Urgent Hiring"
-                  onChange={handleChange}
-                  className="form-control-custom"
-                />
-              </Form.Group>
-            </Col>
-          </Row>
-
-          {/* Rich Text Editor */}
-          <Form.Group className="form-group-custom">
-            <Form.Label className="form-label-custom">
-              <FaCode className="label-icon" />
-              Key Highlights
-            </Form.Label>
-            <div className="quill-editor-wrapper">
+          <div className="jof-section-label">Description</div>
+          <div className="aui-field">
+            <FieldLabel icon={FaListUl}>Key Highlights</FieldLabel>
+            <div className="jof-quill">
               <ReactQuill
                 theme="snow"
                 value={formData.highlights}
-                onChange={value =>
-                  setFormData(prev => ({ ...prev, highlights: value }))
-                }
+                onChange={value => setField('highlights', value)}
                 placeholder="Add job highlights, benefits, responsibilities..."
-                className="custom-quill"
-                modules={{
-                  toolbar: [
-                    [{ header: [false, 2, 3] }],
-                    ['bold', 'italic', 'underline'],
-                    [{ list: 'ordered' }, { list: 'bullet' }],
-                    ['link'],
-                    ['clean']
-                  ]
-                }}
+                modules={QUILL_MODULES}
               />
             </div>
-          </Form.Group>
+          </div>
+          <div className="aui-field">
+            <FieldLabel htmlFor="job-skills" icon={FaUserGraduate}>Skills</FieldLabel>
+            <input id="job-skills" className="aui-input" name="skills" value={formData.skills} onChange={handleChange} placeholder="React, Node.js, MongoDB, Python" />
+            {skillList.length > 0
+              ? <div className="jof-chips">{skillList.map(s => <span key={s} className="aui-badge aui-badge-orange">{s}</span>)}</div>
+              : <p className="aui-hint">Separate skills with commas.</p>}
+          </div>
 
-          <Form.Group className="form-group-custom">
-            <Form.Label className="form-label-custom">
-              <FaCode className="label-icon" />
-              Skills (comma separated)
-            </Form.Label>
-            <Form.Control
-              name="skills"
-              value={formData.skills}
-              placeholder="React, Node.js, MongoDB, Python"
-              onChange={handleChange}
-              className="form-control-custom"
-            />
-            <small className="form-hint">
-              Enter skills separated by commas
-            </small>
-          </Form.Group>
-
-          <Form.Group className="form-group-custom">
-            <Form.Label className="form-label-custom">
-              <FaFileUpload className="label-icon" />
-              Attachments (Images/PDF)
-            </Form.Label>
-            <Form.Control
-              type="file"
-              multiple
-              accept=".pdf,.png,.jpg,.jpeg,.webp,.gif"
-              onChange={handleAttachmentChange}
-              className="form-control-custom"
-            />
-            <small className="form-hint">
-              You can upload multiple images or PDF files.
-            </small>
-
+          <div className="aui-field">
+            <FieldLabel icon={FaFileAlt}>Attachments</FieldLabel>
+            <div
+              className={`jof-dropzone${dragOver ? ' is-over' : ''}`}
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={handleDrop}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); fileInputRef.current?.click() } }}
+            >
+              <FaCloudUploadAlt className="jof-dropzone-icon" />
+              <strong>Drop files here or <span>browse</span></strong>
+              <small>Images or PDF (JD, brochure, poster)</small>
+              <input ref={fileInputRef} type="file" multiple hidden accept=".pdf,.png,.jpg,.jpeg,.webp,.gif" onChange={handleAttachmentChange} />
+            </div>
             {attachments.length > 0 && (
-              <div className="attachment-list">
+              <div className="jof-files">
                 {attachments.map((file, index) => (
-                  <div key={`${file.name}-${index}`} className="attachment-item">
-                    <span className="attachment-name">
-                      {file.name} ({(file.size / 1024).toFixed(1)} KB)
-                    </span>
-                    <button
-                      type="button"
-                      className="remove-attachment-btn"
-                      onClick={() => removeAttachment(index)}
-                    >
-                      <FaTimes />
-                    </button>
+                  <div key={`${file.name}-${index}`} className="jof-file">
+                    <FaFileAlt className="jof-file-icon" />
+                    <span className="jof-file-name">{file.name}</span>
+                    <span className="jof-file-size">{(file.size / 1024).toFixed(1)} KB</span>
+                    <button type="button" className="aui-icon-btn" onClick={() => removeAttachment(index)} aria-label={`Remove ${file.name}`}><FaTimes size={11} /></button>
                   </div>
                 ))}
               </div>
             )}
-          </Form.Group>
-
-          <div className="form-actions">
-            {showEditForm && (
-              <button
-                type="button"
-                className="cancel-btn"
-                onClick={cancelEdit}
-                disabled={loading}
-              >
-                <FaTimes className="me-2" />
-                Cancel
-              </button>
-            )}
-            <Button
-              type="submit"
-              className="submit-btn"
-              disabled={loading}
-            >
-              {loading ? (
-                <>
-                  <Spinner size="sm" animation="border" className="me-2" />
-                  {showEditForm ? 'Updating Job...' : 'Posting Job...'}
-                </>
-              ) : (
-                <>
-                  {showEditForm ? <FaEdit className="me-2" /> : <FaSave className="me-2" />}
-                  {showEditForm ? 'Update Job' : 'Post Job'}
-                </>
-              )}
-            </Button>
           </div>
-        </Form>}
-      </div>
+        </div>
+
+        <div className="jof-actions">
+          {showEditForm ? (
+            <button key="cancel" type="button" className="aui-btn" onClick={cancelEdit} disabled={loading}>
+              <FaTimes size={10} /> Cancel
+            </button>
+          ) : (
+            <button key="reset" type="button" className="aui-btn" onClick={() => { setFormData({ ...EMPTY_FORM }); setAttachments([]) }} disabled={loading}>
+              Clear form
+            </button>
+          )}
+          <button key="submit" type="button" className="aui-btn aui-btn-primary" onClick={handleSubmit} disabled={loading}>
+            {loading
+              ? <><FaSpinner className="aui-spin" style={{ color: '#fff' }} /> {showEditForm ? 'Updating Job…' : 'Posting Job…'}</>
+              : <>{showEditForm ? <FaCheck size={11} /> : <FaPlus size={11} />} {showEditForm ? 'Update Job' : 'Post Job'}</>}
+          </button>
+        </div>
+      </form>
+
+      {/* Live preview */}
+      <aside className="aui-card jof-preview">
+        <div className="aui-toolbar">
+          <div className="aui-toolbar-title">
+            <h3>Student Preview</h3>
+            <p>How the listing will look</p>
+          </div>
+        </div>
+        <div className="jof-preview-body">
+          <div className="jof-preview-head">
+            <span className="jof-logo">{initialsOf(formData.company || formData.title || 'Job')}</span>
+            <div className="aui-stack">
+              <strong className={formData.title ? '' : 'is-empty'}>{formData.title || 'Job title'}</strong>
+              <small>{formData.company || 'Company name'}</small>
+            </div>
+          </div>
+          <div className="jof-chips">
+            {formData.jobType && <span className="aui-badge aui-badge-orange">{formData.jobType}</span>}
+            {formData.domain && <span className="aui-badge aui-badge-blue">{formData.domain}</span>}
+            {formData.tag && <span className="aui-badge aui-badge-purple">{formData.tag}</span>}
+          </div>
+          <ul className="jof-facts">
+            <li><FaMoneyBillWave /> <span className={formData.salary ? '' : 'is-empty'}>{formData.salary || 'Salary not specified'}</span></li>
+            <li><FaMapMarkerAlt /> <span className={formData.location ? '' : 'is-empty'}>{formData.location || 'Location not specified'}</span></li>
+            <li><FaClock /> <span className={formData.experience ? '' : 'is-empty'}>{formData.experience || 'Experience not specified'}</span></li>
+            <li>
+              <FaCalendarAlt />
+              <span>
+                {formData.expiryDate
+                  ? <>Apply by {new Date(formData.expiryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}{previewExpiry != null && previewExpiry >= 0 ? ` · ${previewExpiry} day${previewExpiry === 1 ? '' : 's'} left` : ''}</>
+                  : <span className="is-empty">Expires in 30 days</span>}
+              </span>
+            </li>
+          </ul>
+          {skillList.length > 0 && (
+            <div className="jof-chips">{skillList.map(s => <span key={s} className="aui-badge aui-badge-muted">{s}</span>)}</div>
+          )}
+          {attachments.length > 0 && <small className="jof-preview-note">{attachments.length} attachment{attachments.length > 1 ? 's' : ''}</small>}
+        </div>
+      </aside>
+    </div>
+  )
+
+  return (
+    <AdminPage>
+      <PageHeader
+        icon={FaBriefcase}
+        title="Job Openings"
+        stats={
+          <StatCards
+            inline
+            loading={loadingJobs && existingJobs.length === 0}
+            items={[
+              { label: 'Active Jobs', value: jobStats.active, icon: FaBriefcase, tone: 'orange' },
+              { label: 'Internships', value: jobStats.internships, icon: FaUserGraduate, tone: 'blue' },
+              { label: 'Fresher', value: jobStats.fresher, icon: FaUsers, tone: 'green' },
+              { label: 'Expiring ≤ 7 days', value: jobStats.expiring, icon: FaHourglassHalf, tone: 'red' },
+            ]}
+          />
+        }
+        actions={
+          /* Mode switch — sits beside the stat cards */
+          <div className="aui-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={mode === 'create'} className={mode === 'create' ? 'is-active' : ''} onClick={() => switchMode('create')}>
+              <FaPlus size={11} /> Post New Job
+            </button>
+            <button type="button" role="tab" aria-selected={mode === 'edit'} className={mode === 'edit' ? 'is-active' : ''} onClick={() => switchMode('edit')}>
+              <FaListUl size={11} /> Manage Jobs <span className="aui-badge aui-badge-muted">{existingJobs.length}</span>
+            </button>
+          </div>
+        }
+      />
+
+      {successMessage && <div className="aui-alert jof-alert-success"><FaCheckCircle /> {successMessage}</div>}
+      {errorMessage && <div className="aui-alert"><FaExclamationTriangle /> {errorMessage}</div>}
+
+      {mode === 'edit' && !showEditForm && (
+        <div className="aui-card">
+          <div className="aui-toolbar">
+            <div className="aui-toolbar-title">
+              <h3>Active Jobs</h3>
+              <p>Expired jobs are hidden · choose Edit to update a listing</p>
+            </div>
+            <div className="aui-toolbar-filters">
+              <SearchInput value={jobTableSearch} onChange={setJobTableSearch} placeholder="Search by title or company" />
+              <span className="aui-count">{filteredTableJobs.length} of {existingJobs.length}</span>
+            </div>
+          </div>
+
+          {loadingJobs ? (
+            <div className="aui-empty"><FaSpinner className="aui-spin" /><span>Loading active jobs…</span></div>
+          ) : filteredTableJobs.length === 0 ? (
+            existingJobs.length === 0 ? (
+              <EmptyState
+                icon={FaBriefcase}
+                title="No active jobs"
+                text="Post a job and it will appear here until it expires."
+                action={<button type="button" className="aui-btn aui-btn-primary" onClick={() => switchMode('create')}><FaPlus size={11} /> Post New Job</button>}
+              />
+            ) : (
+              <EmptyState icon={FaSearch} title={`No jobs match “${jobTableSearch}”`} text="Try a different title or company." />
+            )
+          ) : (
+            <div className="aui-table-scroll">
+              <table className="aui-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 44 }}>#</th>
+                    <th>Job</th>
+                    <th>Type</th>
+                    <th>Domain</th>
+                    <th>Location</th>
+                    <th>Salary</th>
+                    <th>Expires</th>
+                    <th className="text-end">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredTableJobs.map((job, idx) => {
+                    const days = daysUntil(job.expiryDate)
+                    return (
+                      <tr key={job._id}>
+                        <td className="aui-num">{idx + 1}</td>
+                        <td>
+                          <div className="aui-person">
+                            <span className="jof-logo jof-logo-sm">{initialsOf(job.company || job.title)}</span>
+                            <div className="aui-stack">
+                              <strong title={job.title}>{job.title}</strong>
+                              <small>{job.company}{job.tag ? ` · ${job.tag}` : ''}</small>
+                            </div>
+                          </div>
+                        </td>
+                        <td><span className="aui-badge aui-badge-orange">{job.jobType || '—'}</span></td>
+                        <td><span className="aui-badge aui-badge-muted">{job.domain || '—'}</span></td>
+                        <td>{job.location ? <span className="aui-inline-icon"><FaMapMarkerAlt /> {job.location}</span> : <span className="aui-num">—</span>}</td>
+                        <td>{job.salary || <span className="aui-num">—</span>}</td>
+                        <td>
+                          {days == null ? <span className="aui-num">—</span> : (
+                            <div className="aui-stack">
+                              <strong>{new Date(job.expiryDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}</strong>
+                              <small className={days <= 3 ? 'jof-soon' : ''}>{days < 0 ? 'Expired' : days === 0 ? 'Expires today' : `in ${days} day${days === 1 ? '' : 's'}`}</small>
+                            </div>
+                          )}
+                        </td>
+                        <td className="text-end">
+                          <button type="button" className="aui-btn aui-btn-soft aui-btn-sm" onClick={() => handleJobSelect(job)}>
+                            <FaEdit /> Edit
+                          </button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
+
+      {showForm && renderForm()}
 
       <style>{`
-        .job-form-container {
-          background: #000000;
-          min-height: 100vh;
-          padding: 1rem;
-        }
-
-        .form-wrapper {
-          background: #0a0a0a;
-          border: 1px solid #1f1f1f;
-          border-radius: 16px;
-          padding: 1.5rem;
-          max-width: 1200px;
-          margin: 0 auto;
-        }
-
-        /* Header */
-        .form-header {
-          display: flex;
-          align-items: center;
-          gap: 1rem;
-          margin-bottom: 2rem;
-          padding-bottom: 1rem;
-          border-bottom: 1px solid #ff7a00;
-        }
-
-        .header-icon-wrapper {
-          width: 56px;
-          height: 56px;
-          background: rgba(255, 122, 0, 0.1);
-          border-radius: 12px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .header-icon {
-          font-size: 2rem;
-          color: #ff7a00;
-        }
-
-        .header-text {
-          flex: 1;
-        }
-
-        .form-title {
-          color: #ffffff;
-          font-size: 1.5rem;
-          font-weight: 700;
-          margin: 0;
-        }
-
-        .form-subtitle {
-          color: #8a8a8a;
-          font-size: 0.85rem;
-          margin: 0.25rem 0 0 0;
-        }
-
-        /* Mode Toggle */
-        .mode-toggle {
-          display: flex;
-          gap: 0.5rem;
-          margin-bottom: 1.5rem;
-          background: #111111;
-          border: 1px solid #2c2c2c;
-          border-radius: 10px;
-          padding: 0.35rem;
-        }
-
-        .mode-btn {
-          flex: 1;
-          padding: 0.6rem 1rem;
-          border-radius: 8px;
-          border: none;
-          background: transparent;
-          color: #8a8a8a;
-          font-weight: 500;
-          font-size: 0.9rem;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          display: inline-flex;
-          align-items: center;
-          justify-content: center;
-        }
-
-        .mode-btn:hover {
-          color: #ff7a00;
-        }
-
-        .mode-btn-active {
-          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
-          color: #000000 !important;
-          font-weight: 600;
-        }
-
-        /* Jobs Table */
-        .jobs-table-wrapper {
-          background: #111111;
-          border: 1px solid #2c2c2c;
-          border-radius: 10px;
-          padding: 1rem;
-          margin-bottom: 1.5rem;
-        }
-
-        .table-toolbar {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 1rem;
-          margin-bottom: 0.75rem;
-          flex-wrap: wrap;
-        }
-
-        .table-count {
-          color: #8a8a8a;
-          font-size: 0.82rem;
-          white-space: nowrap;
-        }
-
-        .table-search-wrapper {
-          position: relative;
-          flex: 1;
-          max-width: 340px;
-        }
-
-        .table-search-icon {
-          position: absolute;
-          left: 0.65rem;
-          top: 50%;
-          transform: translateY(-50%);
-          color: #6c757d;
-          font-size: 0.8rem;
-          pointer-events: none;
-        }
-
-        .table-search-input {
-          width: 100%;
-          background: #000000;
-          border: 1px solid #2c2c2c;
-          color: #ffffff;
-          padding: 0.45rem 0.75rem 0.45rem 2rem;
-          border-radius: 8px;
-          font-size: 0.85rem;
-          outline: none;
-          transition: border-color 0.2s;
-        }
-
-        .table-search-input:focus {
-          border-color: #ff7a00;
-        }
-
-        .table-search-input::placeholder {
-          color: #6c757d;
-        }
-
-        .table-empty {
-          color: #6c757d;
-          font-size: 0.85rem;
-          text-align: center;
-          padding: 1.5rem 0;
-          margin: 0;
-        }
-
-        .table-scroll {
-          overflow-x: auto;
-        }
-
-        .jobs-table {
-          width: 100%;
-          border-collapse: collapse;
-          font-size: 0.85rem;
-        }
-
-        .jobs-table th {
-          color: #ff7a00;
-          font-weight: 600;
-          text-align: left;
-          padding: 0.6rem 0.75rem;
-          border-bottom: 1px solid #2c2c2c;
-          white-space: nowrap;
-        }
-
-        .jobs-table td {
-          color: #d9d9d9;
-          padding: 0.6rem 0.75rem;
-          border-bottom: 1px solid #1a1a1a;
-          vertical-align: middle;
-        }
-
-        .jobs-table tbody tr:hover {
-          background: #1a1a1a;
-        }
-
-        .jobs-table tbody tr.row-selected {
-          background: rgba(255, 122, 0, 0.08);
-        }
-
-        .td-num {
-          color: #6c757d;
-          width: 36px;
-        }
-
-        .td-title {
-          font-weight: 500;
-          color: #ffffff;
-          max-width: 220px;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .td-expiry {
-          white-space: nowrap;
-          color: #aaaaaa;
-          font-size: 0.8rem;
-        }
-
-        .job-badge {
-          display: inline-block;
-          padding: 2px 10px;
-          border-radius: 50px;
-          font-size: 0.72rem;
-          font-weight: 600;
-          background: rgba(255, 122, 0, 0.15);
-          color: #ff7a00;
-          border: 1px solid rgba(255, 122, 0, 0.3);
-          white-space: nowrap;
-        }
-
-        .job-badge-dim {
-          opacity: 0.7;
-        }
-
-        .edit-action-btn {
-          display: inline-flex;
-          align-items: center;
-          padding: 0.3rem 0.75rem;
-          border-radius: 6px;
-          border: 1px solid #ff7a00;
-          background: transparent;
-          color: #ff7a00;
-          font-size: 0.8rem;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.15s ease;
-          white-space: nowrap;
-        }
-
-        .edit-action-btn:hover {
-          background: #ff7a00;
-          color: #000000;
-        }
-
-        /* Edit form banner */
-        .edit-form-banner {
-          display: flex;
-          align-items: center;
-          background: rgba(255, 122, 0, 0.08);
-          border: 1px solid rgba(255, 122, 0, 0.3);
-          border-radius: 8px;
-          padding: 0.6rem 1rem;
-          margin-bottom: 1.25rem;
-          color: #ff7a00;
-          font-size: 0.875rem;
-        }
-
-        .edit-form-banner strong {
-          color: #ffffff;
-        }
-
-        .edit-form-banner .text-muted {
-          color: #8a8a8a !important;
-        }
-
-        /* Cancel button */
-        .cancel-btn {
-          display: inline-flex;
-          align-items: center;
-          padding: 0.75rem 1.5rem;
-          border-radius: 8px;
-          border: 1px solid #4a4a4a;
-          background: transparent;
-          color: #aaaaaa;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s ease;
-          margin-right: 0.75rem;
-        }
-
-        .cancel-btn:hover:not(:disabled) {
-          border-color: #ff7a00;
-          color: #ff7a00;
-        }
-
-        .cancel-btn:disabled {
-          opacity: 0.5;
-          cursor: not-allowed;
-        }
-
-        /* Alerts */
-        .success-alert, .error-alert {
-          display: flex;
-          align-items: flex-start;
-          gap: 0.75rem;
-          padding: 1rem;
-          border-radius: 8px;
-          margin-bottom: 1.5rem;
-          border-left: 4px solid;
-        }
-
-        .success-alert {
-          background: rgba(40, 167, 69, 0.1);
-          border-left-color: #28a745;
-        }
-
-        .error-alert {
-          background: rgba(220, 53, 69, 0.1);
-          border-left-color: #dc3545;
-        }
-
-        .alert-icon {
-          font-size: 1.25rem;
-          flex-shrink: 0;
-        }
-
-        .success-alert .alert-icon {
-          color: #28a745;
-        }
-
-        .error-alert .alert-icon {
-          color: #dc3545;
-        }
-
-        .success-alert strong, .error-alert strong {
-          display: block;
-          color: #ffffff;
-          margin-bottom: 0.25rem;
-        }
-
-        .success-alert p, .error-alert p {
-          color: #e5e5e5;
-          margin: 0;
-          font-size: 0.9rem;
-        }
-
-        /* Form Groups */
-        .form-group-custom {
-          margin-bottom: 1.5rem;
-        }
-
-        .form-label-custom {
-          color: #ff7a00;
-          font-weight: 500;
-          margin-bottom: 0.5rem;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .label-icon {
-          font-size: 0.9rem;
-        }
-
-        .form-control-custom, .form-select-custom {
-          background: #000000;
-          border: 1px solid #2c2c2c;
-          color: #ffffff;
-          padding: 0.75rem;
-          border-radius: 8px;
-          transition: all 0.2s ease;
-        }
-
-        .form-control-custom:focus, .form-select-custom:focus {
-          background: #141414;
-          border-color: #ff7a00;
-          box-shadow: 0 0 0 0.2rem rgba(255, 122, 0, 0.25);
-          color: #ffffff;
-        }
-
-        .form-control-custom::placeholder {
-          color: #6c757d;
-        }
-
-        .form-hint {
-          color: #6c757d;
-          font-size: 0.75rem;
-          margin-top: 0.5rem;
-          display: block;
-        }
-
-        .attachment-list {
-          margin-top: 0.75rem;
-          display: flex;
-          flex-direction: column;
-          gap: 0.5rem;
-        }
-
-        .attachment-item {
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          gap: 0.75rem;
-          background: #111111;
-          border: 1px solid #2c2c2c;
-          border-radius: 8px;
-          padding: 0.5rem 0.75rem;
-        }
-
-        .attachment-name {
-          color: #d9d9d9;
-          font-size: 0.82rem;
-          overflow: hidden;
-          text-overflow: ellipsis;
-          white-space: nowrap;
-        }
-
-        .remove-attachment-btn {
-          border: none;
-          background: transparent;
-          color: #ff7a00;
-          cursor: pointer;
-          padding: 0.2rem;
-          line-height: 1;
-        }
-
-        .remove-attachment-btn:hover {
-          color: #ff944d;
-        }
-
-        /* Quill Editor */
-        .quill-editor-wrapper {
-          background: #000000;
-          border: 1px solid #2c2c2c;
-          border-radius: 8px;
-          overflow: hidden;
-        }
-
-        .custom-quill .ql-toolbar {
-          background: #1a1a1a;
-          border: none;
-          border-bottom: 1px solid #2c2c2c;
-        }
-
-        .custom-quill .ql-container {
-          background: #000000;
-          border: none;
-          min-height: 250px;
-        }
-
-        .custom-quill .ql-editor {
-          min-height: 220px;
-          color: #ffffff;
-          font-size: 0.95rem;
-          line-height: 1.6;
-        }
-
-        .custom-quill .ql-editor.ql-blank::before {
-          color: #6c757d;
-        }
-
-        .custom-quill .ql-stroke {
-          stroke: #e5e5e5;
-        }
-
-        .custom-quill .ql-fill {
-          fill: #e5e5e5;
-        }
-
-        .custom-quill .ql-picker {
-          color: #e5e5e5;
-        }
-
-        .custom-quill .ql-picker-options {
-          background: #1a1a1a;
-          border-color: #2c2c2c;
-        }
-
-        .custom-quill .ql-toolbar button:hover .ql-stroke {
-          stroke: #ff7a00;
-        }
-
-        .custom-quill .ql-toolbar button:hover .ql-fill {
-          fill: #ff7a00;
-        }
-
-        .custom-quill .ql-toolbar .ql-active .ql-stroke {
-          stroke: #ff7a00;
-        }
-
-        .custom-quill .ql-toolbar .ql-active .ql-fill {
-          fill: #ff7a00;
-        }
-
-        /* Form Actions */
-        .form-actions {
-          display: flex;
-          justify-content: flex-end;
-          margin-top: 2rem;
-          padding-top: 1rem;
-          border-top: 1px solid #1f1f1f;
-        }
-
-        .submit-btn {
-          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
-          border: none;
-          padding: 0.75rem 2rem;
-          border-radius: 8px;
-          color: #000000;
-          font-weight: 600;
-          transition: all 0.2s ease;
-          display: inline-flex;
-          align-items: center;
-          gap: 0.5rem;
-        }
-
-        .submit-btn:hover:not(:disabled) {
-          transform: translateY(-2px);
-          box-shadow: 0 4px 12px rgba(255, 122, 0, 0.4);
-        }
-
-        .submit-btn:disabled {
-          opacity: 0.7;
-          cursor: not-allowed;
-        }
-
-        /* Responsive */
-        @media (max-width: 768px) {
-          .form-wrapper {
-            padding: 1rem;
-          }
-
-          .form-header {
-            flex-direction: column;
-            text-align: center;
-          }
-
-          .header-icon-wrapper {
-            margin: 0 auto;
-          }
-
-          .form-title {
-            font-size: 1.25rem;
-          }
-
-          .form-actions {
-            justify-content: stretch;
-          }
-
-          .submit-btn {
-            width: 100%;
-          }
-
-          .custom-quill .ql-editor {
-            min-height: 180px;
-          }
+        .jof-alert-success { margin-top: 1.25rem; border-color: rgba(49,216,102,0.3); background: rgba(49,216,102,0.1); color: #86efac; }
+        
+        .jof-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 1rem; align-items: start; margin-top: 1.25rem; }
+        .jof-layout > .aui-card { margin-top: 0; }
+        .jof-form-title { display: flex; align-items: center; gap: 12px; }
+        .jof-form-icon { width: 36px; height: 36px; flex-basis: 36px; font-size: 0.9rem; }
+        .jof-form-body { padding: 1.1rem 1.25rem 0.25rem; }
+        .jof-section-label { margin: 0.25rem 0 0.85rem; padding-bottom: 0.45rem; border-bottom: 1px solid #1d2023; color: #9da2a8; font-size: 0.68rem; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; }
+        .jof-section-label:not(:first-child) { margin-top: 0.5rem; }
+        .jof-label-icon { color: #ff7a00; font-size: 0.72rem; }
+        .jof-actions { display: flex; justify-content: space-between; gap: 0.75rem; padding: 0.85rem 1.25rem; border-top: 1px solid #25282b; }
+        .jof-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+
+        .jof-quill { overflow: hidden; border: 1px solid #34383d; border-radius: 8px; background: #17191c; }
+        .jof-quill:focus-within { border-color: rgba(255,122,0,0.75); box-shadow: 0 0 0 3px rgba(255,122,0,0.12); }
+        .jof-quill .ql-toolbar { border: 0; border-bottom: 1px solid #2a2e33; background: #111315; }
+        .jof-quill .ql-container { border: 0; font-family: inherit; font-size: 0.88rem; }
+        .jof-quill .ql-editor { min-height: 160px; color: #f1f5f9; line-height: 1.6; }
+        .jof-quill .ql-editor.ql-blank::before { color: #5b616a; font-style: normal; }
+        .jof-quill .ql-stroke { stroke: #cbd5e1; }
+        .jof-quill .ql-fill { fill: #cbd5e1; }
+        .jof-quill .ql-picker { color: #cbd5e1; }
+        .jof-quill .ql-picker-options { background: #17191c; border-color: #34383d !important; }
+        .jof-quill button:hover .ql-stroke, .jof-quill .ql-active .ql-stroke { stroke: #ff9a3c; }
+
+        .jof-dropzone { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 1.3rem 1rem; border: 1.5px dashed #34383d; border-radius: 10px; background: #111315; text-align: center; cursor: pointer; transition: border-color 0.15s, background 0.15s; }
+        .jof-dropzone:hover, .jof-dropzone:focus-visible, .jof-dropzone.is-over { border-color: rgba(255,122,0,0.6); background: rgba(255,122,0,0.05); outline: none; }
+        .jof-dropzone-icon { color: #ff7a00; font-size: 1.5rem; }
+        .jof-dropzone strong { color: #e5e7eb; font-size: 0.82rem; }
+        .jof-dropzone strong span { color: #ff9a3c; text-decoration: underline; }
+        .jof-dropzone small { color: #6b7280; font-size: 0.7rem; }
+        .jof-files { display: flex; flex-direction: column; gap: 6px; }
+        .jof-file { display: flex; align-items: center; gap: 10px; padding: 0.45rem 0.5rem 0.45rem 0.75rem; border: 1px solid #25282b; border-radius: 8px; background: #111315; }
+        .jof-file-icon { flex-shrink: 0; color: #ff9a3c; }
+        .jof-file-name { min-width: 0; overflow: hidden; color: #e5e7eb; font-size: 0.8rem; text-overflow: ellipsis; white-space: nowrap; }
+        .jof-file-size { margin-left: auto; color: #6b7280; font-size: 0.72rem; white-space: nowrap; }
+
+        .jof-logo { display: grid; place-items: center; width: 44px; height: 44px; flex: 0 0 44px; border: 1px solid rgba(255,122,0,0.3); border-radius: 12px; background: linear-gradient(135deg, rgba(255,122,0,0.18), rgba(168,85,247,0.14)); color: #ffb15e; font-size: 0.85rem; font-weight: 800; }
+        .jof-logo-sm { width: 34px; height: 34px; flex-basis: 34px; border-radius: 9px; font-size: 0.7rem; }
+        .jof-soon { color: #f4b43f !important; font-weight: 600; }
+
+        .jof-preview { position: sticky; top: 0; }
+        .jof-preview-body { display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; }
+        .jof-preview-head { display: flex; align-items: center; gap: 0.75rem; }
+        .jof-preview-head strong { font-size: 0.95rem !important; white-space: normal !important; }
+        .jof-facts { display: flex; flex-direction: column; gap: 0.45rem; margin: 0; padding: 0.65rem 0 0; border-top: 1px solid #1d2023; list-style: none; }
+        .jof-facts li { display: flex; align-items: flex-start; gap: 8px; color: #e5e7eb; font-size: 0.78rem; }
+        .jof-facts li svg { flex-shrink: 0; margin-top: 3px; color: #ff9a3c; font-size: 0.72rem; }
+        .jof-preview .is-empty { color: #5b616a !important; }
+        .jof-preview-note { color: #858a90; font-size: 0.72rem; }
+
+        @media (max-width: 1199.98px) {
+          .jof-layout { grid-template-columns: 1fr; }
+          .jof-preview { position: static; }
         }
       `}</style>
-    </div>
+    </AdminPage>
   )
 }
 

@@ -5,7 +5,6 @@ import {
 } from 'react-icons/fa'
 import StudentReports from '@/components/dashboard/StudentReports'
 import PageMetaData from '@/components/PageMetaData'
-import Counter from './components/Counter'
 import DailyEngagement from '@/components/dashboard/DailyEngagement'
 import DailyTimePerformers from '@/components/dashboard/DailyTimePerformers'
 import CourseEnrollmentTrend from '@/components/dashboard/CourseEnrollmentTrend'
@@ -21,13 +20,13 @@ import CodeChallengeFull from '@/components/dashboard/CodeChallengeFull'
 
 /* ─── Tab definitions ────────────────────────────────────── */
 const TABS = [
+  { key: 'student-reports',   label: 'Student Reports',    icon: FaFileAlt,       color: '#ef4444' },
   { key: 'daily-engagement',  label: 'Daily Engagement',   icon: FaChartBar,      color: '#f59e0b' },
   { key: 'course-enrollment', label: 'Course Progress',    icon: FaBookOpen,      color: '#3b82f6' },
   { key: 'ai-interview',      label: 'AI Based Interview', icon: FaRobot,         color: '#a855f7' },
   { key: 'english-practice',  label: 'English Practice',   icon: FaLanguage,      color: '#22c55e' },
   { key: 'assessments',       label: 'Assessments',        icon: FaClipboardList, color: '#06b6d4' },
   { key: 'code-challenge',    label: 'Code Challenge',     icon: FaCode,          color: '#6366f1' },
-  { key: 'student-reports',   label: 'Student Reports',    icon: FaFileAlt,       color: '#ef4444' },
 ] as const
 
 type TabKey   = (typeof TABS)[number]['key']
@@ -36,10 +35,11 @@ type ModalKey = 'daily-engagement' | 'course-enrollment' | 'english-practice' | 
 /* ─── Styles ─────────────────────────────────────────────── */
 const S = {
   page: {
-    background: '#0d0d0d',
+    background: 'transparent',
     minHeight: '100vh',
     color: '#fff',
-    padding: '2rem 1.5rem',
+    margin: '-0.5rem -0.75rem 0',
+    padding: '0 0 2rem',
   } as React.CSSProperties,
 
   /* Tab bar */
@@ -86,7 +86,7 @@ const S = {
 
   /* Content */
   content: {
-    paddingTop: '1.75rem',
+    paddingTop: '1rem',
     minHeight: 380,
   } as React.CSSProperties,
 
@@ -142,7 +142,7 @@ const S = {
 
 /* ─── Page ───────────────────────────────────────────────── */
 const DashboardPage = () => {
-  const [activeTab, setActiveTab] = useState<TabKey>('daily-engagement')
+  const [activeTab, setActiveTab] = useState<TabKey>('student-reports')
   const [openModal, setOpenModal] = useState<ModalKey>(null)
 
   return (
@@ -150,18 +150,15 @@ const DashboardPage = () => {
       <PageMetaData title="Institute Dashboard" />
 
       <div style={S.page}>
-        <div className="container-lg">
-
-          {/* Stats */}
-          <Counter />
+        <div className="container-fluid px-0">
 
           {/* ── Tab bar ───────────────────────────────── */}
-          <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #1e1e1e', marginTop: '1.75rem', overflowX: 'auto', scrollbarWidth: 'none' }}>
-            {TABS.map(({ key, label, icon: Icon, color }) => {
+          <div style={{ display: 'flex', width: '100%', gap: 0, borderBottom: '1px solid #1e1e1e', marginTop: 0, overflowX: 'auto', scrollbarWidth: 'none' }}>
+            {TABS.map(({ key, label, icon: Icon, color }, index) => {
               const active = activeTab === key
               return (
-                <button key={key} onClick={() => setActiveTab(key)} style={{ position: 'relative', background: 'none', border: 'none', padding: '0.65rem 1.25rem 0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.83rem', fontWeight: active ? 700 : 500, color: active ? '#fff' : '#555', transition: 'color 0.15s', whiteSpace: 'nowrap' }}>
-                  <Icon size={13} color={active ? color : '#3a3a3a'} />
+                <button key={key} onClick={() => setActiveTab(key)} style={{ position: 'relative', flex: '1 1 0', justifyContent: 'center', background: 'none', border: 'none', borderRight: index < TABS.length - 1 ? '2px solid rgba(255, 107, 0, 0.55)' : 'none', padding: '0.65rem 0.5rem 0.85rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.83rem', fontWeight: active ? 700 : 500, color: active ? '#fff' : '#555', transition: 'color 0.15s', whiteSpace: 'nowrap' }}>
+                  <Icon size={13} color={color} />
                   {label}
                   {active && <div style={{ position: 'absolute', bottom: 0, left: '10%', width: '80%', height: 2.5, background: color, borderRadius: 2 }} />}
                 </button>

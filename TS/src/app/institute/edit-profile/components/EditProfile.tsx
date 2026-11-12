@@ -2,14 +2,15 @@ import avatar7 from '@/assets/images/avatar/07.jpg'
 import { yupResolver } from '@hookform/resolvers/yup'
 import { useForm, useFieldArray } from 'react-hook-form'
 import {
-  BsPlus, BsX, BsPersonFill, BsBuildingFill, BsBriefcaseFill,
-  BsFileEarmarkTextFill, BsLightningChargeFill, BsBookFill,
-  BsCameraFill, BsCheckCircleFill, BsLockFill,
-} from 'react-icons/bs'
+  FaUserCircle, FaBuilding, FaBriefcase, FaFileAlt, FaGraduationCap, FaCamera, FaCheckCircle,
+  FaLock, FaEnvelope, FaPhoneAlt, FaPlus, FaTimes, FaSpinner, FaExclamationTriangle, FaIdBadge,
+  FaUpload, FaPen, FaUndo,
+} from 'react-icons/fa'
 import * as yup from 'yup'
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, type ReactNode } from 'react'
 import axios from 'axios'
 import { useAuthContext } from '@/context/useAuthContext'
+import { AdminPage, PageHeader, ProgressBar, initialsOf } from '@/components/admin-ui'
 
 type ProfileFormValues = {
   fullName: string
@@ -37,30 +38,32 @@ const contactFormSchema = yup.object({
   department: yup.string().nullable(),
   designation: yup.string().nullable().optional(),
   experience: yup.string().nullable().optional(),
-  education: yup.array().of(yup.object({ value: yup.string().required() })).required(),
-  skills: yup.array().of(yup.object({ value: yup.string().required() })).required(),
+  // Blank rows are allowed — they are dropped on submit (a required rule silently blocked saving)
+  education: yup.array().of(yup.object({ value: yup.string().ensure() })).required(),
+  skills: yup.array().of(yup.object({ value: yup.string().ensure() })).required(),
   profileImage: yup.mixed().notRequired(),
   resume: yup.mixed().notRequired(),
 })
 
-const SectionHeader = ({ icon, title, subtitle }: { icon: React.ReactNode; title: string; subtitle?: string }) => (
-  <div className="ep-section-header">
-    <div className="ep-section-icon">{icon}</div>
-    <div>
-      <div className="ep-section-title">{title}</div>
-      {subtitle && <div className="ep-section-sub">{subtitle}</div>}
-    </div>
-  </div>
-)
+const ABOUT_LIMIT = 600
 
-const LockedField = ({ label, value }: { label: string; value: string }) => (
-  <div className="ep-locked-field">
-    <div className="ep-locked-label">
-      <BsLockFill size={10} className="me-1" style={{ opacity: 0.5 }} />
-      {label}
+/* One kit card per group of fields */
+const Section = ({ icon: Icon, title, subtitle, children, aside }: {
+  icon: typeof FaBuilding; title: string; subtitle?: string; children: ReactNode; aside?: ReactNode
+}) => (
+  <section className="aui-card ep-card">
+    <div className="aui-toolbar">
+      <div className="ep-card-title">
+        <span className="ep-card-icon"><Icon /></span>
+        <div className="aui-toolbar-title">
+          <h3>{title}</h3>
+          {subtitle && <p>{subtitle}</p>}
+        </div>
+      </div>
+      {aside}
     </div>
-    <div className="ep-locked-value">{value || '—'}</div>
-  </div>
+    <div className="ep-card-body">{children}</div>
+  </section>
 )
 
 const EditProfile = () => {
@@ -68,9 +71,13 @@ const EditProfile = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const [preview, setPreview] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [loaded, setLoaded] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [saveError, setSaveError] = useState('')
   const [resumeFileName, setResumeFileName] = useState<string | null>(null)
+  const [skillDraft, setSkillDraft] = useState('')
   const imageInputRef = useRef<HTMLInputElement | null>(null)
+  const resumeInputRef = useRef<HTMLInputElement | null>(null)
 
   const {
     control,
@@ -78,7 +85,7 @@ const EditProfile = () => {
     reset,
     register,
     watch,
-    formState: { errors },
+    formState: { errors, isDirty },
   } = useForm<ProfileFormValues>({
     resolver: yupResolver(contactFormSchema) as any,
     defaultValues: {
@@ -88,13 +95,15 @@ const EditProfile = () => {
     },
   })
 
-  const watchedValues = watch(['fullName', 'email', 'phoneNo'])
+  const values = watch()
 
   const { fields: educationFields, append: appendEducation, remove: removeEducation } =
     useFieldArray<ProfileFormValues, 'education'>({ control, name: 'education' })
 
   const { fields: skillsFields, append: appendSkill, remove: removeSkill } =
     useFieldArray<ProfileFormValues, 'skills'>({ control, name: 'skills' })
+
+  const loadedValues = useRef<ProfileFormValues | null>(null)
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -105,7 +114,7 @@ const EditProfile = () => {
           headers: { Authorization: `Bearer ${user?.token}` },
         })
         const profile = res.data
-        reset({
+        const next: ProfileFormValues = {
           fullName: profile.fullName || '',
           email: profile.email || '',
           phoneNo: profile.phoneNo || '',
@@ -116,8 +125,10 @@ const EditProfile = () => {
           designation: profile.designation || '',
           experience: profile.experience || '',
           education: profile.education?.length ? profile.education.map((v: string) => ({ value: v })) : [{ value: '' }],
-          skills: profile.skills?.length ? profile.skills.map((v: string) => ({ value: v })) : [{ value: '' }],
-        })
+          skills: profile.skills?.length ? profile.skills.map((v: string) => ({ value: v })) : [],
+        }
+        loadedValues.current = next
+        reset(next)
         if (profile.profileImage) {
           const imageUrl = profile.profileImage.startsWith('http')
             ? profile.profileImage
@@ -128,6 +139,7 @@ const EditProfile = () => {
         console.error('Error fetching profile:', err)
       } finally {
         setIsLoading(false)
+        setLoaded(true)
       }
     }
     fetchProfile()
@@ -136,6 +148,7 @@ const EditProfile = () => {
   const onSubmit = async (data: ProfileFormValues) => {
     setIsLoading(true)
     setSaved(false)
+    setSaveError('')
     try {
       const formData = new FormData()
       formData.append('college', data.college || '')
@@ -153,6 +166,10 @@ const EditProfile = () => {
         headers: { Authorization: `Bearer ${user?.token}`, 'Content-Type': 'multipart/form-data' },
       })
 
+      // The saved values become the new baseline for "unsaved changes"
+      loadedValues.current = { ...data, profileImage: undefined, resume: undefined }
+      reset(loadedValues.current)
+      setResumeFileName(null)
       setSaved(true)
       setTimeout(() => setSaved(false), 3000)
 
@@ -164,351 +181,339 @@ const EditProfile = () => {
       } catch {}
     } catch (err) {
       console.error('Error updating profile:', err)
-      alert('Failed to update profile. Please try again.')
+      setSaveError('Failed to update profile. Please try again.')
     } finally {
       setIsLoading(false)
     }
+  }
+
+  const discard = () => {
+    if (loadedValues.current) reset(loadedValues.current)
+    setResumeFileName(null)
+    setSaveError('')
   }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files?.[0]) setPreview(URL.createObjectURL(e.target.files[0]))
   }
 
-  const handleResumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files?.[0]) setResumeFileName(e.target.files[0].name)
+  const addSkill = () => {
+    const skill = skillDraft.trim().replace(/,$/, '')
+    if (!skill) return
+    const exists = (values.skills || []).some(s => s.value.trim().toLowerCase() === skill.toLowerCase())
+    if (!exists) appendSkill({ value: skill })
+    setSkillDraft('')
   }
 
-  const initials = (watchedValues[0] || 'A').split(' ').map((w: string) => w[0]).join('').toUpperCase().slice(0, 2)
+  // Profile completeness — what an institute admin profile should have
+  const checklist = [
+    { label: 'Profile photo', done: !!preview },
+    { label: 'Institute name', done: !!values.college?.trim() },
+    { label: 'Department', done: !!values.department?.trim() },
+    { label: 'Designation', done: !!values.designation?.trim() },
+    { label: 'About you', done: !!values.about?.trim() },
+    { label: 'Education', done: (values.education || []).some(e => e.value?.trim()) },
+  ]
+  const completeness = Math.round((checklist.filter(c => c.done).length / checklist.length) * 100)
+  const imageChanged = !!values.profileImage?.length
+  const hasChanges = isDirty || imageChanged || !!resumeFileName
 
-  if (isLoading && !preview && !watchedValues[0]) {
+  if (!loaded && isLoading) {
     return (
-      <div className="ep-loading">
-        <div className="ep-loading-spinner" />
-        <span>Loading profile…</span>
-      </div>
+      <AdminPage>
+        <div className="aui-empty"><FaSpinner className="aui-spin" size={22} /> Loading profile…</div>
+      </AdminPage>
     )
   }
 
+  const { ref: imageRegisterRef, onChange: imageOnChange, ...imageRest } = register('profileImage')
+  const { ref: resumeRegisterRef, onChange: resumeOnChange, ...resumeRest } = register('resume')
+
   return (
-    <>
-      <form onSubmit={handleSubmit(onSubmit)}>
+    <AdminPage>
+      <PageHeader icon={FaUserCircle} title="My Profile" subtitle="Your details as the institute administrator" />
 
-        {/* ── Banner + Avatar ── */}
-        <div className="ep-banner">
-          <div className="ep-banner-bg" />
-          <div className="ep-banner-inner">
-            <div className="ep-avatar" onClick={() => imageInputRef.current?.click()}>
-              {preview
-                ? <img src={preview} alt="Profile" onError={(e) => { (e.currentTarget as HTMLImageElement).src = avatar7 }} />
-                : <div className="ep-avatar-initials">{initials}</div>
-              }
-              <div className="ep-avatar-overlay">
-                <BsCameraFill size={16} />
-                <span>Change</span>
-              </div>
-            </div>
-            {(() => {
-              const { ref: registerRef, onChange: rhfOnChange, ...profileImageRest } = register('profileImage')
-              return (
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="d-none"
-                  ref={(el) => { registerRef(el); imageInputRef.current = el }}
-                  {...profileImageRest}
-                  onChange={(e) => { rhfOnChange(e); handleImageChange(e) }}
-                />
-              )
-            })()}
-            <div className="ep-banner-meta">
-              <div className="ep-banner-name">{watchedValues[0] || 'Your Name'}</div>
-              <div className="ep-banner-chips">
-                <span className="ep-chip ep-chip-role">Institute Admin</span>
-                <span className="ep-chip ep-chip-photo" onClick={() => imageInputRef.current?.click()}>
-                  <BsCameraFill size={11} /> Update Photo
-                </span>
-              </div>
-              <div className="ep-banner-email">{watchedValues[1] || ''}</div>
-            </div>
-          </div>
+      {saveError && (
+        <div className="aui-alert"><FaExclamationTriangle /> <span>{saveError}</span>
+          <button type="button" className="aui-alert-close" onClick={() => setSaveError('')} aria-label="Dismiss"><FaTimes size={11} /></button>
         </div>
+      )}
 
-        {/* ── Sections ── */}
-        <div className="ep-body">
-
-          {/* Account Information (locked) */}
-          <div className="ep-section">
-            <SectionHeader
-              icon={<BsPersonFill />}
-              title="Account Information"
-              subtitle="These fields are managed by the system and cannot be changed"
-            />
-            <div className="ep-grid ep-grid-3">
-              <LockedField label="Full Name" value={watchedValues[0]} />
-              <LockedField label="Email Address" value={watchedValues[1]} />
-              <LockedField label="Phone Number" value={watchedValues[2]} />
-            </div>
-          </div>
-
-          <div className="ep-divider" />
-
-          {/* Institute Details */}
-          <div className="ep-section">
-            <SectionHeader
-              icon={<BsBuildingFill />}
-              title="Institute Details"
-              subtitle="Information about your institution"
-            />
-            <div className="ep-grid ep-grid-2">
-              <div className="ep-field">
-                <label className="ep-label">College / Institute Name</label>
-                <input className="ep-input" {...register('college')} placeholder="e.g., IIT Bombay" />
-              </div>
-              <div className="ep-field">
-                <label className="ep-label">Department</label>
-                <input className="ep-input" {...register('department')} placeholder="e.g., Computer Science" />
-              </div>
-              <div className="ep-field">
-                <label className="ep-label">Joining Year</label>
-                <input className="ep-input" {...register('joiningYear')} placeholder="e.g., 2020" />
-              </div>
-            </div>
-          </div>
-
-          <div className="ep-divider" />
-
-          {/* Professional Info */}
-          <div className="ep-section">
-            <SectionHeader
-              icon={<BsBriefcaseFill />}
-              title="Professional Information"
-              subtitle="Your role and experience details"
-            />
-            <div className="ep-grid ep-grid-2">
-              <div className="ep-field">
-                <label className="ep-label">Designation</label>
-                <input className="ep-input" {...register('designation')} placeholder="e.g., Senior Full Stack Developer" />
-              </div>
-              <div className="ep-field">
-                <label className="ep-label">Experience</label>
-                <input className="ep-input" {...register('experience')} placeholder="e.g., 12 Years" />
-              </div>
-            </div>
-          </div>
-
-          <div className="ep-divider" />
-
-          {/* About */}
-          <div className="ep-section">
-            <SectionHeader
-              icon={<BsPersonFill />}
-              title="About"
-              subtitle="A brief description about yourself"
-            />
-            <div className="ep-field">
-              <label className="ep-label">Bio</label>
-              <textarea
-                className="ep-textarea"
-                rows={4}
-                {...register('about')}
-                placeholder="Tell us about your background, expertise, and goals…"
-              />
-              {errors.about && <div className="ep-error">{errors.about.message}</div>}
-            </div>
-          </div>
-
-          <div className="ep-divider" />
-
-          {/* Education */}
-          <div className="ep-section">
-            <SectionHeader
-              icon={<BsBookFill />}
-              title="Education"
-              subtitle="Your academic qualifications"
-            />
-            <div className="ep-field">
-              {educationFields.map((item, index) => (
-                <div key={item.id} className="ep-tag-row">
-                  <input
-                    className="ep-input"
-                    {...register(`education.${index}.value` as const)}
-                    placeholder="e.g., B.Tech in Computer Science — IIT Bombay, 2020"
-                  />
-                  {educationFields.length > 1 && (
-                    <button type="button" className="ep-remove-btn" onClick={() => removeEducation(index)}>
-                      <BsX size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button type="button" className="ep-add-btn" onClick={() => appendEducation({ value: '' })}>
-                <BsPlus size={16} /> Add Education
-              </button>
-            </div>
-          </div>
-
-          <div className="ep-divider" />
-
-          {/* Skills */}
-          <div className="ep-section">
-            <SectionHeader
-              icon={<BsLightningChargeFill />}
-              title="Skills"
-              subtitle="Technologies and tools you work with"
-            />
-            <div className="ep-field">
-              {skillsFields.map((item, index) => (
-                <div key={item.id} className="ep-tag-row">
-                  <input
-                    className="ep-input"
-                    {...register(`skills.${index}.value` as const)}
-                    placeholder="e.g., JavaScript, React, Node.js"
-                  />
-                  {skillsFields.length > 1 && (
-                    <button type="button" className="ep-remove-btn" onClick={() => removeSkill(index)}>
-                      <BsX size={16} />
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button type="button" className="ep-add-btn" onClick={() => appendSkill({ value: '' })}>
-                <BsPlus size={16} /> Add Skill
-              </button>
-            </div>
-          </div>
-
-          <div className="ep-divider" />
-
-          {/* Documents */}
-          <div className="ep-section">
-            <SectionHeader
-              icon={<BsFileEarmarkTextFill />}
-              title="Documents"
-              subtitle="Upload your resume or CV"
-            />
-            <div className="ep-upload-zone" onClick={() => document.getElementById('ep-resume-input')?.click()}>
-              <BsFileEarmarkTextFill size={28} style={{ color: '#ff7a00', opacity: 0.8 }} />
-              <div className="ep-upload-text">
-                {resumeFileName
-                  ? <><strong>{resumeFileName}</strong><br /><span>Click to replace</span></>
-                  : <><strong>Click to upload resume</strong><br /><span>PDF format · Max 5 MB</span></>
-                }
-              </div>
-              <input
-                id="ep-resume-input"
-                type="file"
-                accept=".pdf"
-                className="d-none"
-                {...register('resume')}
-                onChange={handleResumeChange}
-              />
-            </div>
-          </div>
-
-          {/* Footer Actions */}
-          <div className="ep-footer">
-            {saved && (
-              <div className="ep-success">
-                <BsCheckCircleFill size={15} />
-                Profile updated successfully
-              </div>
-            )}
-            <button type="submit" className="ep-save-btn" disabled={isLoading}>
-              {isLoading
-                ? <><span className="ep-spinner" /> Saving…</>
-                : 'Save Changes'
-              }
+      <form className="ep-layout" onSubmit={handleSubmit(onSubmit)}>
+        {/* ── Profile summary ── */}
+        <aside className="ep-side">
+          <div className="aui-card ep-profile">
+            <button type="button" className="ep-avatar" onClick={() => imageInputRef.current?.click()} aria-label="Change profile photo">
+              {preview
+                ? <img src={preview} alt="" onError={(e) => { (e.currentTarget as HTMLImageElement).src = avatar7 }} />
+                : <span className="ep-avatar-initials">{initialsOf(values.fullName || 'A')}</span>}
+              <span className="ep-avatar-overlay"><FaCamera /> Change</span>
             </button>
+            <input
+              type="file"
+              accept="image/*"
+              className="d-none"
+              ref={(el) => { imageRegisterRef(el); imageInputRef.current = el }}
+              {...imageRest}
+              onChange={(e) => { imageOnChange(e); handleImageChange(e) }}
+            />
+            <h2>{values.fullName || 'Your name'}</h2>
+            <span className="aui-badge aui-badge-orange"><FaIdBadge size={9} /> Institute Admin</span>
+            {(values.designation || values.college) && (
+              <p className="ep-role">{[values.designation, values.college].filter(Boolean).join(' · ')}</p>
+            )}
+
+            <ul className="ep-contact">
+              <li><FaEnvelope /> <span>{values.email || '—'}</span></li>
+              <li><FaPhoneAlt /> <span>{values.phoneNo || '—'}</span></li>
+              {values.department && <li><FaBuilding /> <span>{values.department}</span></li>}
+            </ul>
+
+            <button type="button" className="aui-btn aui-btn-sm ep-photo-btn" onClick={() => imageInputRef.current?.click()}>
+              <FaCamera size={11} /> {preview ? 'Change photo' : 'Upload photo'}
+            </button>
+          </div>
+
+          <div className="aui-card ep-complete">
+            <div className="ep-complete-head">
+              <strong>Profile completeness</strong>
+              <span className={completeness === 100 ? 'is-done' : ''}>{completeness}%</span>
+            </div>
+            <ProgressBar value={completeness} tone={completeness === 100 ? 'green' : 'orange'} label="" />
+            <ul>
+              {checklist.map(item => (
+                <li key={item.label} className={item.done ? 'is-done' : ''}>
+                  {item.done ? <FaCheckCircle /> : <span className="ep-dot" />} {item.label}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </aside>
+
+        {/* ── Editable sections ── */}
+        <div className="ep-main">
+          <Section icon={FaLock} title="Account" subtitle="Managed by Eklav — contact support to change these">
+            <div className="ep-grid-3">
+              {[
+                { label: 'Full name', value: values.fullName },
+                { label: 'Email address', value: values.email },
+                { label: 'Phone number', value: values.phoneNo },
+              ].map(f => (
+                <div key={f.label} className="aui-field">
+                  <label className="aui-label">{f.label}</label>
+                  <div className="ep-locked"><FaLock size={10} /> <span>{f.value || '—'}</span></div>
+                </div>
+              ))}
+            </div>
+          </Section>
+
+          <Section icon={FaBuilding} title="Institute" subtitle="Shown to your students and faculty">
+            <div className="aui-field">
+              <label className="aui-label" htmlFor="ep-college">College / institute name</label>
+              <input id="ep-college" className="aui-input" {...register('college')} placeholder="e.g. Sri Venkateswara College of Engineering" />
+            </div>
+            <div className="aui-field-row">
+              <div className="aui-field">
+                <label className="aui-label" htmlFor="ep-dept">Department</label>
+                <input id="ep-dept" className="aui-input" {...register('department')} placeholder="e.g. Training & Placement Cell" />
+              </div>
+              <div className="aui-field">
+                <label className="aui-label" htmlFor="ep-year">With the institute since</label>
+                <input id="ep-year" className="aui-input" inputMode="numeric" maxLength={4} {...register('joiningYear')} placeholder="e.g. 2018" />
+              </div>
+            </div>
+          </Section>
+
+          <Section icon={FaBriefcase} title="Role & Experience">
+            <div className="aui-field-row">
+              <div className="aui-field">
+                <label className="aui-label" htmlFor="ep-desig">Designation</label>
+                <input id="ep-desig" className="aui-input" {...register('designation')} placeholder="e.g. Training & Placement Officer" />
+              </div>
+              <div className="aui-field">
+                <label className="aui-label" htmlFor="ep-exp">Experience</label>
+                <input id="ep-exp" className="aui-input" {...register('experience')} placeholder="e.g. 12 years" />
+              </div>
+            </div>
+            <div className="aui-field mb-0">
+              <label className="aui-label" htmlFor="ep-about">
+                About you
+                <span className={`ep-counter${(values.about?.length || 0) > ABOUT_LIMIT ? ' is-over' : ''}`}>{values.about?.length || 0} / {ABOUT_LIMIT}</span>
+              </label>
+              <textarea id="ep-about" className="aui-input ep-textarea" rows={4} {...register('about')} placeholder="A short introduction — your responsibilities, focus areas and goals for your students." />
+              {errors.about && <p className="aui-error">{errors.about.message}</p>}
+            </div>
+          </Section>
+
+          <Section icon={FaGraduationCap} title="Qualifications & Expertise">
+            <div className="aui-field">
+              <label className="aui-label">Education</label>
+              <div className="ep-rows">
+                {educationFields.map((item, index) => (
+                  <div key={item.id} className="ep-row">
+                    <input className="aui-input" {...register(`education.${index}.value` as const)} placeholder="e.g. M.Tech, Computer Science — JNTU, 2012" />
+                    {educationFields.length > 1 && (
+                      <button type="button" className="aui-icon-btn ep-remove" onClick={() => removeEducation(index)} aria-label="Remove education"><FaTimes size={11} /></button>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button type="button" className="aui-btn aui-btn-sm ep-add" onClick={() => appendEducation({ value: '' })}><FaPlus size={10} /> Add qualification</button>
+            </div>
+
+            <div className="aui-field mb-0">
+              <label className="aui-label" htmlFor="ep-skill">Areas of expertise</label>
+              <div className="ep-chips">
+                {skillsFields.map((item, index) => values.skills?.[index]?.value?.trim() ? (
+                  <span key={item.id} className="ep-chip">
+                    {values.skills[index].value}
+                    <button type="button" onClick={() => removeSkill(index)} aria-label={`Remove ${values.skills[index].value}`}><FaTimes size={8} /></button>
+                  </span>
+                ) : null)}
+                <input
+                  id="ep-skill"
+                  className="ep-chip-input"
+                  value={skillDraft}
+                  onChange={e => setSkillDraft(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addSkill() } }}
+                  onBlur={addSkill}
+                  placeholder={skillsFields.some((_, i) => values.skills?.[i]?.value?.trim()) ? 'Add another…' : 'e.g. Placement training, Data Structures'}
+                />
+              </div>
+              <p className="aui-hint">Press Enter or comma to add</p>
+            </div>
+          </Section>
+
+          <Section icon={FaFileAlt} title="Documents" subtitle="Optional — attach your CV for records">
+            <input
+              type="file"
+              accept=".pdf"
+              className="d-none"
+              ref={(el) => { resumeRegisterRef(el); resumeInputRef.current = el }}
+              {...resumeRest}
+              onChange={(e) => { resumeOnChange(e); if (e.target.files?.[0]) setResumeFileName(e.target.files[0].name) }}
+            />
+            {resumeFileName ? (
+              <div className="ep-file">
+                <span className="ep-file-icon"><FaFileAlt /></span>
+                <div className="aui-stack"><strong>{resumeFileName}</strong><small>Will be uploaded when you save</small></div>
+                <button type="button" className="aui-btn aui-btn-sm" onClick={() => resumeInputRef.current?.click()}>Replace</button>
+              </div>
+            ) : (
+              <button type="button" className="ep-drop" onClick={() => resumeInputRef.current?.click()}>
+                <FaUpload /> <span><strong>Upload CV / resume</strong><small>PDF · up to 5 MB</small></span>
+              </button>
+            )}
+          </Section>
+
+          {/* Sticky save bar */}
+          <div className={`ep-savebar${hasChanges ? ' is-dirty' : ''}`}>
+            <span className="ep-savebar-status">
+              {saved
+                ? <><FaCheckCircle className="is-ok" /> Profile updated</>
+                : hasChanges
+                  ? <><FaPen /> You have unsaved changes</>
+                  : <><FaCheckCircle className="is-muted" /> All changes saved</>}
+            </span>
+            <div className="ep-savebar-actions">
+              {hasChanges && (
+                <button type="button" className="aui-btn" onClick={discard} disabled={isLoading}><FaUndo size={10} /> Discard</button>
+              )}
+              <button type="submit" className="aui-btn aui-btn-primary" disabled={isLoading || !hasChanges}>
+                {isLoading ? <><FaSpinner className="aui-spin" style={{ color: '#fff' }} /> Saving…</> : 'Save Changes'}
+              </button>
+            </div>
           </div>
         </div>
       </form>
 
       <style>{`
-        /* ── Container ── */
-        .ep-loading { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 80px 0; color: #6b7280; font-size: 0.9rem; }
-        .ep-loading-spinner { width: 22px; height: 22px; border: 2px solid #1f1f1f; border-top-color: #ff7a00; border-radius: 50%; animation: ep-spin 0.7s linear infinite; }
+        .ep-layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 1.25rem; align-items: start; margin-top: 1.25rem; }
+        .ep-side { position: sticky; top: 0; display: flex; flex-direction: column; gap: 1rem; }
+        .ep-side .aui-card, .ep-main > .aui-card:first-child { margin-top: 0; }
 
-        /* ── Banner ── */
-        .ep-banner { position: relative; border-radius: 16px 16px 0 0; overflow: hidden; border: 1px solid #1f1f1f; border-bottom: none; }
-        .ep-banner-bg { position: absolute; inset: 0; background: linear-gradient(135deg, #1c0900 0%, #2e1500 55%, #111 100%); }
-        .ep-banner-bg::after { content: ''; position: absolute; inset: 0; background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ff7a00' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E"); }
-        .ep-banner-inner { position: relative; z-index: 1; display: flex; align-items: center; gap: 24px; padding: 28px 32px; }
-
-        /* ── Avatar ── */
-        .ep-avatar { width: 88px; height: 88px; border-radius: 50%; border: 2.5px solid #ff7a0044; box-shadow: 0 0 0 4px #1a1a1a, 0 8px 28px rgba(0,0,0,0.7); cursor: pointer; position: relative; overflow: hidden; background: linear-gradient(135deg, #ff7a00, #ff4500); flex-shrink: 0; }
+        .ep-profile { display: flex; flex-direction: column; align-items: center; padding: 1.5rem 1.25rem 1.25rem; text-align: center; }
+        .ep-avatar { position: relative; width: 96px; height: 96px; margin-bottom: 0.85rem; padding: 0; overflow: hidden; border: 2px solid rgba(255,122,0,0.45); border-radius: 50%; background: #25201b; box-shadow: 0 0 0 4px #0e1012, 0 0 0 5px #25282b; cursor: pointer; }
         .ep-avatar img { width: 100%; height: 100%; object-fit: cover; }
-        .ep-avatar-initials { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; font-weight: 800; color: #fff; letter-spacing: -1px; }
-        .ep-avatar-overlay { position: absolute; inset: 0; background: rgba(0,0,0,0.6); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; color: #fff; font-size: 0.65rem; font-weight: 600; opacity: 0; transition: opacity 0.2s; }
-        .ep-avatar:hover .ep-avatar-overlay { opacity: 1; }
+        .ep-avatar-initials { display: grid; place-items: center; width: 100%; height: 100%; color: #ffb15e; font-size: 1.9rem; font-weight: 800; }
+        .ep-avatar-overlay { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; background: rgba(0,0,0,0.6); color: #fff; font-size: 0.68rem; font-weight: 650; opacity: 0; transition: opacity 0.15s; }
+        .ep-avatar:hover .ep-avatar-overlay, .ep-avatar:focus-visible .ep-avatar-overlay { opacity: 1; }
+        .ep-profile h2 { margin: 0 0 0.45rem; color: #fff; font-size: 1.1rem; font-weight: 750; }
+        .ep-role { margin: 0.6rem 0 0; color: #a6abb0; font-size: 0.78rem; line-height: 1.45; }
+        .ep-contact { width: 100%; margin: 1rem 0 0; padding: 0.85rem 0 0; border-top: 1px solid #202326; list-style: none; text-align: left; }
+        .ep-contact li { display: flex; align-items: center; gap: 9px; padding: 4px 0; color: #c3c7ca; font-size: 0.78rem; }
+        .ep-contact li svg { flex: 0 0 auto; color: #6b7280; font-size: 0.72rem; }
+        .ep-contact li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ep-photo-btn { width: 100%; justify-content: center; margin-top: 0.85rem; }
 
-        /* ── Banner meta ── */
-        .ep-banner-meta { flex: 1; min-width: 0; }
-        .ep-banner-name { font-size: 1.35rem; font-weight: 800; color: #f9fafb; line-height: 1.2; letter-spacing: -0.02em; margin-bottom: 10px; }
-        .ep-banner-chips { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 7px; }
-        .ep-chip { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 20px; font-size: 0.71rem; font-weight: 600; letter-spacing: 0.02em; }
-        .ep-chip-role { background: #ff7a0020; border: 1px solid #ff7a0045; color: #ff9a40; }
-        .ep-chip-photo { background: #ffffff08; border: 1px solid #ffffff15; color: #9ca3af; cursor: pointer; transition: all 0.15s; }
-        .ep-chip-photo:hover { border-color: #ff7a0055; color: #ff9a40; background: #ff7a0010; }
-        .ep-banner-email { font-size: 0.8rem; color: #6b7280; }
+        .ep-complete { padding: 1rem 1.1rem; }
+        .ep-complete-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.55rem; }
+        .ep-complete-head strong { color: #e5e7eb; font-size: 0.82rem; }
+        .ep-complete-head span { color: #ff9a3c; font-size: 0.82rem; font-weight: 800; }
+        .ep-complete-head span.is-done { color: #45dd75; }
+        .ep-complete .aui-progress > span { display: none; }
+        .ep-complete ul { margin: 0.75rem 0 0; padding: 0; list-style: none; }
+        .ep-complete li { display: flex; align-items: center; gap: 8px; padding: 3px 0; color: #858a90; font-size: 0.76rem; }
+        .ep-complete li.is-done { color: #c3c7ca; }
+        .ep-complete li svg { color: #45dd75; font-size: 0.72rem; }
+        .ep-dot { width: 10px; height: 10px; border: 1.5px solid #4b5056; border-radius: 50%; }
 
-        /* ── Body ── */
-        .ep-body { background: #0d0d0d; border: 1px solid #1f1f1f; border-top: none; border-radius: 0 0 16px 16px; padding: 8px 0 0; }
+        .ep-main { display: flex; flex-direction: column; gap: 1rem; min-width: 0; }
+        .ep-main > .aui-card { margin-top: 0; }
+        .ep-card-title { display: flex; align-items: center; gap: 10px; }
+        .ep-card-icon { display: grid; place-items: center; width: 30px; height: 30px; border: 1px solid rgba(255,122,0,0.3); border-radius: 8px; background: rgba(255,122,0,0.1); color: #ff9a3c; font-size: 0.78rem; }
+        .ep-card-body { padding: 1.1rem 1.1rem 0.2rem; }
+        .ep-card-body > .aui-field.mb-0, .ep-card-body > :last-child { margin-bottom: 1rem; }
+        .ep-grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0 1rem; }
 
-        /* ── Section ── */
-        .ep-section { padding: 28px 32px; }
-        .ep-section-header { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 22px; }
-        .ep-section-icon { width: 36px; height: 36px; border-radius: 10px; background: #ff7a0015; border: 1px solid #ff7a0030; color: #ff7a00; display: flex; align-items: center; justify-content: center; font-size: 15px; flex-shrink: 0; margin-top: 1px; }
-        .ep-section-title { font-size: 0.95rem; font-weight: 700; color: #f3f4f6; line-height: 1.3; }
-        .ep-section-sub { font-size: 0.78rem; color: #6b7280; margin-top: 2px; }
-        .ep-divider { border: none; border-top: 1px solid #161616; margin: 0; }
+        .ep-locked { display: flex; align-items: center; gap: 8px; height: 40px; padding: 0 0.8rem; overflow: hidden; border: 1px dashed #2c3034; border-radius: 8px; background: #111315; color: #a6abb0; font-size: 0.84rem; }
+        .ep-locked svg { flex: 0 0 auto; color: #5b616a; }
+        .ep-locked span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-        /* ── Grid ── */
-        .ep-grid { display: grid; gap: 16px; }
-        .ep-grid-2 { grid-template-columns: repeat(2, 1fr); }
-        .ep-grid-3 { grid-template-columns: repeat(3, 1fr); }
-        @media (max-width: 768px) { .ep-grid-2, .ep-grid-3 { grid-template-columns: 1fr; } }
+        .ep-textarea { height: auto; min-height: 104px; padding: 0.65rem 0.8rem; line-height: 1.55; resize: vertical; }
+        .ep-counter { margin-left: auto; color: #6b7280; font-size: 0.7rem; font-weight: 600; }
+        .ep-counter.is-over { color: #fb737a; }
 
-        /* ── Locked field ── */
-        .ep-locked-field { background: #080808; border: 1px solid #1a1a1a; border-radius: 10px; padding: 12px 14px; }
-        .ep-locked-label { font-size: 0.7rem; font-weight: 600; color: #4b5563; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; display: flex; align-items: center; }
-        .ep-locked-value { font-size: 0.88rem; color: #6b7280; font-weight: 500; }
+        .ep-rows { display: flex; flex-direction: column; gap: 8px; }
+        .ep-row { display: flex; gap: 8px; }
+        .ep-remove { height: 40px; width: 40px; }
+        .ep-remove:hover { border-color: rgba(251,95,103,0.55) !important; color: #fb737a !important; }
+        .ep-add { align-self: flex-start; margin-top: 2px; }
 
-        /* ── Fields ── */
-        .ep-field { display: flex; flex-direction: column; gap: 6px; }
-        .ep-label { font-size: 0.78rem; font-weight: 600; color: #9ca3af; text-transform: uppercase; letter-spacing: 0.05em; }
-        .ep-input { background: #111; border: 1px solid #222; border-radius: 10px; padding: 10px 14px; color: #f3f4f6; font-size: 0.88rem; outline: none; transition: border-color 0.15s, box-shadow 0.15s; width: 100%; }
-        .ep-input::placeholder { color: #4b5563; }
-        .ep-input:focus { border-color: #ff7a0066; box-shadow: 0 0 0 3px #ff7a0015; }
-        .ep-textarea { background: #111; border: 1px solid #222; border-radius: 10px; padding: 12px 14px; color: #f3f4f6; font-size: 0.88rem; outline: none; transition: border-color 0.15s, box-shadow 0.15s; width: 100%; resize: vertical; font-family: inherit; }
-        .ep-textarea::placeholder { color: #4b5563; }
-        .ep-textarea:focus { border-color: #ff7a0066; box-shadow: 0 0 0 3px #ff7a0015; }
-        .ep-error { font-size: 0.75rem; color: #f87171; margin-top: 4px; }
+        .ep-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 44px; padding: 6px 8px; border: 1px solid #34383d; border-radius: 8px; background: #17191c; }
+        .ep-chips:focus-within { border-color: rgba(255,122,0,0.75); box-shadow: 0 0 0 3px rgba(255,122,0,0.12); }
+        .ep-chip { display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 6px 0 10px; border: 1px solid rgba(255,122,0,0.35); border-radius: 99px; background: rgba(255,122,0,0.1); color: #ffb15e; font-size: 0.76rem; font-weight: 600; }
+        .ep-chip button { display: grid; place-items: center; width: 18px; height: 18px; padding: 0; border: 0; border-radius: 50%; background: rgba(255,255,255,0.08); color: inherit; }
+        .ep-chip button:hover { background: rgba(251,95,103,0.3); color: #fff; }
+        .ep-chip-input { flex: 1; min-width: 160px; height: 28px; border: 0; outline: none; background: transparent; color: #f1f5f9; font-size: 0.84rem; }
+        .ep-chip-input::placeholder { color: #5b616a; }
 
-        /* ── Tag rows (education / skills) ── */
-        .ep-tag-row { display: flex; gap: 8px; margin-bottom: 8px; }
-        .ep-tag-row .ep-input { flex: 1; }
-        .ep-remove-btn { width: 38px; height: 38px; min-width: 38px; border-radius: 8px; border: 1px solid #2c2c2c; background: #141414; color: #6b7280; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.15s; }
-        .ep-remove-btn:hover { border-color: #ef4444; background: #1a0808; color: #ef4444; }
-        .ep-add-btn { display: inline-flex; align-items: center; gap: 5px; background: #141414; border: 1px dashed #2c2c2c; border-radius: 8px; padding: 7px 14px; font-size: 0.8rem; color: #9ca3af; cursor: pointer; transition: all 0.15s; margin-top: 2px; }
-        .ep-add-btn:hover { border-color: #ff7a00; color: #ff7a00; background: #ff7a0008; }
+        .ep-drop { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; min-height: 76px; border: 1.5px dashed #3a3f45; border-radius: 10px; background: #111315; color: #ff9a3c; }
+        .ep-drop:hover { border-color: rgba(255,122,0,0.7); background: rgba(255,122,0,0.05); }
+        .ep-drop span { display: flex; flex-direction: column; text-align: left; }
+        .ep-drop strong { color: #e5e7eb; font-size: 0.82rem; }
+        .ep-drop small { color: #6b7280; font-size: 0.7rem; }
+        .ep-file { display: flex; align-items: center; gap: 12px; padding: 0.75rem 0.9rem; border: 1px solid #25282b; border-radius: 10px; background: #111315; }
+        .ep-file .aui-stack { flex: 1; }
+        .ep-file-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 9px; background: rgba(251,95,103,0.12); color: #fb737a; }
 
-        /* ── Upload zone ── */
-        .ep-upload-zone { border: 1.5px dashed #2c2c2c; border-radius: 12px; background: #090909; padding: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; cursor: pointer; transition: all 0.2s; text-align: center; }
-        .ep-upload-zone:hover { border-color: #ff7a0066; background: #ff7a0008; }
-        .ep-upload-text strong { font-size: 0.88rem; color: #d1d5db; font-weight: 600; }
-        .ep-upload-text span { font-size: 0.76rem; color: #6b7280; }
-        .ep-upload-text { display: flex; flex-direction: column; gap: 3px; }
+        .ep-savebar { position: sticky; bottom: 0; z-index: 5; display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding: 0.75rem 1rem; border: 1px solid #25282b; border-radius: 12px; background: rgba(17,19,21,0.92); backdrop-filter: blur(8px); box-shadow: 0 -10px 28px rgba(0,0,0,0.45); }
+        .ep-savebar.is-dirty { border-color: rgba(255,122,0,0.4); }
+        .ep-savebar-status { display: inline-flex; align-items: center; gap: 8px; color: #c3c7ca; font-size: 0.8rem; }
+        .ep-savebar-status svg { color: #ff9a3c; font-size: 0.75rem; }
+        .ep-savebar-status svg.is-ok { color: #45dd75; }
+        .ep-savebar-status svg.is-muted { color: #4b5056; }
+        .ep-savebar-actions { display: flex; gap: 8px; }
 
-        /* ── Footer ── */
-        .ep-footer { padding: 20px 32px 28px; display: flex; align-items: center; justify-content: flex-end; gap: 16px; border-top: 1px solid #161616; margin-top: 8px; }
-        .ep-success { display: flex; align-items: center; gap: 7px; font-size: 0.83rem; color: #34d399; font-weight: 500; }
-        .ep-save-btn { background: linear-gradient(135deg, #ff7a00, #ff5500); border: none; border-radius: 10px; padding: 10px 28px; color: #fff; font-size: 0.88rem; font-weight: 700; cursor: pointer; display: flex; align-items: center; gap: 8px; transition: opacity 0.15s, transform 0.1s; letter-spacing: 0.02em; box-shadow: 0 4px 14px #ff7a0033; }
-        .ep-save-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .ep-save-btn:not(:disabled):hover { opacity: 0.9; transform: translateY(-1px); }
-        .ep-spinner { width: 14px; height: 14px; border: 2px solid #ffffff55; border-top-color: #fff; border-radius: 50%; animation: ep-spin 0.6s linear infinite; }
-        @keyframes ep-spin { to { transform: rotate(360deg); } }
+        @media (max-width: 991.98px) {
+          .ep-layout { grid-template-columns: 1fr; }
+          .ep-side { position: static; }
+        }
+        @media (max-width: 767.98px) {
+          .ep-grid-3 { grid-template-columns: 1fr; }
+        }
       `}</style>
-    </>
+    </AdminPage>
   )
 }
 

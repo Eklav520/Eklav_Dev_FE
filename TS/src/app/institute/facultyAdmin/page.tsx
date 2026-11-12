@@ -3,7 +3,12 @@ import { useAuthContext } from '@/context/useAuthContext'
 import PageMetaData from '@/components/PageMetaData'
 import ReactApexChart from 'react-apexcharts'
 import { Col, Modal, Row } from 'react-bootstrap'
-import { FaBookOpen, FaChartBar, FaLanguage, FaRobot, FaClipboardList, FaFileAlt } from 'react-icons/fa'
+import {
+  FaBookOpen, FaChartBar, FaLanguage, FaRobot, FaClipboardList, FaFileAlt, FaChalkboardTeacher, FaUserTie,
+  FaCheckCircle, FaUsers, FaPlus, FaExclamationTriangle, FaTimes, FaSpinner, FaSearch, FaUserPlus, FaEye,
+  FaEyeSlash, FaTrash,
+} from 'react-icons/fa'
+import { AdminPage, PageHeader, StatCards, SearchInput, AdminSelect, EmptyState, initialsOf, toOptions } from '@/components/admin-ui'
 import DailyTimePerformers from '@/components/dashboard/DailyTimePerformers'
 import DailyEngagement from '@/components/dashboard/DailyEngagement'
 import CourseEnrollmentTrend from '@/components/dashboard/CourseEnrollmentTrend'
@@ -51,281 +56,6 @@ interface ConflictInfo {
 }
 
 
-/* ─── Styles ─────────────────────────────────────────────── */
-const S: Record<string, React.CSSProperties> = {
-  page: {
-    background: '#0d0d0d',
-    minHeight: '100vh',
-    color: '#e8e8e8',
-    padding: '2rem 1.5rem',
-    fontFamily: 'inherit',
-  },
-  header: {
-    marginBottom: '2rem',
-  },
-  title: {
-    fontSize: '1.6rem',
-    fontWeight: 700,
-    color: '#fff',
-    margin: 0,
-  },
-  subtitle: {
-    color: '#666',
-    fontSize: '0.85rem',
-    marginTop: '0.3rem',
-  },
-  accentBtn: {
-    background: '#ff7a00',
-    border: 'none',
-    color: '#fff',
-    fontWeight: 600,
-    borderRadius: '8px',
-    padding: '0.55rem 1.2rem',
-    fontSize: '0.85rem',
-    cursor: 'pointer',
-    transition: 'opacity 0.15s',
-  },
-  outlineBtn: {
-    background: 'transparent',
-    border: '1px solid #333',
-    color: '#bbb',
-    fontWeight: 500,
-    borderRadius: '8px',
-    padding: '0.5rem 1rem',
-    fontSize: '0.82rem',
-    cursor: 'pointer',
-  },
-  dangerBtn: {
-    background: 'transparent',
-    border: '1px solid #c0392b',
-    color: '#e74c3c',
-    fontWeight: 500,
-    borderRadius: '8px',
-    padding: '0.4rem 0.8rem',
-    fontSize: '0.8rem',
-    cursor: 'pointer',
-  },
-  card: {
-    background: '#141414',
-    border: '1px solid #1f1f1f',
-    borderRadius: '14px',
-    padding: '1.4rem',
-  },
-  cardGrid: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-    gap: '1.2rem',
-    marginTop: '1.5rem',
-  },
-  adminCard: {
-    background: '#141414',
-    border: '1px solid #1f1f1f',
-    borderRadius: '14px',
-    padding: '1.4rem',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.8rem',
-  },
-  avatar: {
-    width: '48px',
-    height: '48px',
-    borderRadius: '50%',
-    background: 'linear-gradient(135deg, #ff7a00, #ff4500)',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    fontWeight: 700,
-    fontSize: '1.1rem',
-    color: '#fff',
-    flexShrink: 0,
-  },
-  badge: {
-    display: 'inline-block',
-    background: 'rgba(255,122,0,0.15)',
-    color: '#ff7a00',
-    border: '1px solid rgba(255,122,0,0.3)',
-    borderRadius: '20px',
-    padding: '0.2rem 0.65rem',
-    fontSize: '0.75rem',
-    fontWeight: 600,
-  },
-  inputGroup: {
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0.35rem',
-    marginBottom: '1rem',
-  },
-  label: {
-    fontSize: '0.8rem',
-    color: '#888',
-    fontWeight: 500,
-  },
-  input: {
-    background: '#1a1a1a',
-    border: '1px solid #2a2a2a',
-    borderRadius: '8px',
-    color: '#e8e8e8',
-    padding: '0.6rem 0.9rem',
-    fontSize: '0.85rem',
-    width: '100%',
-    outline: 'none',
-  },
-  select: {
-    background: '#1a1a1a',
-    border: '1px solid #2a2a2a',
-    borderRadius: '8px',
-    color: '#e8e8e8',
-    padding: '0.6rem 0.9rem',
-    fontSize: '0.85rem',
-    width: '100%',
-    outline: 'none',
-  },
-  divider: {
-    border: 'none',
-    borderTop: '1px solid #1f1f1f',
-    margin: '1.5rem 0',
-  },
-  overlay: {
-    position: 'fixed',
-    inset: 0,
-    background: 'rgba(0,0,0,0.85)',
-    display: 'flex',
-    alignItems: 'stretch',
-    justifyContent: 'center',
-    zIndex: 9999,
-    padding: 0,
-  },
-  modal: {
-    background: '#0f0f0f',
-    border: 'none',
-    borderRadius: 0,
-    width: '100%',
-    maxWidth: '100%',
-    height: '100%',
-    display: 'flex',
-    flexDirection: 'column',
-    overflow: 'hidden',
-  },
-  modalHeader: {
-    padding: '1rem 1.5rem',
-    borderBottom: '1px solid #1a1a1a',
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    background: '#141414',
-    flexShrink: 0,
-  },
-  modalBody: {
-    padding: '1.25rem 1.5rem',
-    overflowY: 'auto',
-    flex: 1,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '1rem',
-  },
-  modalFooter: {
-    padding: '1rem 1.5rem',
-    borderTop: '1px solid #1a1a1a',
-    background: '#141414',
-    display: 'flex',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    gap: '0.75rem',
-    flexShrink: 0,
-  },
-  statsRow: {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))',
-    gap: '1rem',
-    marginBottom: '1.5rem',
-  },
-  statCard: {
-    background: '#141414',
-    border: '1px solid #1f1f1f',
-    borderRadius: '12px',
-    padding: '1.2rem 1.4rem',
-  },
-  statValue: {
-    fontSize: '2rem',
-    fontWeight: 700,
-    color: '#ff7a00',
-    lineHeight: 1,
-  },
-  statLabel: {
-    fontSize: '0.78rem',
-    color: '#666',
-    marginTop: '0.4rem',
-  },
-  table: {
-    width: '100%',
-    borderCollapse: 'collapse' as const,
-    fontSize: '0.83rem',
-  },
-  th: {
-    background: '#1a1a1a',
-    color: '#666',
-    fontWeight: 600,
-    padding: '0.65rem 0.9rem',
-    textAlign: 'left' as const,
-    borderBottom: '1px solid #1f1f1f',
-    whiteSpace: 'nowrap' as const,
-  },
-  td: {
-    padding: '0.75rem 0.9rem',
-    borderBottom: '1px solid #1a1a1a',
-    color: '#ccc',
-    verticalAlign: 'middle' as const,
-  },
-  emptyState: {
-    textAlign: 'center' as const,
-    padding: '3rem 1rem',
-    color: '#444',
-  },
-  checkbox: {
-    width: '16px',
-    height: '16px',
-    cursor: 'pointer',
-    accentColor: '#ff7a00',
-  },
-  closeBtn: {
-    background: 'none',
-    border: 'none',
-    color: '#666',
-    cursor: 'pointer',
-    fontSize: '1.3rem',
-    lineHeight: 1,
-    padding: '0.2rem',
-  },
-  errorMsg: {
-    background: 'rgba(231,76,60,0.1)',
-    border: '1px solid rgba(231,76,60,0.3)',
-    color: '#e74c3c',
-    borderRadius: '8px',
-    padding: '0.7rem 1rem',
-    fontSize: '0.82rem',
-    marginBottom: '1rem',
-  },
-  successMsg: {
-    background: 'rgba(39,174,96,0.1)',
-    border: '1px solid rgba(39,174,96,0.3)',
-    color: '#27ae60',
-    borderRadius: '8px',
-    padding: '0.7rem 1rem',
-    fontSize: '0.82rem',
-    marginBottom: '1rem',
-  },
-}
-
-/* ─── Helper: initials ───────────────────────────────────── */
-function initials(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('')
-}
-
 /* ─── Score helper ───────────────────────────────────────── */
 function totalScore(s?: StudentProfile['assessmentScores']): number {
   if (!s) return 0
@@ -351,21 +81,29 @@ export default function FacultyAdminPage() {
 /* ═══════════════════════════════════════════════════════════
    INSTITUTE ADMIN — MANAGEMENT VIEW
 ═══════════════════════════════════════════════════════════ */
+const scoreTone = (total: number) => (total >= 280 ? 'aui-badge-green' : total >= 120 ? 'aui-badge-amber' : 'aui-badge-red')
+const fmtAdded = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+
 function InstituteAdminManagement({ user, baseURL }: { user: any; baseURL: string }) {
   const [admins, setAdmins] = useState<FacultyAdmin[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [search, setSearch] = useState('')
+  const [statusFilter, setStatusFilter] = useState('')
 
   // Create form state
   const [showCreateForm, setShowCreateForm] = useState(false)
   const [creating, setCreating] = useState(false)
   const [form, setForm] = useState({ name: '', email: '', password: '', phoneNo: '' })
   const [formError, setFormError] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
 
-  // Assign modal state
+  // Modal state
   const [assignModal, setAssignModal] = useState<FacultyAdmin | null>(null)
   const [viewModal, setViewModal] = useState<FacultyAdmin | null>(null)
+  const [toDelete, setToDelete] = useState<FacultyAdmin | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const authHeaders = { Authorization: `Bearer ${user?.token}` }
 
@@ -387,8 +125,15 @@ function InstituteAdminManagement({ user, baseURL }: { user: any; baseURL: strin
     if (user?.token) fetchAdmins()
   }, [fetchAdmins])
 
-  const handleCreate = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const flash = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(''), 4000) }
+
+  const closeCreate = () => {
+    setShowCreateForm(false); setFormError(''); setShowPassword(false)
+    setForm({ name: '', email: '', password: '', phoneNo: '' })
+  }
+
+  const handleCreate = async (e?: React.FormEvent) => {
+    e?.preventDefault()
     setFormError('')
     if (!form.name.trim() || !form.email.trim() || !form.password.trim()) {
       setFormError('Name, email and password are required.')
@@ -403,11 +148,9 @@ function InstituteAdminManagement({ user, baseURL }: { user: any; baseURL: strin
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Failed to create')
-      setSuccess(`Faculty admin "${data.name}" created successfully.`)
-      setForm({ name: '', email: '', password: '', phoneNo: '' })
-      setShowCreateForm(false)
+      closeCreate()
+      flash(`Faculty admin "${data.name}" created successfully.`)
       fetchAdmins()
-      setTimeout(() => setSuccess(''), 4000)
     } catch (err: any) {
       setFormError(err.message)
     } finally {
@@ -415,164 +158,224 @@ function InstituteAdminManagement({ user, baseURL }: { user: any; baseURL: strin
     }
   }
 
-  const handleDelete = async (admin: FacultyAdmin) => {
-    if (!window.confirm(`Delete faculty admin "${admin.name}"? This cannot be undone.`)) return
+  // Confirmed from the in-app dialog (replaces the browser confirm box)
+  const handleDelete = async () => {
+    if (!toDelete) return
+    setDeleting(true)
     try {
-      const res = await fetch(`${baseURL}/faculty-admin/${admin._id}`, {
+      const res = await fetch(`${baseURL}/faculty-admin/${toDelete._id}`, {
         method: 'DELETE',
         headers: authHeaders,
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || 'Failed to delete')
-      setSuccess(`"${admin.name}" deleted.`)
+      flash(`"${toDelete.name}" deleted.`)
+      setToDelete(null)
       fetchAdmins()
-      setTimeout(() => setSuccess(''), 3000)
     } catch (err: any) {
       setError(err.message)
-      setTimeout(() => setError(''), 3000)
+      setToDelete(null)
+    } finally {
+      setDeleting(false)
     }
   }
 
+  const totalAssigned = admins.reduce((sum, a) => sum + (a.assignedCount || 0), 0)
+  const approvedCount = admins.filter(a => a.status === 'approved').length
+  const statuses = [...new Set(admins.map(a => a.status).filter(Boolean))]
+
+  const visible = admins.filter(a => {
+    const q = search.trim().toLowerCase()
+    return (!q || a.name.toLowerCase().includes(q) || a.email.toLowerCase().includes(q)) && (!statusFilter || a.status === statusFilter)
+  })
+
   return (
-    <div style={S.page}>
+    <AdminPage>
       <PageMetaData title="Faculty Admin Management" />
 
-      {/* Header */}
-      <div style={{ ...S.header, display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '1rem' }}>
-        <div>
-          <h1 style={S.title}>Faculty Admin Management</h1>
-          <p style={S.subtitle}>Create and manage faculty admins. Assign students and track their progress.</p>
+      <PageHeader
+        icon={FaChalkboardTeacher}
+        title="Faculty Admins"
+        stats={
+          <StatCards
+            inline
+            loading={loading}
+            items={[
+              { label: 'Faculty Admins', value: admins.length, icon: FaUserTie, tone: 'orange' },
+              { label: 'Active', value: approvedCount, icon: FaCheckCircle, tone: 'green' },
+              { label: 'Students Assigned', value: totalAssigned, icon: FaUsers, tone: 'blue' },
+              { label: 'Avg per Faculty', value: admins.length ? Math.round(totalAssigned / admins.length) : 0, icon: FaChartBar, tone: 'purple' },
+            ]}
+          />
+        }
+        actions={
+          <button type="button" className="aui-btn aui-btn-primary" onClick={() => { setFormError(''); setShowCreateForm(true) }}>
+            <FaPlus size={11} /> Add Faculty Admin
+          </button>
+        }
+      />
+
+      {error && (
+        <div className="aui-alert"><FaExclamationTriangle /> <span>{error}</span>
+          <button type="button" className="aui-alert-close" onClick={() => setError('')} aria-label="Dismiss"><FaTimes size={11} /></button>
         </div>
-        <button
-          style={S.accentBtn}
-          onClick={() => { setShowCreateForm((v) => !v); setFormError('') }}
-        >
-          {showCreateForm ? '✕ Cancel' : '+ Add Faculty Admin'}
-        </button>
+      )}
+      {success && <div className="aui-alert aui-alert-success"><FaCheckCircle /> <span>{success}</span></div>}
+
+      <div className="aui-card">
+        <div className="aui-toolbar">
+          <div className="aui-toolbar-title">
+            <h3>Faculty admins</h3>
+            <p>Assign students to each faculty admin and track their progress</p>
+          </div>
+          <div className="aui-toolbar-filters">
+            <SearchInput value={search} onChange={setSearch} placeholder="Search name or email…" />
+            {statuses.length > 1 && (
+              <AdminSelect label="Status" value={statusFilter} options={[{ value: '', label: 'All statuses' }, ...statuses.map(s => ({ value: s, label: s.charAt(0).toUpperCase() + s.slice(1) }))]} onChange={setStatusFilter} />
+            )}
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="aui-empty"><FaSpinner className="aui-spin" size={22} /> Loading faculty admins…</div>
+        ) : admins.length === 0 ? (
+          <EmptyState
+            icon={FaChalkboardTeacher}
+            title="No faculty admins yet"
+            text="Create a faculty admin, then assign students so they can track their progress."
+            action={<button type="button" className="aui-btn aui-btn-primary" onClick={() => setShowCreateForm(true)}><FaPlus size={11} /> Add Faculty Admin</button>}
+          />
+        ) : visible.length === 0 ? (
+          <EmptyState icon={FaSearch} title="No faculty admins match" text="Try a different name or status." action={<button type="button" className="aui-btn aui-btn-sm" onClick={() => { setSearch(''); setStatusFilter('') }}>Clear filters</button>} />
+        ) : (
+          <div className="aui-table-scroll">
+            <table className="aui-table">
+              <thead>
+                <tr>
+                  <th style={{ width: 48 }}>#</th>
+                  <th>Faculty Admin</th>
+                  <th style={{ width: 150 }}>Students</th>
+                  <th style={{ width: 120 }}>Status</th>
+                  <th style={{ width: 130 }}>Added</th>
+                  <th style={{ width: 300 }} className="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {visible.map((admin, i) => (
+                  <tr key={admin._id}>
+                    <td className="aui-num">{i + 1}</td>
+                    <td>
+                      <div className="aui-person">
+                        <span className="aui-avatar">{initialsOf(admin.name)}</span>
+                        <div className="aui-stack">
+                          <strong>{admin.name}</strong>
+                          <small>{admin.email}</small>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <span className={`aui-badge ${admin.assignedCount ? 'aui-badge-blue' : 'aui-badge-muted'}`}>
+                        <FaUsers size={9} /> {admin.assignedCount} student{admin.assignedCount !== 1 ? 's' : ''}
+                      </span>
+                    </td>
+                    <td>
+                      <span className={`aui-badge aui-badge-dot ${admin.status === 'approved' ? 'aui-badge-green' : 'aui-badge-amber'}`}>
+                        {admin.status === 'approved' ? 'Active' : admin.status.charAt(0).toUpperCase() + admin.status.slice(1)}
+                      </span>
+                    </td>
+                    <td className="aui-num">{fmtAdded(admin.createdAt)}</td>
+                    <td className="text-end">
+                      <div className="fam-actions">
+                        <button type="button" className="aui-btn aui-btn-sm aui-btn-soft" onClick={() => setAssignModal(admin)}><FaUserPlus size={11} /> Assign Students</button>
+                        <button type="button" className="aui-btn aui-btn-sm" onClick={() => setViewModal(admin)}><FaEye size={11} /> View</button>
+                        <button type="button" className="aui-icon-btn fam-delete" onClick={() => setToDelete(admin)} title="Delete faculty admin" aria-label={`Delete ${admin.name}`}><FaTrash size={11} /></button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      {/* Global messages */}
-      {error && <div style={S.errorMsg}>{error}</div>}
-      {success && <div style={S.successMsg}>{success}</div>}
-
-      {/* Create Form */}
-      {showCreateForm && (
-        <div style={{ ...S.card, marginBottom: '1.5rem' }}>
-          <h3 style={{ color: '#fff', fontSize: '1rem', fontWeight: 600, marginBottom: '1.25rem' }}>
-            New Faculty Admin
-          </h3>
-          {formError && <div style={S.errorMsg}>{formError}</div>}
-          <form onSubmit={handleCreate}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
-              <div style={S.inputGroup}>
-                <label style={S.label}>Full Name *</label>
-                <input
-                  style={S.input}
-                  type="text"
-                  placeholder="Dr. Jane Smith"
-                  value={form.name}
-                  onChange={(e) => setForm({ ...form, name: e.target.value })}
-                />
-              </div>
-              <div style={S.inputGroup}>
-                <label style={S.label}>Email Address *</label>
-                <input
-                  style={S.input}
-                  type="email"
-                  placeholder="jane@college.edu"
-                  value={form.email}
-                  onChange={(e) => setForm({ ...form, email: e.target.value })}
-                />
-              </div>
-              <div style={S.inputGroup}>
-                <label style={S.label}>Password *</label>
-                <input
-                  style={S.input}
-                  type="password"
-                  placeholder="Min 8 characters"
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                />
-              </div>
-              <div style={S.inputGroup}>
-                <label style={S.label}>Phone Number</label>
-                <input
-                  style={S.input}
-                  type="text"
-                  placeholder="+91 9876543210"
-                  value={form.phoneNo}
-                  onChange={(e) => setForm({ ...form, phoneNo: e.target.value })}
-                />
-              </div>
-            </div>
-            <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
-              <button type="submit" style={S.accentBtn} disabled={creating}>
-                {creating ? 'Creating…' : 'Create Faculty Admin'}
-              </button>
-              <button
-                type="button"
-                style={S.outlineBtn}
-                onClick={() => { setShowCreateForm(false); setFormError('') }}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {/* Admins count */}
-      <div style={{ marginBottom: '0.75rem' }}>
-        <span style={{ color: '#555', fontSize: '0.82rem' }}>{admins.length} faculty admin{admins.length !== 1 ? 's' : ''}</span>
-      </div>
-
-      {/* Loading */}
-      {loading && (
-        <div style={{ ...S.emptyState }}>
-          <div style={{ color: '#444', fontSize: '0.9rem' }}>Loading…</div>
-        </div>
-      )}
-
-      {/* Empty state */}
-      {!loading && admins.length === 0 && (
-        <div style={S.emptyState}>
-          <div style={{ fontSize: '2.5rem', marginBottom: '0.75rem' }}>👨‍🏫</div>
-          <div style={{ color: '#555', fontSize: '0.9rem' }}>No faculty admins yet. Create the first one above.</div>
-        </div>
-      )}
-
-      {/* Admin Cards Grid */}
-      {!loading && admins.length > 0 && (
-        <div style={S.cardGrid}>
-          {admins.map((admin) => (
-            <AdminCard
-              key={admin._id}
-              admin={admin}
-              onDelete={() => handleDelete(admin)}
-              onAssign={() => setAssignModal(admin)}
-              onView={() => setViewModal(admin)}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Progress Overview Charts */}
       {!loading && admins.length > 0 && (
         <FacultyProgressCharts baseURL={baseURL} authHeaders={authHeaders} refreshKey={admins.length} />
       )}
 
-      {/* Assign Modal */}
+      {/* ── Create ── */}
+      <Modal show={showCreateForm} onHide={() => !creating && closeCreate()} centered contentClassName="aui-modal" backdropClassName="aui-backdrop">
+        <form className="aui-page" onSubmit={handleCreate} noValidate>
+          <div className="aui-modal-head">
+            <span className="aui-heading-icon"><FaUserPlus /></span>
+            <div>
+              <h3>New Faculty Admin</h3>
+              <p>They sign in with this email and password</p>
+            </div>
+            <button type="button" className="aui-icon-btn" onClick={closeCreate} disabled={creating} aria-label="Close"><FaTimes size={12} /></button>
+          </div>
+          <div className="aui-modal-body">
+            {formError && <div className="aui-alert"><FaExclamationTriangle /> <span>{formError}</span></div>}
+            <div className="aui-field">
+              <label className="aui-label" htmlFor="fa-name">Full name</label>
+              <input id="fa-name" className={`aui-input${formError && !form.name.trim() ? ' is-invalid' : ''}`} placeholder="Dr. Jane Smith" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} autoFocus />
+            </div>
+            <div className="aui-field">
+              <label className="aui-label" htmlFor="fa-email">Email address</label>
+              <input id="fa-email" type="email" className={`aui-input${formError && !form.email.trim() ? ' is-invalid' : ''}`} placeholder="jane@college.edu" value={form.email} onChange={e => setForm({ ...form, email: e.target.value })} />
+            </div>
+            <div className="aui-field-row">
+              <div className="aui-field">
+                <label className="aui-label" htmlFor="fa-pass">Password</label>
+                <div className="aui-input-group">
+                  <input id="fa-pass" type={showPassword ? 'text' : 'password'} className={`aui-input fam-pass${formError && !form.password.trim() ? ' is-invalid' : ''}`} placeholder="Min 8 characters" value={form.password} onChange={e => setForm({ ...form, password: e.target.value })} autoComplete="new-password" />
+                  <button type="button" className="fam-eye" onClick={() => setShowPassword(v => !v)} aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                    {showPassword ? <FaEyeSlash /> : <FaEye />}
+                  </button>
+                </div>
+              </div>
+              <div className="aui-field">
+                <label className="aui-label" htmlFor="fa-phone">Phone <span className="aui-optional">Optional</span></label>
+                <input id="fa-phone" className="aui-input" placeholder="+91 98765 43210" value={form.phoneNo} onChange={e => setForm({ ...form, phoneNo: e.target.value })} />
+              </div>
+            </div>
+          </div>
+          <div className="aui-modal-foot">
+            <button type="button" className="aui-btn" onClick={closeCreate} disabled={creating}>Cancel</button>
+            <button type="submit" className="aui-btn aui-btn-primary" disabled={creating}>
+              {creating ? <><FaSpinner className="aui-spin" style={{ color: '#fff' }} /> Creating…</> : <><FaPlus size={11} /> Create Faculty Admin</>}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ── Delete confirm ── */}
+      <Modal show={!!toDelete} onHide={() => !deleting && setToDelete(null)} centered contentClassName="aui-modal" backdropClassName="aui-backdrop">
+        <div className="aui-page">
+          <div className="aui-modal-body fam-confirm">
+            <span className="fam-confirm-icon"><FaTrash /></span>
+            <h3>Delete this faculty admin?</h3>
+            <p><b>{toDelete?.name}</b> will lose access to the portal. This can’t be undone.</p>
+          </div>
+          <div className="aui-modal-foot">
+            <button type="button" className="aui-btn" onClick={() => setToDelete(null)} disabled={deleting}>Cancel</button>
+            <button type="button" className="aui-btn aui-btn-danger" onClick={handleDelete} disabled={deleting}>
+              {deleting ? <><FaSpinner className="aui-spin" /> Deleting…</> : <><FaTrash size={11} /> Delete</>}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
       {assignModal && (
         <AssignStudentsModal
           admin={assignModal}
           baseURL={baseURL}
           authHeaders={authHeaders}
           onClose={() => setAssignModal(null)}
-          onSaved={() => { fetchAdmins(); setAssignModal(null) }}
+          onSaved={(count) => { fetchAdmins(); setAssignModal(null); flash(`${count} student${count !== 1 ? 's' : ''} assigned to ${assignModal.name}.`) }}
         />
       )}
 
-      {/* View Students Modal */}
       {viewModal && (
         <ViewStudentsModal
           admin={viewModal}
@@ -581,97 +384,54 @@ function InstituteAdminManagement({ user, baseURL }: { user: any; baseURL: strin
           onClose={() => setViewModal(null)}
         />
       )}
-    </div>
+
+      <style>{FAM_CSS}</style>
+    </AdminPage>
   )
 }
 
-/* ─── Admin Card ─────────────────────────────────────────── */
-function AdminCard({
-  admin,
-  onDelete,
-  onAssign,
-  onView,
-}: {
-  admin: FacultyAdmin
-  onDelete: () => void
-  onAssign: () => void
-  onView: () => void
-}) {
-  return (
-    <div style={S.adminCard}>
-      {/* Top row: avatar + info */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
-        <div style={S.avatar}>{initials(admin.name)}</div>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ color: '#fff', fontWeight: 600, fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {admin.name}
-          </div>
-          <div style={{ color: '#666', fontSize: '0.77rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-            {admin.email}
-          </div>
-        </div>
-      </div>
+const FAM_CSS = `
+  .fam-actions { display: inline-flex; gap: 6px; }
+  .fam-delete:hover { border-color: rgba(251,95,103,0.55) !important; color: #fb737a !important; }
+  .fam-pass { padding-right: 2.5rem; }
+  .fam-eye { position: absolute; right: 6px; padding: 6px 8px; border: 0; background: none; color: #858a90; }
+  .fam-eye:hover { color: #fff; }
+  .fam-confirm { padding: 1.5rem 1.5rem 1.1rem; text-align: center; }
+  .fam-confirm-icon { display: inline-grid; place-items: center; width: 48px; height: 48px; margin-bottom: 0.75rem; border: 1px solid rgba(251,95,103,0.3); border-radius: 14px; background: rgba(251,95,103,0.12); color: #fb737a; font-size: 1.05rem; }
+  .fam-confirm h3 { margin: 0 0 0.4rem; color: #fff; font-size: 1.05rem; font-weight: 750; }
+  .fam-confirm p { margin: 0; color: #9aa0a6; font-size: 0.82rem; line-height: 1.5; }
+  .fam-confirm p b { color: #e5e7eb; }
 
-      {/* Badges */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <span style={S.badge}>{admin.assignedCount} student{admin.assignedCount !== 1 ? 's' : ''}</span>
-        <span style={{
-          ...S.badge,
-          background: admin.status === 'approved' ? 'rgba(39,174,96,0.12)' : 'rgba(255,193,7,0.12)',
-          color: admin.status === 'approved' ? '#27ae60' : '#f39c12',
-          border: `1px solid ${admin.status === 'approved' ? 'rgba(39,174,96,0.3)' : 'rgba(255,193,7,0.3)'}`,
-        }}>
-          {admin.status}
-        </span>
-      </div>
+  .fam-dialog { max-width: 1080px; }
+  .fam-modal { display: flex; flex-direction: column; min-height: 0; max-height: calc(100vh - 3.5rem); }
+  .fam-modal .aui-modal-body { padding: 0; display: flex; flex-direction: column; }
+  .fam-modal .aui-toolbar { border-radius: 0; }
+  .fam-modal-scroll { flex: 1; min-height: 0; overflow-y: auto; }
+  .fam-modal-scroll .aui-table thead th { position: sticky; top: 0; z-index: 1; background: #17191b; }
+  .fam-modal .aui-alert { margin: 0.85rem 0.85rem 0; }
+  .fam-score { text-align: center !important; }
+  .fam-check { width: 15px; height: 15px; accent-color: #ff7a00; color-scheme: dark; cursor: pointer; vertical-align: middle; }
+  .fam-row-pick { cursor: pointer; }
+  .fam-modal .aui-table tbody tr.is-selected { background: rgba(255,122,0,0.06); }
+  .fam-elsewhere { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; color: #f4b43f; font-size: 0.68rem; font-weight: 600; }
+  .fam-conflict { margin: 0.85rem; padding: 0.9rem 1rem; border: 1px solid rgba(246,170,36,0.35); border-radius: 10px; background: rgba(246,170,36,0.08); }
+  .fam-conflict h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 0.4rem; color: #f4b43f; font-size: 0.86rem; font-weight: 750; }
+  .fam-conflict p { margin: 0 0 0.5rem; color: #d6c08a; font-size: 0.8rem; line-height: 1.5; }
+  .fam-conflict ul { margin: 0 0 0.75rem; padding-left: 1.1rem; color: #b4b9be; font-size: 0.78rem; }
+  .fam-conflict ul b { color: #f4b43f; }
+  .fam-conflict-actions { display: flex; gap: 8px; }
+  .fam-foot-note { margin-right: auto; color: #a6abb0; font-size: 0.8rem; }
+  .fam-foot-note b { color: #ffb15e; }
 
-      <div style={{ color: '#444', fontSize: '0.74rem' }}>
-        Added {new Date(admin.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-      </div>
-
-      {/* Action buttons */}
-      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.25rem' }}>
-        <button style={{ ...S.accentBtn, flex: 1, fontSize: '0.8rem', padding: '0.45rem 0.75rem' }} onClick={onAssign}>
-          Assign Students
-        </button>
-        <button
-          style={{
-            background: 'rgba(59,130,246,0.12)',
-            border: '1px solid rgba(59,130,246,0.35)',
-            color: '#60a5fa',
-            borderRadius: '8px',
-            padding: '0.45rem 0.9rem',
-            fontSize: '0.8rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-            whiteSpace: 'nowrap' as const,
-          }}
-          onClick={onView}
-        >
-          View
-        </button>
-        <button
-          style={{
-            background: 'rgba(220,53,69,0.1)',
-            border: '1px solid rgba(220,53,69,0.35)',
-            color: '#f87171',
-            borderRadius: '8px',
-            padding: '0.45rem 0.75rem',
-            fontSize: '0.8rem',
-            fontWeight: 600,
-            cursor: 'pointer',
-            transition: 'all 0.15s',
-          }}
-          onClick={onDelete}
-          title="Delete faculty admin"
-        >
-          Delete
-        </button>
-      </div>
-    </div>
-  )
-}
+  .fam-progress .aui-toolbar-filters .aui-dropdown-trigger { min-width: 220px; }
+  .fam-chart { padding: 0.75rem 0.85rem 0.25rem; }
+  .fam-chart + .fam-chart { border-top: 1px solid #202326; }
+  .fam-chart-title { margin: 0.35rem 0 0.25rem; color: #9da2a8; font-size: 0.68rem; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; }
+  .fam-chips { display: flex; flex-wrap: wrap; gap: 8px; margin: 0.5rem 0 0.25rem; }
+  .fam-chip { display: flex; flex-direction: column; min-width: 92px; padding: 0.5rem 0.8rem; border: 1px solid #25282b; border-radius: 10px; background: #111315; }
+  .fam-chip strong { font-size: 1rem; font-weight: 800; line-height: 1.1; }
+  .fam-chip small { margin-top: 3px; color: #858a90; font-size: 0.68rem; }
+`
 
 /* ─── View Assigned Students Modal ───────────────────────── */
 function ViewStudentsModal({
@@ -706,110 +466,80 @@ function ViewStudentsModal({
   )
 
   return (
-    <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div style={S.modal}>
-        {/* Header */}
-        <div style={S.modalHeader}>
+    <Modal show onHide={onClose} centered dialogClassName="fam-dialog" contentClassName="aui-modal" backdropClassName="aui-backdrop">
+      <div className="aui-page fam-modal">
+        <div className="aui-modal-head">
+          <span className="aui-avatar">{initialsOf(admin.name)}</span>
           <div>
-            <div style={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>
-              Assigned Students
-            </div>
-            <div style={{ color: '#555', fontSize: '0.78rem', marginTop: '0.2rem' }}>
-              <span style={{ color: '#ff7a00' }}>{admin.name}</span> · {students.length} student{students.length !== 1 ? 's' : ''}
-            </div>
+            <h3>Assigned Students</h3>
+            <p>{admin.name} · {students.length} student{students.length !== 1 ? 's' : ''}</p>
           </div>
-          <button style={S.closeBtn} onClick={onClose}>✕</button>
+          <button type="button" className="aui-icon-btn" onClick={onClose} aria-label="Close"><FaTimes size={12} /></button>
         </div>
 
-        {/* Search */}
-        <div style={{ padding: '0.85rem 1.5rem', borderBottom: '1px solid #1a1a1a', background: '#111' }}>
-          <input
-            style={{ ...S.input, maxWidth: '320px', fontSize: '0.82rem', padding: '0.5rem 0.85rem' }}
-            placeholder="Search by name or email…"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
-
-        {/* Body */}
-        <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-          {loading ? (
-            <div style={{ ...S.emptyState, color: '#555' }}>Loading…</div>
-          ) : filtered.length === 0 ? (
-            <div style={S.emptyState}>
-              <div style={{ fontSize: '1.8rem', marginBottom: '0.5rem' }}>👥</div>
-              <div style={{ fontSize: '0.85rem' }}>
-                {students.length === 0 ? 'No students assigned yet.' : 'No students match your search.'}
-              </div>
-            </div>
-          ) : (
-            <table style={{ ...S.table }}>
-              <thead>
-                <tr>
-                  <th style={S.th}>#</th>
-                  <th style={S.th}>Student</th>
-                  <th style={S.th}>Email</th>
-                  <th style={S.th}>Branch</th>
-                  <th style={S.th}>Joined Year</th>
-                  <th style={{ ...S.th, textAlign: 'center' as const }}>Quiz</th>
-                  <th style={{ ...S.th, textAlign: 'center' as const }}>Code</th>
-                  <th style={{ ...S.th, textAlign: 'center' as const }}>TR</th>
-                  <th style={{ ...S.th, textAlign: 'center' as const }}>HR</th>
-                  <th style={{ ...S.th, textAlign: 'center' as const, color: '#ff7a00' }}>Total</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.map((s, idx) => {
-                  const sc = s.assessmentScores
-                  const total = (sc?.quizScore ?? 0) + (sc?.codeChallengeScore ?? 0) + (sc?.technicalRoundScore ?? 0) + (sc?.hrRoundScore ?? 0)
-                  return (
-                    <tr
-                      key={s._id}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = '#181818')}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}
-                    >
-                      <td style={{ ...S.td, color: '#444', fontSize: '0.75rem' }}>{idx + 1}</td>
-                      <td style={S.td}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                          <div style={{ ...S.avatar, width: '32px', height: '32px', fontSize: '0.75rem', flexShrink: 0 }}>
-                            {initials(s.fullName)}
+        <div className="aui-modal-body">
+          <div className="aui-toolbar">
+            <SearchInput value={search} onChange={setSearch} placeholder="Search name or email…" />
+            <span className="aui-count">{filtered.length} of {students.length} shown · scores out of 100 each</span>
+          </div>
+          <div className="fam-modal-scroll">
+            {loading ? (
+              <div className="aui-empty"><FaSpinner className="aui-spin" size={22} /> Loading students…</div>
+            ) : filtered.length === 0 ? (
+              <EmptyState
+                icon={FaUsers}
+                title={students.length === 0 ? 'No students assigned yet' : 'No students match'}
+                text={students.length === 0 ? 'Use Assign Students to add students to this faculty admin.' : 'Try a different name or email.'}
+              />
+            ) : (
+              <table className="aui-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 44 }}>#</th>
+                    <th>Student</th>
+                    <th>Branch</th>
+                    <th>Year</th>
+                    <th className="fam-score">Quiz</th>
+                    <th className="fam-score">Code</th>
+                    <th className="fam-score">TR</th>
+                    <th className="fam-score">HR</th>
+                    <th className="fam-score">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((s, idx) => {
+                    const sc = s.assessmentScores
+                    const total = totalScore(sc)
+                    return (
+                      <tr key={s._id}>
+                        <td className="aui-num">{idx + 1}</td>
+                        <td>
+                          <div className="aui-person">
+                            <span className="aui-avatar">{initialsOf(s.fullName)}</span>
+                            <div className="aui-stack"><strong>{s.fullName}</strong><small>{s.email}</small></div>
                           </div>
-                          <span style={{ color: '#ddd', fontWeight: 500, fontSize: '0.84rem' }}>{s.fullName}</span>
-                        </div>
-                      </td>
-                      <td style={{ ...S.td, color: '#666', fontSize: '0.8rem' }}>{s.email}</td>
-                      <td style={{ ...S.td, color: '#888', fontSize: '0.8rem' }}>{s.branch ?? s.department ?? '—'}</td>
-                      <td style={{ ...S.td, color: '#888', fontSize: '0.8rem' }}>{s.joiningYear ?? '—'}</td>
-                      <td style={{ ...S.td, textAlign: 'center' as const }}>{sc?.quizScore ?? 0}</td>
-                      <td style={{ ...S.td, textAlign: 'center' as const }}>{sc?.codeChallengeScore ?? 0}</td>
-                      <td style={{ ...S.td, textAlign: 'center' as const }}>{sc?.technicalRoundScore ?? 0}</td>
-                      <td style={{ ...S.td, textAlign: 'center' as const }}>{sc?.hrRoundScore ?? 0}</td>
-                      <td style={{ ...S.td, textAlign: 'center' as const }}>
-                        <span style={{
-                          fontWeight: 700,
-                          color: total >= 280 ? '#27ae60' : total >= 120 ? '#ff7a00' : '#e74c3c',
-                          fontSize: '0.9rem',
-                        }}>
-                          {total}
-                        </span>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          )}
+                        </td>
+                        <td>{s.branch ?? s.department ?? '—'}</td>
+                        <td>{s.joiningYear ? <span className="aui-badge aui-badge-muted">{s.joiningYear}</span> : '—'}</td>
+                        <td className="fam-score">{sc?.quizScore ?? 0}</td>
+                        <td className="fam-score">{sc?.codeChallengeScore ?? 0}</td>
+                        <td className="fam-score">{sc?.technicalRoundScore ?? 0}</td>
+                        <td className="fam-score">{sc?.hrRoundScore ?? 0}</td>
+                        <td className="fam-score"><span className={`aui-badge ${scoreTone(total)}`}>{total}<span style={{ opacity: 0.6 }}>/400</span></span></td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
 
-        {/* Footer */}
-        <div style={{ ...S.modalFooter, justifyContent: 'flex-start' }}>
-          <span style={{ color: '#555', fontSize: '0.82rem' }}>
-            {filtered.length} of {students.length} students shown
-          </span>
-          <button style={{ ...S.outlineBtn, marginLeft: 'auto' }} onClick={onClose}>Close</button>
+        <div className="aui-modal-foot">
+          <button type="button" className="aui-btn" onClick={onClose}>Close</button>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -825,16 +555,17 @@ function AssignStudentsModal({
   baseURL: string
   authHeaders: Record<string, string>
   onClose: () => void
-  onSaved: () => void
+  onSaved: (count: number) => void
 }) {
   const [students, setStudents] = useState<StudentProfile[]>([])
   const [selected, setSelected] = useState<Set<string>>(new Set(admin.assignedStudentIds || []))
   const [filterDept, setFilterDept] = useState('')
   const [filterYear, setFilterYear] = useState('')
+  const [search, setSearch] = useState('')
   const [loadingStudents, setLoadingStudents] = useState(false)
   const [saving, setSaving] = useState(false)
   const [fetchError, setFetchError] = useState('')
-  const [saveMsg, setSaveMsg] = useState('')
+  const [saveError, setSaveError] = useState('')
   const [conflicts, setConflicts] = useState<ConflictInfo[]>([])
   const [departments, setDepartments] = useState<string[]>([])
   const [years, setYears] = useState<string[]>([])
@@ -850,23 +581,31 @@ function AssignStudentsModal({
       .catch(() => {})
   }, [])
 
-  const loadStudents = async () => {
-    setFetchError('')
-    setLoadingStudents(true)
-    try {
-      const params = new URLSearchParams()
-      if (filterDept) params.set('department', filterDept)
-      if (filterYear) params.set('year', filterYear)
-      const res = await fetch(`${baseURL}/faculty-admin/students/list?${params.toString()}`, { headers: authHeaders })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.message || 'Failed to load students')
-      setStudents(data)
-    } catch (err: any) {
-      setFetchError(err.message)
-    } finally {
-      setLoadingStudents(false)
-    }
-  }
+  // Students reload whenever the branch / year filter changes (no separate "Load" step)
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      setFetchError('')
+      setLoadingStudents(true)
+      try {
+        const params = new URLSearchParams()
+        if (filterDept) params.set('department', filterDept)
+        if (filterYear) params.set('year', filterYear)
+        const res = await fetch(`${baseURL}/faculty-admin/students/list?${params.toString()}`, { headers: authHeaders })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.message || 'Failed to load students')
+        if (!cancelled) setStudents(data)
+      } catch (err: any) {
+        if (!cancelled) setFetchError(err.message)
+      } finally {
+        if (!cancelled) setLoadingStudents(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [filterDept, filterYear])
+
+  const q = search.trim().toLowerCase()
+  const shown = students.filter(s => !q || s.fullName.toLowerCase().includes(q) || s.email.toLowerCase().includes(q))
 
   const toggleStudent = (id: string) => {
     setSelected((prev) => {
@@ -877,21 +616,20 @@ function AssignStudentsModal({
     })
   }
 
+  const allShownSelected = shown.length > 0 && shown.every((s) => selected.has(s._id))
   const toggleAll = () => {
-    if (students.length === 0) return
-    const allIds = students.map((s) => s._id)
-    const allSelected = allIds.every((id) => selected.has(id))
+    if (shown.length === 0) return
     setSelected((prev) => {
       const next = new Set(prev)
-      if (allSelected) allIds.forEach((id) => next.delete(id))
-      else allIds.forEach((id) => next.add(id))
+      if (allShownSelected) shown.forEach((s) => next.delete(s._id))
+      else shown.forEach((s) => next.add(s._id))
       return next
     })
   }
 
   const doSave = async (force = false) => {
     setSaving(true)
-    setSaveMsg('')
+    setSaveError('')
     try {
       const res = await fetch(`${baseURL}/faculty-admin/${admin._id}/assign-students`, {
         method: 'PUT',
@@ -904,214 +642,123 @@ function AssignStudentsModal({
         return
       }
       if (!res.ok) throw new Error(data.message || 'Failed to save')
-      setSaveMsg(`Saved — ${data.count} student${data.count !== 1 ? 's' : ''} assigned.`)
-      setTimeout(() => { onSaved() }, 1200)
+      onSaved(data.count ?? selected.size)
     } catch (err: any) {
-      setSaveMsg(`Error: ${err.message}`)
+      setSaveError(err.message)
     } finally {
       setSaving(false)
     }
   }
 
-  const handleSave = () => doSave(false)
   const handleForceConfirm = () => { setConflicts([]); doSave(true) }
 
-  const allCurrentSelected = students.length > 0 && students.every((s) => selected.has(s._id))
-
   return (
-    <div style={S.overlay} onClick={(e) => e.target === e.currentTarget && onClose()}>
-      <div style={S.modal}>
-        {/* Header */}
-        <div style={S.modalHeader}>
+    <Modal show onHide={() => !saving && onClose()} centered dialogClassName="fam-dialog" contentClassName="aui-modal" backdropClassName="aui-backdrop">
+      <div className="aui-page fam-modal">
+        <div className="aui-modal-head">
+          <span className="aui-heading-icon"><FaUserPlus /></span>
           <div>
-            <div style={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>Assign Students</div>
-            <div style={{ color: '#555', fontSize: '0.78rem', marginTop: '0.2rem' }}>
-              to <span style={{ color: '#ff7a00' }}>{admin.name}</span>
-            </div>
+            <h3>Assign Students</h3>
+            <p>to {admin.name} · tick students to assign, untick to remove</p>
           </div>
-          <button style={S.closeBtn} onClick={onClose}>✕</button>
+          <button type="button" className="aui-icon-btn" onClick={onClose} disabled={saving} aria-label="Close"><FaTimes size={12} /></button>
         </div>
 
-        {/* Body */}
-        <div style={S.modalBody}>
-          {/* Filters */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.75rem', marginBottom: '1rem', alignItems: 'flex-end' }}>
-            <div>
-              <label style={{ ...S.label, display: 'block', marginBottom: '0.3rem' }}>Branch / Department</label>
-              <select style={S.select} value={filterDept} onChange={(e) => setFilterDept(e.target.value)}>
-                <option value="">All Branches</option>
-                {departments.map((d: string) => <option key={d} value={d}>{d}</option>)}
-              </select>
+        <div className="aui-modal-body">
+          <div className="aui-toolbar">
+            <SearchInput value={search} onChange={setSearch} placeholder="Search name or email…" />
+            <div className="aui-toolbar-filters">
+              <AdminSelect label="Branch" value={filterDept} options={toOptions('All branches', departments)} onChange={setFilterDept} />
+              <AdminSelect label="Joining year" value={filterYear} options={toOptions('All years', years)} onChange={setFilterYear} />
             </div>
-            <div>
-              <label style={{ ...S.label, display: 'block', marginBottom: '0.3rem' }}>Joining Year</label>
-              <select style={S.select} value={filterYear} onChange={(e) => setFilterYear(e.target.value)}>
-                <option value="">All Years</option>
-                {years.map((y: string) => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </div>
-            <button style={{ ...S.accentBtn, whiteSpace: 'nowrap' }} onClick={loadStudents}>
-              Load Students
-            </button>
           </div>
 
-          {fetchError && <div style={S.errorMsg}>{fetchError}</div>}
-          {saveMsg && (
-            <div style={saveMsg.startsWith('Error') ? S.errorMsg : S.successMsg}>{saveMsg}</div>
-          )}
+          {fetchError && <div className="aui-alert"><FaExclamationTriangle /> <span>{fetchError}</span></div>}
+          {saveError && <div className="aui-alert"><FaExclamationTriangle /> <span>{saveError}</span></div>}
 
-          {/* Conflict confirmation dialog */}
           {conflicts.length > 0 && (
-            <div style={{
-              background: 'rgba(245,158,11,0.08)',
-              border: '1px solid rgba(245,158,11,0.4)',
-              borderRadius: '10px',
-              padding: '1rem 1.1rem',
-            }}>
-              <div style={{ color: '#f59e0b', fontWeight: 700, fontSize: '0.88rem', marginBottom: '0.6rem' }}>
-                ⚠ Student Assignment Conflict
-              </div>
-              <div style={{ color: '#d1a634', fontSize: '0.82rem', marginBottom: '0.75rem', lineHeight: 1.6 }}>
-                The following students are already assigned to another faculty admin. Confirming will move them to <strong>{admin.name}</strong>:
-              </div>
-              {conflicts.map((c) => (
-                <div key={c.facultyAdminId} style={{ marginBottom: '0.4rem' }}>
-                  <span style={{ color: '#888', fontSize: '0.78rem' }}>
-                    Currently with <strong style={{ color: '#f59e0b' }}>{c.facultyAdminName}</strong>: {c.studentIds.length} student{c.studentIds.length !== 1 ? 's' : ''}
-                  </span>
-                </div>
-              ))}
-              <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.85rem' }}>
-                <button
-                  style={{
-                    background: '#f59e0b', border: 'none', color: '#000',
-                    fontWeight: 700, borderRadius: '7px', padding: '0.45rem 1rem',
-                    fontSize: '0.82rem', cursor: 'pointer',
-                  }}
-                  onClick={handleForceConfirm}
-                  disabled={saving}
-                >
-                  {saving ? 'Moving…' : 'Yes, Move to Me'}
+            <div className="fam-conflict">
+              <h4><FaExclamationTriangle /> Some students already have a faculty admin</h4>
+              <p>Confirming moves them to <b>{admin.name}</b>:</p>
+              <ul>
+                {conflicts.map((c) => (
+                  <li key={c.facultyAdminId}>{c.studentIds.length} student{c.studentIds.length !== 1 ? 's' : ''} currently with <b>{c.facultyAdminName}</b></li>
+                ))}
+              </ul>
+              <div className="fam-conflict-actions">
+                <button type="button" className="aui-btn aui-btn-sm aui-btn-primary" onClick={handleForceConfirm} disabled={saving}>
+                  {saving ? 'Moving…' : `Move to ${admin.name}`}
                 </button>
-                <button
-                  style={{ ...S.outlineBtn, fontSize: '0.82rem', padding: '0.45rem 0.9rem' }}
-                  onClick={() => setConflicts([])}
-                >
-                  Cancel
-                </button>
+                <button type="button" className="aui-btn aui-btn-sm" onClick={() => setConflicts([])}>Cancel</button>
               </div>
             </div>
           )}
 
-          {/* Selected count */}
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.75rem' }}>
-            <span style={{ color: '#666', fontSize: '0.8rem' }}>
-              {students.length > 0 ? `${students.length} student${students.length !== 1 ? 's' : ''} shown` : 'No students loaded yet'}
-            </span>
-            <span style={S.badge}>{selected.size} selected</span>
-          </div>
-
-          {/* Student table */}
-          {loadingStudents ? (
-            <div style={{ color: '#555', textAlign: 'center', padding: '3rem' }}>Loading students…</div>
-          ) : students.length > 0 ? (
-            <div style={{ flex: 1, border: '1px solid #1f1f1f', borderRadius: '10px', overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
-              {/* Table header with Select All */}
-              <table style={{ ...S.table, display: 'table' }}>
+          <div className="fam-modal-scroll">
+            {loadingStudents ? (
+              <div className="aui-empty"><FaSpinner className="aui-spin" size={22} /> Loading students…</div>
+            ) : shown.length === 0 ? (
+              <EmptyState icon={FaUsers} title="No students found" text={students.length ? 'Try a different name or email.' : 'No students match this branch and year.'} />
+            ) : (
+              <table className="aui-table">
                 <thead>
-                  <tr style={{ background: '#1a1a1a' }}>
-                    <th style={{ ...S.th, width: '40px' }}>
-                      <input
-                        type="checkbox"
-                        style={S.checkbox}
-                        checked={allCurrentSelected}
-                        onChange={toggleAll}
-                      />
+                  <tr>
+                    <th style={{ width: 44 }}>
+                      <input type="checkbox" className="fam-check" checked={allShownSelected} onChange={toggleAll} aria-label="Select all shown" />
                     </th>
-                    <th style={S.th}>Student</th>
-                    <th style={S.th}>Email</th>
-                    <th style={S.th}>Branch</th>
-                    <th style={S.th}>Joined Year</th>
-                    <th style={{ ...S.th, textAlign: 'center' as const }}>Quiz</th>
-                    <th style={{ ...S.th, textAlign: 'center' as const }}>Code</th>
-                    <th style={{ ...S.th, textAlign: 'center' as const }}>TR</th>
-                    <th style={{ ...S.th, textAlign: 'center' as const }}>HR</th>
+                    <th>Student</th>
+                    <th>Branch</th>
+                    <th>Year</th>
+                    <th className="fam-score">Quiz</th>
+                    <th className="fam-score">Code</th>
+                    <th className="fam-score">TR</th>
+                    <th className="fam-score">HR</th>
                   </tr>
                 </thead>
-              </table>
-              {/* Scrollable body */}
-              <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
-                <table style={{ ...S.table }}>
-                  <tbody>
-                    {students.map((student) => {
-                      const sc = student.assessmentScores
-                      const isSelected = selected.has(student._id)
-                      return (
-                        <tr
-                          key={student._id}
-                          style={{ background: isSelected ? 'rgba(255,122,0,0.07)' : 'transparent', cursor: 'pointer', transition: 'background 0.1s' }}
-                          onClick={() => toggleStudent(student._id)}
-                          onMouseEnter={(e) => { if (!isSelected) e.currentTarget.style.background = '#181818' }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = isSelected ? 'rgba(255,122,0,0.07)' : 'transparent' }}
-                        >
-                          <td style={{ ...S.td, width: '40px' }}>
-                            <input
-                              type="checkbox"
-                              style={S.checkbox}
-                              checked={isSelected}
-                              onChange={() => toggleStudent(student._id)}
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                          </td>
-                          <td style={S.td}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                              <div style={{ ...S.avatar, width: '32px', height: '32px', fontSize: '0.75rem', flexShrink: 0 }}>
-                                {initials(student.fullName)}
-                              </div>
-                              <div>
-                                <span style={{ color: '#ddd', fontWeight: 500, fontSize: '0.85rem' }}>{student.fullName}</span>
-                                {student.assignedTo && student.assignedTo.id !== admin._id && (
-                                  <div style={{ fontSize: '0.68rem', color: '#f59e0b', marginTop: '2px' }}>
-                                    ⚠ Assigned to {student.assignedTo.name}
-                                  </div>
-                                )}
-                              </div>
+                <tbody>
+                  {shown.map((student) => {
+                    const sc = student.assessmentScores
+                    const isSelected = selected.has(student._id)
+                    const elsewhere = student.assignedTo && student.assignedTo.id !== admin._id
+                    return (
+                      <tr key={student._id} className={`fam-row-pick${isSelected ? ' is-selected' : ''}`} onClick={() => toggleStudent(student._id)}>
+                        <td>
+                          <input type="checkbox" className="fam-check" checked={isSelected} onChange={() => toggleStudent(student._id)} onClick={(e) => e.stopPropagation()} aria-label={`Select ${student.fullName}`} />
+                        </td>
+                        <td>
+                          <div className="aui-person">
+                            <span className="aui-avatar">{initialsOf(student.fullName)}</span>
+                            <div className="aui-stack">
+                              <strong>{student.fullName}</strong>
+                              <small>{student.email}</small>
+                              {elsewhere && <span className="fam-elsewhere"><FaExclamationTriangle size={9} /> With {student.assignedTo!.name}</span>}
                             </div>
-                          </td>
-                          <td style={{ ...S.td, color: '#666', fontSize: '0.8rem' }}>{student.email}</td>
-                          <td style={{ ...S.td, color: '#888', fontSize: '0.8rem' }}>{student.branch ?? student.department ?? '—'}</td>
-                          <td style={{ ...S.td, color: '#888', fontSize: '0.8rem' }}>{student.joiningYear ?? '—'}</td>
-                          <td style={{ ...S.td, textAlign: 'center' as const, color: '#666' }}>{sc?.quizScore ?? 0}</td>
-                          <td style={{ ...S.td, textAlign: 'center' as const, color: '#666' }}>{sc?.codeChallengeScore ?? 0}</td>
-                          <td style={{ ...S.td, textAlign: 'center' as const, color: '#666' }}>{sc?.technicalRoundScore ?? 0}</td>
-                          <td style={{ ...S.td, textAlign: 'center' as const, color: '#666' }}>{sc?.hrRoundScore ?? 0}</td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          ) : (
-            <div style={{ ...S.emptyState, flex: 1 }}>
-              <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }}>👥</div>
-              <div style={{ fontSize: '0.85rem' }}>Select filters and click "Load Students"</div>
-            </div>
-          )}
+                          </div>
+                        </td>
+                        <td>{student.branch ?? student.department ?? '—'}</td>
+                        <td>{student.joiningYear ? <span className="aui-badge aui-badge-muted">{student.joiningYear}</span> : '—'}</td>
+                        <td className="fam-score aui-num">{sc?.quizScore ?? 0}</td>
+                        <td className="fam-score aui-num">{sc?.codeChallengeScore ?? 0}</td>
+                        <td className="fam-score aui-num">{sc?.technicalRoundScore ?? 0}</td>
+                        <td className="fam-score aui-num">{sc?.hrRoundScore ?? 0}</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            )}
+          </div>
         </div>
 
-        {/* Footer */}
-        <div style={S.modalFooter}>
-          <span style={{ color: '#555', fontSize: '0.82rem', marginRight: 'auto' }}>
-            {selected.size > 0 ? `${selected.size} student${selected.size !== 1 ? 's' : ''} selected` : 'No students selected'}
-          </span>
-          <button style={S.outlineBtn} onClick={onClose}>Cancel</button>
-          <button style={S.accentBtn} onClick={handleSave} disabled={saving || selected.size === 0}>
-            {saving ? 'Saving…' : `Save Assignments (${selected.size})`}
+        <div className="aui-modal-foot">
+          <span className="fam-foot-note"><b>{selected.size}</b> student{selected.size !== 1 ? 's' : ''} selected · {shown.length} shown</span>
+          <button type="button" className="aui-btn" onClick={onClose} disabled={saving}>Cancel</button>
+          <button type="button" className="aui-btn aui-btn-primary" onClick={() => doSave(false)} disabled={saving || selected.size === 0}>
+            {saving ? <><FaSpinner className="aui-spin" style={{ color: '#fff' }} /> Saving…</> : <><FaCheckCircle size={11} /> Save Assignments</>}
           </button>
         </div>
       </div>
-    </div>
+    </Modal>
   )
 }
 
@@ -1227,6 +874,10 @@ interface FacultyProgress {
   students: { name: string; quiz: number; code: number; tr: number; hr: number; total: number }[]
 }
 
+const CHART_TEXT = '#9aa0a6'
+const CHART_GRID = '#202326'
+const SECTION_COLORS = ['#38bdf8', '#c4a5ff', '#45dd75', '#f4b43f']
+
 function FacultyProgressCharts({
   baseURL,
   authHeaders,
@@ -1238,140 +889,119 @@ function FacultyProgressCharts({
 }) {
   const [data, setData] = useState<FacultyProgress[]>([])
   const [loading, setLoading] = useState(true)
-  const [selected, setSelected] = useState<FacultyProgress | null>(null)
+  const [selectedId, setSelectedId] = useState('')
 
   useEffect(() => {
     setLoading(true)
     fetch(`${baseURL}/faculty-admin/progress-overview`, { headers: authHeaders })
       .then(r => r.json())
-      .then(d => { setData(Array.isArray(d) ? d : []); setSelected(null) })
+      .then(d => {
+        const list: FacultyProgress[] = Array.isArray(d) ? d : []
+        setData(list)
+        // Preselect the faculty with the most students so the breakdown is never empty
+        const busiest = [...list].sort((a, b) => b.studentCount - a.studentCount)[0]
+        setSelectedId(busiest?.id || '')
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [refreshKey])
 
-  if (loading) return (
-    <div style={{ marginTop: '2rem', background: '#111', border: '1px solid #1a1a1a', borderRadius: '14px', padding: '2rem', textAlign: 'center', color: '#444' }}>
-      Loading progress charts…
-    </div>
-  )
-
+  const selected = data.find(d => d.id === selectedId) || null
   const names = data.map(d => d.name)
 
-  // Grouped bar chart: Quiz, Code, TR, HR averages per faculty admin
   const groupedOptions: ApexCharts.ApexOptions = {
-    chart: { type: 'bar', background: 'transparent', toolbar: { show: false }, foreColor: '#666' },
-    plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 4, borderRadiusApplication: 'end' } },
-    colors: ['#3b82f6', '#a855f7', '#22c55e', '#f59e0b'],
+    chart: { type: 'bar', background: 'transparent', toolbar: { show: false }, foreColor: CHART_TEXT, fontFamily: 'inherit' },
+    plotOptions: { bar: { horizontal: false, columnWidth: '52%', borderRadius: 4, borderRadiusApplication: 'end' } },
+    colors: SECTION_COLORS,
     dataLabels: { enabled: false },
-    xaxis: { categories: names, labels: { style: { colors: '#666', fontSize: '0.78rem' } } },
-    yaxis: { labels: { style: { colors: '#555' } }, title: { text: 'Avg Score', style: { color: '#555' } } },
-    legend: { position: 'top', labels: { colors: '#aaa' } },
-    grid: { borderColor: '#1a1a1a' },
+    xaxis: { categories: names, labels: { style: { colors: CHART_TEXT, fontSize: '12px' } }, axisBorder: { color: CHART_GRID }, axisTicks: { color: CHART_GRID } },
+    yaxis: { max: 100, labels: { style: { colors: CHART_TEXT } }, title: { text: 'Avg score (out of 100)', style: { color: '#6b7280', fontWeight: 500 } } },
+    legend: { position: 'top', horizontalAlign: 'right', labels: { colors: '#d1d5db' }, markers: { size: 6 } as any },
+    grid: { borderColor: CHART_GRID, strokeDashArray: 3 },
     tooltip: { theme: 'dark' },
   }
 
   const groupedSeries = [
     { name: 'Quiz', data: data.map(d => d.avgQuiz) },
     { name: 'Code', data: data.map(d => d.avgCode) },
-    { name: 'TR', data: data.map(d => d.avgTR) },
+    { name: 'Technical', data: data.map(d => d.avgTR) },
     { name: 'HR', data: data.map(d => d.avgHR) },
   ]
 
-  // Total avg radar/bar for selected faculty
-  const selectedStudentOptions: ApexCharts.ApexOptions = selected ? {
-    chart: { type: 'bar', background: 'transparent', toolbar: { show: false }, foreColor: '#666' },
-    plotOptions: { bar: { horizontal: true, borderRadius: 4, borderRadiusApplication: 'end', dataLabels: { position: 'top' } } },
+  const studentOptions: ApexCharts.ApexOptions = selected ? {
+    chart: { type: 'bar', background: 'transparent', toolbar: { show: false }, foreColor: CHART_TEXT, fontFamily: 'inherit' },
+    plotOptions: { bar: { horizontal: true, barHeight: '62%', borderRadius: 4, borderRadiusApplication: 'end', dataLabels: { position: 'top' } } },
     colors: ['#ff7a00'],
-    dataLabels: { enabled: true, style: { fontSize: '0.75rem', colors: ['#fff'] }, formatter: (v: number) => v > 0 ? String(v) : '' },
-    xaxis: { categories: selected.students.map(s => s.name.split(' ')[0]), labels: { style: { colors: '#666', fontSize: '0.75rem' } }, max: 400 },
-    yaxis: { labels: { style: { colors: '#777', fontSize: '0.75rem' }, maxWidth: 120 } },
-    grid: { borderColor: '#1a1a1a' },
+    dataLabels: { enabled: true, offsetX: 22, style: { fontSize: '11px', colors: ['#e5e7eb'] }, formatter: (v: number) => (v > 0 ? String(v) : '') },
+    xaxis: { categories: selected.students.map(s => s.name), max: 400, labels: { style: { colors: CHART_TEXT, fontSize: '11px' } }, axisBorder: { color: CHART_GRID } },
+    yaxis: { labels: { style: { colors: '#d1d5db', fontSize: '12px' }, maxWidth: 160 } },
+    grid: { borderColor: CHART_GRID, strokeDashArray: 3 },
     tooltip: { theme: 'dark', y: { formatter: (v: number) => `${v} / 400` } },
   } : {}
 
-  const selectedStudentSeries = selected ? [{ name: 'Total Score', data: selected.students.map(s => s.total) }] : []
-
   return (
-    <div style={{ marginTop: '2rem' }}>
-      <hr style={{ border: 'none', borderTop: '1px solid #1a1a1a', margin: '0 0 1.5rem' }} />
-      <div style={{ marginBottom: '1.25rem' }}>
-        <div style={{ color: '#fff', fontWeight: 700, fontSize: '1.1rem' }}>📊 Student Progress Overview</div>
-        <div style={{ color: '#555', fontSize: '0.8rem', marginTop: '0.2rem' }}>Average assessment scores per faculty admin group</div>
-      </div>
-
-      {/* Grouped Bar — all faculty admins comparison */}
-      <div style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: '14px', padding: '1.25rem', marginBottom: '1.25rem' }}>
-        <div style={{ color: '#aaa', fontSize: '0.82rem', fontWeight: 600, marginBottom: '0.75rem', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-          Avg Score by Section — All Faculty Groups
+    <div className="aui-card fam-progress">
+      <div className="aui-toolbar">
+        <div className="aui-toolbar-title">
+          <h3>Student Progress Overview</h3>
+          <p>Average assessment scores for each faculty admin’s students</p>
         </div>
-        <ReactApexChart options={groupedOptions} series={groupedSeries} type="bar" height={260} />
-      </div>
-
-      {/* Faculty selector + student breakdown */}
-      <div style={{ background: '#111', border: '1px solid #1a1a1a', borderRadius: '14px', padding: '1.25rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem', flexWrap: 'wrap' }}>
-          <div style={{ color: '#aaa', fontSize: '0.82rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
-            Individual Student Scores
-          </div>
-          <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-            {data.map(fa => (
-              <button
-                key={fa.id}
-                onClick={() => setSelected(selected?.id === fa.id ? null : fa)}
-                style={{
-                  background: selected?.id === fa.id ? '#ff7a00' : '#1a1a1a',
-                  border: `1px solid ${selected?.id === fa.id ? '#ff7a00' : '#2a2a2a'}`,
-                  color: selected?.id === fa.id ? '#fff' : '#888',
-                  borderRadius: '20px',
-                  padding: '0.3rem 0.85rem',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {fa.name} ({fa.studentCount})
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {!selected ? (
-          <div style={{ color: '#333', textAlign: 'center', padding: '2.5rem', fontSize: '0.85rem' }}>
-            Select a faculty admin above to see their students&apos; individual scores
-          </div>
-        ) : selected.students.length === 0 ? (
-          <div style={{ color: '#333', textAlign: 'center', padding: '2.5rem', fontSize: '0.85rem' }}>
-            No students assigned to {selected.name} yet
-          </div>
-        ) : (
-          <>
-            {/* Summary chips */}
-            <div style={{ display: 'flex', gap: '0.75rem', flexWrap: 'wrap', marginBottom: '1rem' }}>
-              {[
-                { label: 'Students', value: selected.studentCount, color: '#3b82f6' },
-                { label: 'Avg Total', value: `${selected.avgTotal}/400`, color: '#ff7a00' },
-                { label: 'Avg Quiz', value: selected.avgQuiz, color: '#a855f7' },
-                { label: 'Avg Code', value: selected.avgCode, color: '#22c55e' },
-                { label: 'Avg TR', value: selected.avgTR, color: '#f59e0b' },
-                { label: 'Avg HR', value: selected.avgHR, color: '#ef4444' },
-              ].map(chip => (
-                <div key={chip.label} style={{ background: '#1a1a1a', border: '1px solid #222', borderRadius: '8px', padding: '0.5rem 0.9rem' }}>
-                  <div style={{ color: chip.color, fontWeight: 700, fontSize: '1rem', lineHeight: 1 }}>{chip.value}</div>
-                  <div style={{ color: '#555', fontSize: '0.68rem', marginTop: '3px' }}>{chip.label}</div>
-                </div>
-              ))}
-            </div>
-            {/* Horizontal bar per student */}
-            <ReactApexChart
-              options={selectedStudentOptions}
-              series={selectedStudentSeries}
-              type="bar"
-              height={Math.max(180, selected.students.length * 42)}
+        {data.length > 0 && (
+          <div className="aui-toolbar-filters">
+            <AdminSelect
+              label="Faculty admin"
+              prefix="Faculty:"
+              value={selectedId}
+              options={data.map(fa => ({ value: fa.id, label: `${fa.name} (${fa.studentCount})` }))}
+              onChange={setSelectedId}
             />
-          </>
+          </div>
         )}
       </div>
+
+      {loading ? (
+        <div className="aui-empty"><FaSpinner className="aui-spin" size={22} /> Loading progress…</div>
+      ) : data.length === 0 ? (
+        <EmptyState icon={FaChartBar} title="No progress data yet" text="Scores appear once assigned students complete assessments." />
+      ) : (
+        <>
+          <div className="fam-chart">
+            <div className="fam-chart-title">Average score by section · all faculty groups</div>
+            <ReactApexChart options={groupedOptions} series={groupedSeries} type="bar" height={270} />
+          </div>
+
+          <div className="fam-chart">
+            <div className="fam-chart-title">{selected ? `${selected.name} · individual student totals` : 'Individual student totals'}</div>
+            {!selected || selected.students.length === 0 ? (
+              <EmptyState icon={FaUsers} title="No students assigned" text={selected ? `${selected.name} has no students yet.` : 'Choose a faculty admin above.'} />
+            ) : (
+              <>
+                <div className="fam-chips">
+                  {[
+                    { label: 'Students', value: selected.studentCount, color: '#eceef0' },
+                    { label: 'Avg total / 400', value: selected.avgTotal, color: '#ff9a3c' },
+                    { label: 'Avg quiz', value: selected.avgQuiz, color: SECTION_COLORS[0] },
+                    { label: 'Avg code', value: selected.avgCode, color: SECTION_COLORS[1] },
+                    { label: 'Avg technical', value: selected.avgTR, color: SECTION_COLORS[2] },
+                    { label: 'Avg HR', value: selected.avgHR, color: SECTION_COLORS[3] },
+                  ].map(chip => (
+                    <div key={chip.label} className="fam-chip">
+                      <strong style={{ color: chip.color }}>{chip.value}</strong>
+                      <small>{chip.label}</small>
+                    </div>
+                  ))}
+                </div>
+                <ReactApexChart
+                  options={studentOptions}
+                  series={[{ name: 'Total score', data: selected.students.map(s => s.total) }]}
+                  type="bar"
+                  height={Math.max(180, selected.students.length * 38 + 40)}
+                />
+              </>
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }

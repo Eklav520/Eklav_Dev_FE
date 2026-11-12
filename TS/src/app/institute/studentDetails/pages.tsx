@@ -1,4 +1,3 @@
-import { Card } from 'react-bootstrap'
 import PageMetaData from '@/components/PageMetaData'
 import StudentDetails from './components/studentDetails'
 
@@ -7,9 +6,8 @@ const StudentAdminDetails = () => {
   return (
     <>
       <PageMetaData title="Institute Details" />
-      <Card className="bg-transparent border rounded-4">
-        <StudentDetails />
-      </Card>
+      {/* No extra card — the layout's content card is the only frame, as on the dashboard */}
+      <StudentDetails />
     </>
   )
 }

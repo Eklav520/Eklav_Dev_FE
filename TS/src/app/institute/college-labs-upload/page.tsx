@@ -1,14 +1,12 @@
 import PageMetaData from '@/components/PageMetaData'
-import { Card } from 'react-bootstrap'
 import CollegeLabsUpload from './components/CollegeLabsUpload'
 
 const CollegeLabsUploadPage = () => {
+  // No extra card — the layout's content card is the only frame, as on the other admin pages
   return (
     <>
       <PageMetaData title="College Labs Upload" />
-      <Card className="bg-transparent border rounded-4">
-        <CollegeLabsUpload />
-      </Card>
+      <CollegeLabsUpload />
     </>
   )
 }

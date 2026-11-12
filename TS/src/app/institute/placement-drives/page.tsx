@@ -1,12 +1,8 @@
-import { Card } from 'react-bootstrap'
 import PlacementDriveManagement from './components/PlacementDriveManagement'
 
 const PlacementDrivesPage = () => {
-  return (
-    <Card className="bg-transparent border rounded-4">
-      <PlacementDriveManagement />
-    </Card>
-  )
+  // No extra card — the layout's content card is the only frame, as on the other admin pages
+  return <PlacementDriveManagement />
 }
 
 export default PlacementDrivesPage

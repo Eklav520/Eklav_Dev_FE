@@ -1,29 +1,33 @@
-import { lazy, Suspense, useMemo, useState, useEffect } from 'react'
-import {
-  Col,
-  Collapse,
-  Container,
-  Offcanvas,
-  OffcanvasBody,
-  OffcanvasHeader,
-  OffcanvasTitle,
-  Row,
-} from 'react-bootstrap'
+import React, { Suspense, useMemo, useState, useEffect } from 'react'
+import { Collapse } from 'react-bootstrap'
 import { Link, useLocation } from 'react-router-dom'
-import clsx from 'clsx'
 import type { IconType } from 'react-icons'
 
 import { INSTITUTEADMIN_MENU_ITEMS, FACULTY_ADMIN_MENU_ITEMS } from '@/assets/data/menu-items'
 import Preloader from '@/components/Preloader'
 import { useAuthContext } from '@/context/useAuthContext'
-import useToggle from '@/hooks/useToggle'
 import useViewPort from '@/hooks/useViewPort'
 import { ChildrenType } from '@/types/component-props'
-import { FaSignOutAlt, FaChevronRight } from 'react-icons/fa'
+import { FiLayers, FiChevronRight, FiMenu, FiLogOut, FiChevronDown, FiUser } from 'react-icons/fi'
+import logoWhite from '@/assets/images/logo_white.png'
+import logoIcon from '@/assets/images/logo-mobile-light.svg'
+import brainovisionLogo from '@/assets/images/partners/brainovision-logo.png'
 
-const Banner = lazy(() => import('@/components/StudentLayoutComponents/Banner'))
-const Footer = lazy(() => import('@/components/InstructorLayoutComponents/Footer'))
-const TopNavigationBar = lazy(() => import('@/components/InstructorLayoutComponents/TopNavigationBar'))
+// ── Theme — same shell as StudentLayout, in its dark palette to suit the dark admin pages ──
+const SIDEBAR_BG     = '#0d1117'
+const SIDEBAR_ACTIVE = 'rgba(255,122,0,0.15)'
+const SIDEBAR_HOVER  = '#162440'
+const SIDEBAR_TEXT   = '#c8d6e8'
+const SIDEBAR_ACTIVE_TEXT = '#ffffff'
+const SIDEBAR_BORDER = 'rgba(255,255,255,0.08)'
+const ACCENT         = '#ff7a00'
+const TOP_NAV_BG     = '#0d1117'
+const MAIN_BG        = '#000000'
+const TEXT_PRIMARY   = '#f1f5f9'
+const TEXT_SECONDARY = '#94a3b8'
+const NAV_BORDER     = '#1f2630'
+const CARD_BG        = '#141a23'
+const ICON_BTN_BG    = '#1a212c'
 
 type MenuItemTypeLocal = {
   key: string
@@ -38,152 +42,343 @@ type MenuItemTypeLocal = {
 
 const InstituteAdminLayout = ({ children }: ChildrenType) => {
   const { width } = useViewPort()
-  const { isTrue: isOffCanvasMenuOpen, toggle: toggleOffCanvasMenu } = useToggle()
-
+  const isDesktop = width >= 1200
+  const { user, removeSession } = useAuthContext()
+  const location = useLocation()
   const baseURL = import.meta.env.VITE_API_BASE_URL
-  const { user } = useAuthContext()
   const token = user?.token
+  const isFaculty = user?.role === 'facultyAdmin'
 
-  const [name, setName] = useState('Guest')
-  const [role, setRole] = useState('Institute Admin')
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [profileImage, setProfileImage] = useState('')
+  const [isCollapsed, setIsCollapsed] = useState(true)
+  const [isHovering, setIsHovering] = useState(false)
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false)
 
   useEffect(() => {
     if (!token) return
-
-    fetch(`${baseURL}/profile`, {
-      headers: { Authorization: `Bearer ${token}` },
-    })
+    fetch(`${baseURL}/profile`, { headers: { Authorization: `Bearer ${token}` } })
       .then((res) => {
         if (!res.ok) throw new Error('Failed to fetch profile')
         return res.json()
       })
       .then((profile) => {
-        setName(profile.fullName || 'Institute Admin')
-        setRole(profile.role || 'Institute Admin')
+        setName(profile.fullName || profile.name || '')
         setEmail(profile.email || '')
+        setProfileImage(profile.profileImage || '')
       })
-      .catch((err) => {
-        console.error('Error fetching profile:', err)
-      })
+      .catch((err) => console.error('Error fetching profile:', err))
   }, [token, baseURL])
 
+  // Sync body background so overscroll / short pages match the shell
+  useEffect(() => {
+    const prev = document.body.style.background
+    document.body.style.background = MAIN_BG
+    return () => { document.body.style.background = prev }
+  }, [])
+
+  // Close mobile drawer on route change
+  useEffect(() => { setMobileOpen(false) }, [location.pathname])
+
+  const portalLabel = isFaculty ? 'Faculty Admin' : 'Institute Admin'
+  const userName = name || portalLabel
+  const initials = userName.split(/\s+/).slice(0, 2).map((part: string) => part[0]).join('').toUpperCase()
+  const avatarUrl = !profileImage ? '' : /^(https?:|data:)/.test(profileImage) ? profileImage : `${baseURL}${profileImage}`
+  const homeUrl = isFaculty ? '/faculty-admin/dashboard' : '/institute/dashboard'
+
+  const isSidebarExpanded = !isCollapsed || isHovering
+  const sidebarWidth = isSidebarExpanded ? '260px' : '72px'
+  const toggleSidebar = () => { setIsCollapsed(p => !p); setIsHovering(false) }
+
+  // Current page label from menu
+  const currentPageLabel = useMemo(() => {
+    const items = (isFaculty ? FACULTY_ADMIN_MENU_ITEMS : INSTITUTEADMIN_MENU_ITEMS) as unknown as MenuItemTypeLocal[]
+    const flat = (nodes: MenuItemTypeLocal[]): MenuItemTypeLocal[] =>
+      nodes.flatMap(i => [i, ...(i.children ? flat(i.children) : [])])
+    const match = flat(items).find(i => i.url && location.pathname.startsWith(i.url))
+    return match?.label || 'Dashboard'
+  }, [location.pathname, isFaculty])
+
+  const Avatar = ({ size }: { size: number }) => (
+    <div style={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      {/* Initials always as base — shows if image fails or is absent */}
+      <div style={{
+        position: 'absolute', inset: 0, borderRadius: '50%',
+        background: `linear-gradient(135deg, ${ACCENT}, #ff944d)`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        color: '#fff', fontWeight: 700, fontSize: size * 0.024 + 'rem',
+      }}>
+        {initials}
+      </div>
+      {avatarUrl && (
+        <img
+          src={avatarUrl}
+          alt={userName}
+          style={{ position: 'absolute', inset: 0, width: size, height: size, borderRadius: '50%', objectFit: 'cover' }}
+          onError={e => { (e.target as HTMLImageElement).style.display = 'none' }}
+        />
+      )}
+    </div>
+  )
+
+  const SidebarContent = ({ expanded }: { expanded: boolean }) => (
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <style>{`
+        .ial-nav-scroll::-webkit-scrollbar { display: none; }
+        .ial-nav-scroll { scrollbar-width: none; -ms-overflow-style: none; }
+      `}</style>
+
+      {/* Logo / hamburger header */}
+      <div style={{
+        height: 64,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: expanded ? 'space-between' : 'center',
+        padding: expanded ? '0 14px 0 16px' : '0',
+        borderBottom: `1px solid ${SIDEBAR_BORDER}`,
+        flexShrink: 0,
+      }}>
+        {expanded ? (
+          <>
+            <Link to={homeUrl} style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none', flex: 1, overflow: 'hidden' }}>
+              <img src={logoWhite} alt="Eklav" style={{ height: 32, objectFit: 'contain', flexShrink: 0 }} />
+            </Link>
+            {isDesktop && (
+              <button onClick={toggleSidebar} style={{ background: 'transparent', border: 'none', color: SIDEBAR_TEXT, cursor: 'pointer', padding: 6, borderRadius: 6, flexShrink: 0 }}>
+                <FiMenu size={17} />
+              </button>
+            )}
+          </>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6 }}>
+            <img src={logoIcon} alt="Eklav" style={{ height: 22, objectFit: 'contain', marginTop: 8 }} />
+            <button onClick={toggleSidebar} style={{ background: 'transparent', border: 'none', color: SIDEBAR_TEXT, cursor: 'pointer', padding: 4, borderRadius: 6 }}>
+              <FiMenu size={16} />
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Portal badge */}
+      {expanded && (
+        <div style={{ padding: '10px 16px 6px', flexShrink: 0 }}>
+          <div style={{ background: `${ACCENT}20`, borderRadius: 6, padding: '5px 10px', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 7, height: 7, borderRadius: '50%', background: ACCENT }} />
+            <span style={{ fontSize: '0.7rem', color: ACCENT, fontWeight: 600, letterSpacing: 0.5 }}>{portalLabel.toUpperCase()} PORTAL</span>
+          </div>
+        </div>
+      )}
+
+      {/* Nav items */}
+      <nav className="ial-nav-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', display: 'flex', flexDirection: 'column' }}>
+        <VerticalMenu isCollapsed={!expanded} onItemClick={() => setMobileOpen(false)} />
+      </nav>
+
+      {/* User footer */}
+      <div style={{
+        padding: expanded ? '12px 16px' : '10px 0',
+        borderTop: `1px solid ${SIDEBAR_BORDER}`,
+        display: 'flex', alignItems: 'center',
+        justifyContent: expanded ? 'flex-start' : 'center',
+        gap: 10, flexShrink: 0,
+      }}>
+        <Avatar size={34} />
+        {expanded && (
+          <>
+            <div style={{ flex: 1, overflow: 'hidden' }}>
+              <div style={{ fontSize: '0.82rem', color: '#ffffff', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userName}</div>
+              <div style={{ fontSize: '0.68rem', color: SIDEBAR_TEXT, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{portalLabel}</div>
+            </div>
+            <button onClick={() => removeSession()} title="Logout" style={{ background: 'transparent', border: 'none', color: SIDEBAR_TEXT, cursor: 'pointer', padding: 4 }}>
+              <FiLogOut size={15} />
+            </button>
+          </>
+        )}
+      </div>
+    </div>
+  )
+
   return (
-    <>
-      <Suspense>
-        <TopNavigationBar role={role} onToggleMenu={toggleOffCanvasMenu} />
-      </Suspense>
+    <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: MAIN_BG }}>
 
-      <main className="institute-admin-main">
-        <Banner toggleOffCanvas={toggleOffCanvasMenu} />
+      {/* Desktop sidebar */}
+      {isDesktop && (
+        <aside
+          onMouseEnter={() => { if (isCollapsed) setIsHovering(true) }}
+          onMouseLeave={() => { if (isCollapsed) setIsHovering(false) }}
+          style={{
+            position: 'fixed', top: 0, left: 0, bottom: 0,
+            width: sidebarWidth,
+            background: SIDEBAR_BG,
+            borderRight: `1px solid ${SIDEBAR_BORDER}`,
+            zIndex: 1020,
+            transition: 'width 0.22s ease',
+            overflow: 'hidden',
+          }}
+        >
+          <SidebarContent expanded={isSidebarExpanded} />
+        </aside>
+      )}
 
-        <section className="pt-0 mt-3 mt-md-4">
-          <Container fluid>
-            <Row className="g-3 g-xl-4">
-              <Col xl={2}>
-                {width >= 1200 ? (
-                  <VerticalMenu />
-                ) : (
-                  <Offcanvas
-                    show={isOffCanvasMenuOpen}
-                    placement="start"
-                    onHide={toggleOffCanvasMenu}
-                    backdrop
-                    scroll={false}
-                    restoreFocus={false}
-                    className="institute-admin-mobile-drawer"
-                  >
-                    <OffcanvasBody className="p-0">
-                      <div className="drawer-header">
-                        <div className="drawer-welcome">Welcome</div>
-                        <div className="drawer-name">{name}</div>
-                      </div>
-                      <VerticalMenu onItemClick={toggleOffCanvasMenu} />
-                    </OffcanvasBody>
-                  </Offcanvas>
-                )}
-              </Col>
+      {/* Mobile overlay */}
+      {!isDesktop && mobileOpen && (
+        <>
+          <div onClick={() => setMobileOpen(false)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1019 }} />
+          <aside style={{ position: 'fixed', top: 0, left: 0, bottom: 0, width: 260, background: SIDEBAR_BG, zIndex: 1020 }}>
+            <SidebarContent expanded={true} />
+          </aside>
+        </>
+      )}
 
-              <Col xl={10}>
-                <div className="main-content-wrapper">
-                  <Suspense fallback={<Preloader />}>{children}</Suspense>
+      {/* Main area */}
+      <div style={{
+        marginLeft: isDesktop ? sidebarWidth : 0,
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        overflow: 'hidden',
+        transition: 'margin-left 0.22s ease',
+        background: MAIN_BG,
+        minWidth: 0,
+      }}>
+        {/* Sticky top navbar */}
+        <header style={{
+          height: 64,
+          background: TOP_NAV_BG,
+          borderBottom: `1px solid ${NAV_BORDER}`,
+          display: 'flex',
+          alignItems: 'center',
+          padding: '0 24px',
+          gap: 16,
+          flexShrink: 0,
+          position: 'sticky',
+          top: 0,
+          zIndex: 1010,
+        }}>
+          {!isDesktop && (
+            <button onClick={() => setMobileOpen(p => !p)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: TEXT_PRIMARY }}>
+              <FiMenu size={20} />
+            </button>
+          )}
+
+          {/* Page title */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '1rem', fontWeight: 600, color: TEXT_PRIMARY }}>{portalLabel} Portal</div>
+            <div style={{ fontSize: '0.72rem', color: TEXT_SECONDARY }}>{currentPageLabel}</div>
+          </div>
+
+          {/* Right actions */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            {/* Powered by Brainovision — partnership credit, same as the student shell */}
+            <div className="d-none d-md-flex" style={{ alignItems: 'center', gap: 10, paddingRight: 12, borderRight: `1px solid ${NAV_BORDER}` }}>
+              <span style={{ fontSize: '0.75rem', color: TEXT_SECONDARY, fontWeight: 500, whiteSpace: 'nowrap' }}>Powered by</span>
+              <img src={brainovisionLogo} alt="Brainovision" style={{ height: 38, width: 'auto', borderRadius: 4, flexShrink: 0 }} />
+            </div>
+
+            {/* User pill + dropdown */}
+            <div style={{ position: 'relative' }}>
+              <div
+                onClick={() => setUserDropdownOpen(p => !p)}
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 10px 5px 5px', borderRadius: 40, border: `1px solid ${NAV_BORDER}`, background: CARD_BG, cursor: 'pointer', userSelect: 'none' }}
+              >
+                <Avatar size={32} />
+                <div className="d-none d-sm-block" style={{ lineHeight: 1.3 }}>
+                  <div style={{ fontSize: '0.82rem', fontWeight: 700, color: TEXT_PRIMARY, whiteSpace: 'nowrap' }}>{userName}</div>
+                  <div style={{ fontSize: '0.65rem', color: TEXT_SECONDARY, whiteSpace: 'nowrap' }}>{portalLabel}</div>
                 </div>
-              </Col>
-            </Row>
-          </Container>
-        </section>
-      </main>
+                <FiChevronDown size={14} color={TEXT_SECONDARY} style={{ transition: 'transform 0.2s', transform: userDropdownOpen ? 'rotate(180deg)' : 'none' }} />
+              </div>
 
-      <Suspense>
-        <Footer />
-      </Suspense>
+              {userDropdownOpen && (
+                <>
+                  {/* Click-outside backdrop */}
+                  <div onClick={() => setUserDropdownOpen(false)} style={{ position: 'fixed', inset: 0, zIndex: 199 }} />
+                  <div style={{
+                    position: 'absolute', top: 'calc(100% + 8px)', right: 0,
+                    minWidth: 220, background: CARD_BG,
+                    border: `1px solid ${NAV_BORDER}`, borderRadius: 10,
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.45)',
+                    zIndex: 200, overflow: 'hidden',
+                  }}>
+                    <div style={{ padding: '12px 14px', borderBottom: `1px solid ${NAV_BORDER}` }}>
+                      <div style={{ fontSize: '0.82rem', fontWeight: 700, color: TEXT_PRIMARY }}>{userName}</div>
+                      <div style={{ fontSize: '0.65rem', color: TEXT_SECONDARY, marginTop: 2 }}>{email || portalLabel}</div>
+                    </div>
+                    <div style={{ padding: '4px 0' }}>
+                      {!isFaculty && (
+                        <Link
+                          to="/institute/edit-profile"
+                          onClick={() => setUserDropdownOpen(false)}
+                          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', color: TEXT_PRIMARY, fontSize: '0.82rem', fontWeight: 600, textDecoration: 'none' }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = ICON_BTN_BG }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+                        >
+                          <FiUser size={14} />
+                          Edit Profile
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => { setUserDropdownOpen(false); removeSession() }}
+                        style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', background: 'none', border: 'none', color: '#f87171', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', textAlign: 'left' }}
+                        onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(248,113,113,0.1)' }}
+                        onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'none' }}
+                      >
+                        <FiLogOut size={14} />
+                        Logout
+                      </button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* Scrollable content */}
+        <main style={{ flex: 1, overflowY: 'auto', padding: 20, background: MAIN_BG }}>
+          <div className="main-content-wrapper">
+            <Suspense fallback={<Preloader />}>{children}</Suspense>
+          </div>
+        </main>
+      </div>
 
       <style>{`
-        .institute-admin-main {
-          background: #000000;
-          min-height: 100vh;
-        }
-
         .main-content-wrapper {
           background: #0a0a0a;
           border-radius: 12px;
           padding: 1.5rem;
           border: 1px solid #1f1f1f;
-          min-height: calc(100vh - 200px);
+          min-height: calc(100vh - 104px);
         }
 
-        .institute-admin-mobile-drawer {
-          background: #000000 !important;
-        }
-
-        .drawer-header {
-          padding: 20px;
-          border-bottom: 1px solid #1f1f1f;
-          background: #000000;
-        }
-
-        .drawer-welcome {
-          font-size: 12px;
-          color: #ff7a00;
-          letter-spacing: 0.5px;
-          font-weight: 500;
-        }
-
-        .drawer-name {
-          font-size: 16px;
-          font-weight: 600;
-          color: #ffffff;
-          margin-top: 4px;
-        }
-
-        /* Custom scrollbar for dark theme */
-        .main-content-wrapper::-webkit-scrollbar {
-          width: 8px;
-        }
-
-        .main-content-wrapper::-webkit-scrollbar-track {
-          background: #1a1a1a;
-          border-radius: 4px;
-        }
-
-        .main-content-wrapper::-webkit-scrollbar-thumb {
-          background: #ff7a00;
-          border-radius: 4px;
-        }
-
-        .main-content-wrapper::-webkit-scrollbar-thumb:hover {
-          background: #ff944d;
+        @media (max-width: 575.98px) {
+          .main-content-wrapper { padding: 1rem; }
         }
       `}</style>
-    </>
+    </div>
   )
 }
 
-/* ---------------- Vertical Menu ---------------- */
+/* ═══════════════════ VERTICAL MENU ═══════════════════ */
 
-const VerticalMenu = ({ onItemClick }: { onItemClick?: () => void }) => {
+// Keys that are controlled by admin nav config — items NOT in this set always show
+const KNOWN_ADMIN_KEYS = new Set([
+  'dashboard', 'courses', 'students', 'onlineClasses', 'freelencing',
+  'jobOpenings', 'placements', 'collegeAssessment', 'finalAssessment',
+  'instituteAnnouncements', 'facultyAdmin', 'profile',
+])
+
+// Backward compat: map old/wrong keys to correct menu item keys
+const LEGACY_KEY_MAP: Record<string, string> = {
+  'achievements': 'instituteAnnouncements',
+  'editProfile':  'profile',
+}
+
+const VerticalMenu = ({ isCollapsed, onItemClick }: { isCollapsed: boolean; onItemClick?: () => void }) => {
   const { pathname } = useLocation()
-  const { removeSession, user } = useAuthContext()
+  const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
 
   const [allowedAdminKeys, setAllowedAdminKeys] = useState<string[] | null>(null)
@@ -205,19 +400,6 @@ const VerticalMenu = ({ onItemClick }: { onItemClick?: () => void }) => {
       .catch(() => {})
   }, [baseURL])
 
-  // Keys that are controlled by admin nav config — items NOT in this set always show
-  const KNOWN_ADMIN_KEYS = new Set([
-    'dashboard','courses','students','onlineClasses','freelencing',
-    'jobOpenings','placements','collegeAssessment','finalAssessment',
-    'instituteAnnouncements','facultyAdmin','profile',
-  ])
-
-  // Backward compat: map old/wrong keys to correct menu item keys
-  const LEGACY_KEY_MAP: Record<string, string> = {
-    'achievements': 'instituteAnnouncements',
-    'editProfile':  'profile',
-  }
-
   const baseMenu: MenuItemTypeLocal[] = useMemo(() => {
     const items = user?.role === 'facultyAdmin' ? FACULTY_ADMIN_MENU_ITEMS : INSTITUTEADMIN_MENU_ITEMS
     const all = items as unknown as MenuItemTypeLocal[]
@@ -227,25 +409,20 @@ const VerticalMenu = ({ onItemClick }: { onItemClick?: () => void }) => {
     // Always include 'dashboard' and 'profile' even if missing from config
     if (!normalizedKeys.includes('dashboard')) normalizedKeys.push('dashboard')
     if (!normalizedKeys.includes('profile')) normalizedKeys.push('profile')
-    return all.filter(item =>
-      !KNOWN_ADMIN_KEYS.has(item.key) || normalizedKeys.includes(item.key)
-    )
+    return all.filter(item => !KNOWN_ADMIN_KEYS.has(item.key) || normalizedKeys.includes(item.key))
   }, [user?.role, allowedAdminKeys])
 
   const tree = useMemo(() => {
-    const hasNested = baseMenu.some((it) => it.children && it.children.length > 0)
+    const hasNested = baseMenu.some(it => it.children && it.children.length > 0)
     if (hasNested) return baseMenu
 
     const map = new Map<string, MenuItemTypeLocal & { children: MenuItemTypeLocal[] }>()
-    baseMenu.forEach((it) => map.set(it.key, { ...it, children: [] }))
+    baseMenu.forEach(it => map.set(it.key, { ...it, children: [] }))
 
     const roots: (MenuItemTypeLocal & { children: MenuItemTypeLocal[] })[] = []
-    map.forEach((it) => {
-      if (it.parentKey && map.has(it.parentKey)) {
-        map.get(it.parentKey)!.children.push(it)
-      } else {
-        roots.push(it)
-      }
+    map.forEach(it => {
+      if (it.parentKey && map.has(it.parentKey)) map.get(it.parentKey)!.children.push(it)
+      else roots.push(it)
     })
     return roots
   }, [baseMenu])
@@ -254,61 +431,79 @@ const VerticalMenu = ({ onItemClick }: { onItemClick?: () => void }) => {
 
   useEffect(() => {
     const newOpen: Record<string, boolean> = {}
-
     const walk = (nodes: MenuItemTypeLocal[], parents: string[] = []) => {
-      nodes.forEach((n) => {
-        if (n.url && pathname === n.url) parents.forEach((p) => (newOpen[p] = true))
+      nodes.forEach(n => {
+        if (n.url && pathname.startsWith(n.url)) parents.forEach(p => (newOpen[p] = true))
         if (n.children) walk(n.children, [...parents, n.key])
       })
     }
-
     walk(tree)
-    setOpenKeys((s) => ({ ...s, ...newOpen }))
+    setOpenKeys(s => ({ ...s, ...newOpen }))
   }, [pathname, tree])
 
   const toggle = (key: string) =>
-    setOpenKeys((s) => ({
-      ...s,
-      [key]: !s[key],
+    setOpenKeys(prev => ({
+      ...Object.keys(prev).reduce((a, k) => ({ ...a, [k]: false }), {}),
+      [key]: !prev[key],
     }))
 
-  const isActive = (item: MenuItemTypeLocal) =>
-    item.url && pathname === item.url
+  const iconSize = isCollapsed ? 19 : 16
+  const itemPad = isCollapsed ? '11px 0' : '9px 16px'
+  const itemMargin = isCollapsed ? '2px auto' : '2px 8px'
 
-  const renderNode = (node: MenuItemTypeLocal) => {
-    const Icon = node.icon
-    const hasChildren = node.children && node.children.length > 0
+  // A parent is active when any descendant matches the current page
+  const isNodeActive = (node: MenuItemTypeLocal): boolean =>
+    (!!node.url && pathname.startsWith(node.url)) || !!node.children?.some(isNodeActive)
+
+  const renderNode = (node: MenuItemTypeLocal): React.ReactNode => {
+    const Icon = node.icon || (node.children?.length ? FiLayers : null) as IconType | null
+    const hasChildren = !!node.children?.length
+    const open = !!openKeys[node.key]
+    const active = isNodeActive(node)
 
     if (node.isTitle) {
-      return (
-        <div key={node.key} className="menu-title">
+      return isCollapsed ? null : (
+        <div key={node.key} style={{ padding: '12px 16px 4px', fontSize: '0.68rem', fontWeight: 600, color: `${ACCENT}99`, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
           {node.label}
         </div>
       )
     }
 
     if (hasChildren) {
-      const open = !!openKeys[node.key]
-
       return (
-        <div key={node.key} className="menu-item-wrapper">
+        <div key={node.key} style={isCollapsed ? { width: '100%' } : {}}>
           <button
             type="button"
             onClick={() => toggle(node.key)}
-            className="menu-button"
+            title={isCollapsed ? node.label : undefined}
+            style={{
+              width: isCollapsed ? 44 : 'calc(100% - 16px)', padding: itemPad, margin: itemMargin,
+              display: 'flex', alignItems: 'center',
+              justifyContent: isCollapsed ? 'center' : 'space-between',
+              background: active ? SIDEBAR_ACTIVE : 'transparent',
+              border: 'none',
+              color: active ? SIDEBAR_ACTIVE_TEXT : SIDEBAR_TEXT,
+              cursor: 'pointer', transition: 'all 0.15s',
+              borderRadius: 8, fontSize: '0.85rem', fontWeight: active ? 600 : 400,
+            }}
+            onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = SIDEBAR_HOVER }}
+            onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
           >
-            <div className="menu-button-content">
-              {Icon && <Icon className="menu-icon" />}
-              <span>{node.label}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: isCollapsed ? 0 : 10, minWidth: 0 }}>
+              {Icon && <Icon size={iconSize} color={active ? ACCENT : SIDEBAR_TEXT} style={{ flexShrink: 0 }} />}
+              {!isCollapsed && <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{node.label}</span>}
             </div>
-            <FaChevronRight className={`menu-chevron ${open ? 'open' : ''}`} />
+            {!isCollapsed && (
+              <FiChevronRight size={13} style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s', color: ACCENT, flexShrink: 0 }} />
+            )}
           </button>
-
-          <Collapse in={open}>
-            <div className="menu-children">
-              {node.children?.map((c) => renderNode(c))}
-            </div>
-          </Collapse>
+          {!isCollapsed && (
+            <Collapse in={open}>
+              <div style={{ marginLeft: 28, marginTop: 2 }}>
+                {node.children!.map(c => renderNode(c))}
+              </div>
+            </Collapse>
+          )}
         </div>
       )
     }
@@ -317,161 +512,42 @@ const VerticalMenu = ({ onItemClick }: { onItemClick?: () => void }) => {
       <Link
         key={node.key}
         to={node.url || '#'}
-        className={`menu-link ${isActive(node) ? 'active' : ''}`}
-        onClick={() => onItemClick?.()}
+        onClick={onItemClick}
+        title={isCollapsed ? node.label : undefined}
+        style={{
+          display: 'flex', alignItems: 'center',
+          justifyContent: isCollapsed ? 'center' : 'flex-start',
+          padding: itemPad, margin: itemMargin,
+          width: isCollapsed ? 44 : undefined,
+          gap: isCollapsed ? 0 : 10,
+          textDecoration: 'none', borderRadius: 8,
+          background: active ? SIDEBAR_ACTIVE : 'transparent',
+          color: active ? SIDEBAR_ACTIVE_TEXT : SIDEBAR_TEXT,
+          fontSize: '0.85rem', fontWeight: active ? 600 : 400,
+          transition: 'background 0.15s, color 0.15s',
+          position: 'relative', whiteSpace: 'nowrap', overflow: 'hidden',
+        }}
+        onMouseEnter={e => { if (!active) (e.currentTarget as HTMLElement).style.background = SIDEBAR_HOVER }}
+        onMouseLeave={e => { if (!active) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
       >
-        {Icon && <Icon className="menu-icon" />}
-        <span>{node.label}</span>
+        {active && (
+          <div style={{ position: 'absolute', left: 0, top: '20%', width: 3, height: '60%', background: ACCENT, borderRadius: '0 3px 3px 0' }} />
+        )}
+        {Icon && <Icon size={iconSize} color={active ? ACCENT : SIDEBAR_TEXT} style={{ flexShrink: 0 }} />}
+        {!isCollapsed && node.label}
       </Link>
     )
   }
 
   return (
-    <div className="vertical-menu-container">
-      <div className="menu-list">
-        {tree.map((n) => renderNode(n))}
-
-        <div className="menu-divider" />
-
-        <Link
-          className="menu-link signout-link"
-          to="/auth/sign-in"
-          onClick={removeSession}
-        >
-          <FaSignOutAlt className="menu-icon" />
-          <span>Sign Out</span>
-        </Link>
-      </div>
-
-      <style>{`
-        .vertical-menu-container {
-          background: #000000;
-          border-radius: 12px;
-          border: 1px solid #1f1f1f;
-          width: 100%;
-          position: sticky;
-          top: 20px;
-        }
-
-        .menu-list {
-          padding: 1rem;
-        }
-
-        .menu-title {
-          padding: 0.75rem 1rem;
-          font-size: 0.75rem;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 0.5px;
-          color: #ff7a00;
-          margin-top: 0.5rem;
-        }
-
-        .menu-title:first-child {
-          margin-top: 0;
-        }
-
-        .menu-item-wrapper {
-          margin-bottom: 0.25rem;
-        }
-
-        .menu-button {
-          width: 100%;
-          display: flex;
-          align-items: center;
-          justify-content: space-between;
-          padding: 0.625rem 1rem;
-          background: transparent;
-          border: none;
-          border-radius: 8px;
-          color: #e5e5e5;
-          font-size: 0.875rem;
-          font-weight: 500;
-          cursor: pointer;
-          transition: all 0.2s ease;
-        }
-
-        .menu-button:hover {
-          background: #1a1a1a;
-          color: #ff7a00;
-        }
-
-        .menu-button-content {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-        }
-
-        .menu-chevron {
-          font-size: 0.75rem;
-          transition: transform 0.2s ease;
-          color: #6c757d;
-        }
-
-        .menu-chevron.open {
-          transform: rotate(90deg);
-          color: #ff7a00;
-        }
-
-        .menu-children {
-          margin-left: 2rem;
-          padding-left: 0.5rem;
-          border-left: 1px solid #2c2c2c;
-        }
-
-        .menu-link {
-          display: flex;
-          align-items: center;
-          gap: 0.75rem;
-          padding: 0.625rem 1rem;
-          border-radius: 8px;
-          color: #e5e5e5;
-          font-size: 0.875rem;
-          font-weight: 500;
-          text-decoration: none;
-          transition: all 0.2s ease;
-          margin-bottom: 0.25rem;
-        }
-
-        .menu-link:hover {
-          background: #1a1a1a;
-          color: #ff7a00;
-          text-decoration: none;
-        }
-
-        .menu-link.active {
-          background: linear-gradient(135deg, #ff7a00 0%, #ff944d 100%);
-          color: #ffffff;
-          box-shadow: 0 2px 8px rgba(255, 122, 0, 0.3);
-        }
-
-        .menu-icon {
-          font-size: 1rem;
-          min-width: 1.25rem;
-        }
-
-        .menu-divider {
-          height: 1px;
-          background: #1f1f1f;
-          margin: 1rem 0;
-        }
-
-        .signout-link {
-          color: #ff6b6b;
-        }
-
-        .signout-link:hover {
-          background: rgba(255, 107, 107, 0.1);
-          color: #ff6b6b;
-        }
-
-        @media (max-width: 1199px) {
-          .vertical-menu-container {
-            border-radius: 0;
-            border: none;
-          }
-        }
-      `}</style>
+    <div style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: isCollapsed ? 'center' : 'stretch',
+      padding: isCollapsed ? '4px 0' : '2px 0',
+      width: '100%',
+    }}>
+      {tree.map(n => renderNode(n))}
     </div>
   )
 }

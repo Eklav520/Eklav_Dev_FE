@@ -9,8 +9,10 @@ import {
   FaCheckDouble, FaFileExport, FaGraduationCap,
   FaTrophy, FaUsers, FaAward, FaCalendarAlt,
   FaUser, FaEnvelope, FaBookOpen, FaPercent,
-  FaPlay, FaStop, FaRedoAlt, FaFilePdf, FaEdit
+  FaPlay, FaStop, FaRedoAlt, FaFilePdf, FaEdit,
+  FaSpinner, FaExclamationTriangle, FaChevronLeft, FaChevronRight
 } from 'react-icons/fa';
+import { PageHeader, StatCards, SearchInput, AdminSelect, EmptyState, initialsOf } from '@/components/admin-ui';
 import { useAuthContext } from '@/context/useAuthContext';
 import axios from 'axios';
 
@@ -638,339 +640,253 @@ const AdminResults: React.FC<{ defaultExamId?: string; hideHeader?: boolean; hid
     });
   };
 
+  const ROUND_SHORT: Record<string, string> = { mcq: 'MCQ', coding: 'Coding', tr: 'Technical', hr: 'HR', english: 'English' };
+
+  /* Overall approval for a row — rounds win over the legacy result-level status */
+  const approvalOf = (result: Result): 'approved' | 'rejected' | 'partial' | 'pending' => {
+    const rounds: any[] = result.roundResults || [];
+    if (rounds.length) {
+      if (rounds.some(r => r.approvalStatus === 'rejected')) return 'rejected';
+      if (rounds.every(r => r.approvalStatus === 'approved')) return 'approved';
+      if (rounds.some(r => r.approvalStatus === 'approved')) return 'partial';
+    }
+    return result.approvalStatus === 'approved' ? 'approved' : result.approvalStatus === 'rejected' ? 'rejected' : 'pending';
+  };
+  const APPROVAL_BADGE = {
+    approved: { cls: 'aui-badge-green', label: 'Approved', icon: FaCheckCircle },
+    rejected: { cls: 'aui-badge-red', label: 'Rejected', icon: FaTimesCircle },
+    partial: { cls: 'aui-badge-amber', label: 'Partial', icon: FaClock },
+    pending: { cls: 'aui-badge-muted', label: 'Pending', icon: FaClock },
+  };
+
+  const filtersActive = !!(filters.search || filters.status || (!filterRoundType && filters.roundType));
+  const clearFilters = () => {
+    setFilters({ search: '', status: '', roundType: filterRoundType || '' });
+    setCurrentPage(1);
+  };
+  const setFilter = (key: 'search' | 'status' | 'roundType', value: string) => {
+    setFilters(f => ({ ...f, [key]: value }));
+    setCurrentPage(1);
+  };
+
+  const openApproval = (result: Result) => {
+    setSelectedResult(result);
+    setSelectedRoundTypes((result.roundResults || []).filter((r: any) => r.approvalStatus === 'approved').map((r: any) => r.roundType));
+    setApproveComments((result as any).approvalComments || '');
+    setShowApproveModal(true);
+  };
+
+  const pageNumbers = (() => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages: (number | 'gap')[] = [1];
+    if (currentPage > 3) pages.push('gap');
+    for (let p = Math.max(2, currentPage - 1); p <= Math.min(totalPages - 1, currentPage + 1); p++) pages.push(p);
+    if (currentPage < totalPages - 2) pages.push('gap');
+    pages.push(totalPages);
+    return pages;
+  })();
+
   return (
-    <div className="admin-results-container">
-      {/* Header */}
+    <div className="aui-page arx">
       {!hideHeader && (
-        <div className="header-section">
-          <h1 className="page-title">
-            <FaGraduationCap className="title-icon" />
-            Assessment Results Dashboard
-          </h1>
-          <p className="page-subtitle">Monitor and manage student assessment submissions</p>
-        </div>
+        <PageHeader icon={FaGraduationCap} title="Assessment Results" subtitle="Monitor and manage student assessment submissions" />
       )}
 
-      {/* Stats Cards */}
       {stats && (
-        <div className="stats-wrapper">
-          <div className="stat-card">
-            <div className="stat-icon"><FaUsers /></div>
-            <div className="stat-info">
-              <span>Total Submissions</span>
-              <strong>{stats.totalSubmissions || 0}</strong>
-            </div>
-          </div>
-          
-          <div className="stat-card success">
-            <div className="stat-icon"><FaTrophy /></div>
-            <div className="stat-info">
-              <span>Passed</span>
-              <strong>{stats.passedSubmissions || 0}</strong>
-            </div>
-          </div>
-          
-          <div className="stat-card danger">
-            <div className="stat-icon"><FaTimesCircle /></div>
-            <div className="stat-info">
-              <span>Failed</span>
-              <strong>{stats.failedSubmissions || 0}</strong>
-            </div>
-          </div>
-          
-          <div className="stat-card warning">
-            <div className="stat-icon"><FaClock /></div>
-            <div className="stat-info">
-              <span>Pending Approval</span>
-              <strong>{stats.pendingApproval || 0}</strong>
-            </div>
-          </div>
-          
-          <div className="stat-card info">
-            <div className="stat-icon"><FaAward /></div>
-            <div className="stat-info">
-              <span>Avg Score</span>
-              <strong>{stats.averagePercentage?.toFixed(1) || 0}%</strong>
-            </div>
-          </div>
-        </div>
+        <StatCards
+          items={[
+            { label: 'Submissions', value: stats.totalSubmissions || 0, icon: FaUsers, tone: 'orange' },
+            { label: 'Passed', value: stats.passedSubmissions || 0, icon: FaTrophy, tone: 'green' },
+            { label: 'Failed', value: stats.failedSubmissions || 0, icon: FaTimesCircle, tone: 'red' },
+            { label: 'Pending Approval', value: stats.pendingApproval || 0, icon: FaClock, tone: 'amber' },
+            { label: 'Average Score', value: `${stats.averagePercentage?.toFixed(1) || 0}%`, icon: FaAward, tone: 'blue' },
+          ]}
+        />
       )}
 
-      {/* Filters and Actions */}
-      <div className="filters-bar">
-        <div className="filters-group">
-          {!hideExamSelector && (
-            <select
-              value={selectedExamId}
-              onChange={(e) => {
-                setSelectedExamId(e.target.value);
-                setCurrentPage(1);
-              }}
-              style={{ minWidth: '200px', fontWeight: 600, color: selectedExamId ? '#ff7a00' : '#ffffff' }}
-            >
-              <option value="">-- Select an Exam --</option>
-              {exams.map((exam, idx) => (
-                <option key={exam.id} value={exam.id}>
-                  {idx === 0 ? `⭐ ${exam.title} (Latest)` : exam.title}
-                </option>
-              ))}
-            </select>
-          )}
-
-          {/* <button 
-            className="live-btn"
-            onClick={() => {
-              const targetExamId = selectedExamId || exams[0]?.id;
-              if (targetExamId) openLiveStudentsModal(targetExamId);
-            }}
-            title={exams.length > 0 ? 'View students currently taking this exam' : 'No exams available'}
-            disabled={exams.length === 0}
-          >
-            <span className="live-dot"></span> Live Students
-          </button> */}
-
-          <div className="search-box">
-            <FaSearch className="search-icon" />
-            <input
-              type="text"
-              placeholder="Search by name or email..."
-              value={filters.search}
-              onChange={(e) => {
-                setFilters({...filters, search: e.target.value});
-                setCurrentPage(1);
-              }}
-            />
+      <div className="aui-card">
+        <div className="aui-toolbar">
+          <div className="aui-toolbar-title">
+            <h3>Submissions</h3>
+            <p>Select rows to approve in bulk · open a student to review answers</p>
           </div>
-          
-          <select
-            value={filters.status}
-            onChange={(e) => {
-              setFilters({...filters, status: e.target.value});
-              setCurrentPage(1);
-            }}
-          >
-            <option value="">All Results</option>
-            <option value="passed">Passed</option>
-            <option value="failed">Failed</option>
-          </select>
-          
-          <select
-            value={filters.roundType}
-            onChange={(e) => {
-              setFilters({...filters, roundType: e.target.value});
-              setCurrentPage(1);
-            }}
-          >
-            <option value="">All Rounds</option>
-            <option value="mcq">MCQ</option>
-            <option value="tr">Technical Round</option>
-            <option value="hr">HR Round</option>
-            <option value="coding">Coding</option>
-          </select>
-          
-          <button className="clear-btn" onClick={() => {
-            setFilters({search: '', status: '', roundType: ''});
-            setCurrentPage(1);
-            if (exams.length > 0) setSelectedExamId(exams[0].id);
-          }}>
-            <FaFilter /> Clear
-          </button>
-          
-          <button className="export-btn" onClick={exportCSV}>
-            <FaFileExport /> Export
-          </button>
+          <div className="aui-toolbar-filters">
+            {!hideExamSelector && (
+              <AdminSelect
+                label="Exam"
+                prefix="Exam:"
+                value={selectedExamId}
+                options={[{ value: '', label: 'All exams' }, ...exams.map(e => ({ value: e.id, label: e.title }))]}
+                onChange={(v) => { setSelectedExamId(v); setCurrentPage(1); }}
+              />
+            )}
+            <SearchInput value={filters.search} onChange={(v) => setFilter('search', v)} placeholder="Search name or email…" />
+            <AdminSelect
+              label="Result"
+              value={filters.status}
+              options={[{ value: '', label: 'All results' }, { value: 'passed', label: 'Passed' }, { value: 'failed', label: 'Failed' }]}
+              onChange={(v) => setFilter('status', v)}
+            />
+            {!filterRoundType && (
+              <AdminSelect
+                label="Round"
+                value={filters.roundType}
+                options={[{ value: '', label: 'All rounds' }, ...['mcq', 'coding', 'tr', 'hr', 'english'].map(v => ({ value: v, label: ROUND_SHORT[v] }))]}
+                onChange={(v) => setFilter('roundType', v)}
+              />
+            )}
+            {filtersActive && (
+              <button type="button" className="aui-btn" onClick={clearFilters}><FaTimesCircle size={11} /> Clear</button>
+            )}
+            <button type="button" className="aui-btn" onClick={exportCSV}><FaFileExport size={11} /> Export CSV</button>
+          </div>
         </div>
-        
+
         {selectedSubmissions.length > 0 && (
-          <div className="bulk-actions">
-            <button className="bulk-approve-btn" onClick={() => setShowBulkApproveModal(true)}>
-              <FaCheckDouble /> Bulk Approve ({selectedSubmissions.length})
-            </button>
+          <div className="arx-bulk">
+            <span><b>{selectedSubmissions.length}</b> submission{selectedSubmissions.length === 1 ? '' : 's'} selected</span>
+            <div>
+              <button type="button" className="aui-btn aui-btn-sm" onClick={() => setSelectedSubmissions([])}>Deselect</button>
+              <button type="button" className="aui-btn aui-btn-sm aui-btn-primary" onClick={() => setShowBulkApproveModal(true)}>
+                <FaCheckDouble size={11} /> Approve Selected
+              </button>
+            </div>
           </div>
         )}
-      </div>
 
-      {/* Results Table */}
-      <div className="table-wrapper">
         {loading ? (
-          <div className="loading-state">
-            <Spinner animation="border" variant="warning" />
-            <p>Loading results...</p>
-          </div>
+          <div className="aui-empty"><FaSpinner className="aui-spin" size={22} /> Loading results…</div>
         ) : error ? (
-          <Alert variant="danger">{error}</Alert>
+          <div className="aui-alert arx-alert"><FaTimesCircle /> <span>{error}</span></div>
         ) : results.length === 0 ? (
-          <div className="empty-state">
-            <p>No results found</p>
-          </div>
+          <EmptyState
+            icon={FaChartLine}
+            title={filtersActive ? 'No submissions match' : 'No submissions yet'}
+            text={filtersActive ? 'Try a different search or filter.' : 'Results appear here as soon as students submit this round.'}
+            action={filtersActive ? <button type="button" className="aui-btn aui-btn-sm" onClick={clearFilters}>Clear filters</button> : undefined}
+          />
         ) : (
           <>
-            <table className="results-table">
-              <thead>
-                <tr>
-                  <th style={{ width: '40px' }}>
-                    <input
-                      type="checkbox"
-                      checked={selectedSubmissions.length === results.length && results.length > 0}
-                      onChange={handleSelectAll}
-                    />
-                  </th>
-                  <th>Student</th>
-                  <th>Email</th>
-                  <th>Round Results</th>
-                  <th>Approval</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {results.map((result) => (
-                  <tr key={result._id}>
-                    <td>
+            <div className="aui-table-scroll">
+              <table className="aui-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 44 }}>
                       <input
                         type="checkbox"
-                        checked={selectedSubmissions.includes(result._id)}
-                        onChange={() => handleSelectOne(result._id)}
+                        className="arx-check"
+                        aria-label="Select all"
+                        checked={selectedSubmissions.length === results.length && results.length > 0}
+                        onChange={handleSelectAll}
                       />
-                    </td>
-                    <td>
-                      <div className="student-cell">
-                        <div className="student-avatar">
-                          {result.student.name?.charAt(0) || '?'}
-                        </div>
-                        <div>
-                          <span className="student-name">{result.student.name || 'N/A'}</span>
-                          {result.roundResults?.some((r: any) => r.violationAutoSubmit) && (
-                            <span style={{
-                              display: 'inline-block', marginLeft: '6px',
-                              background: 'rgba(220,53,69,0.15)', color: '#dc3545',
-                              border: '1px solid rgba(220,53,69,0.4)',
-                              borderRadius: '5px', padding: '1px 6px',
-                              fontSize: '0.68rem', fontWeight: 700,
-                            }}>
-                              ⚠ Violation
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="email-cell">{result.student.email || 'N/A'}</td>
-                    <td>
-                      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-                        {(result.roundResults || [])
-                          .filter((r: any) => !filterRoundType || r.roundType === filterRoundType)
-                          .map((r: any) => {
-                          const LABELS: Record<string, string> = { mcq: 'MCQ', coding: 'Code', tr: 'Tech', hr: 'HR', english: 'English' };
-                          const label = LABELS[r.roundType] || r.roundType?.toUpperCase();
-                          const passed = r.passed;
-                          const isApproved = r.approvalStatus === 'approved';
-                          const isPending = !r.approvalStatus || r.approvalStatus === 'pending';
-                          return (
-                            <span key={r.roundType} style={{
-                              display: 'inline-flex', alignItems: 'center', gap: 4,
-                              padding: '3px 9px', borderRadius: 20, fontSize: '0.75rem', fontWeight: 700,
-                              background: isApproved
-                                ? (passed ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)')
-                                : 'rgba(100,116,139,0.12)',
-                              color: isApproved
-                                ? (passed ? '#22c55e' : '#ef4444')
-                                : '#64748b',
-                              border: `1px solid ${isApproved ? (passed ? '#22c55e44' : '#ef444444') : '#64748b44'}`,
-                              opacity: isPending ? 0.6 : 1,
-                            }}>
-                              {isApproved ? (passed ? '✓' : '✗') : '⏳'} {label}
-                              <span style={{ fontWeight: 400, opacity: 0.8 }}>{r.percentage?.toFixed(0)}%</span>
-                            </span>
-                          );
-                        })}
-                        {(!result.roundResults || result.roundResults.length === 0) && (
-                          <span style={{ color: '#555', fontSize: '0.78rem' }}>—</span>
-                        )}
-                      </div>
-                    </td>
-                    <td>{getApprovalBadge(result.approvalStatus, result.roundResults)}</td>
-                    <td>
-                      <div className="action-buttons">
-                        <button
-                          className="view-btn"
-                          onClick={() => {
-                            setSelectedResult(result);
-                            setShowDetailsModal(true);
-                            fetchDetailedAnswers(result._id);
-                          }}
-                        >
-                          <FaEye /> View
-                        </button>
-                        <button
-                          className="edit-approval-btn"
-                          onClick={() => {
-                            setSelectedResult(result);
-                            setSelectedRoundTypes((result.roundResults || []).filter((r: any) => r.approvalStatus === 'approved').map((r: any) => r.roundType));
-                            setApproveComments(result.approvalComments || '');
-                            setShowApproveModal(true);
-                          }}
-                        >
-                          <FaEdit /> Edit
-                        </button>
-                        {result.approvalStatus === 'pending' && (
-                          <button
-                            className="approve-btn"
-                            onClick={() => {
-                              setSelectedResult(result);
-                              setSelectedRoundTypes((result.roundResults || []).filter((r: any) => r.approvalStatus === 'approved').map((r: any) => r.roundType));
-                              setShowApproveModal(true);
-                            }}
-                          >
-                            <FaCheckCircle /> Approve
-                          </button>
-                        )}
-                      </div>
-                    </td>
+                    </th>
+                    <th>Student</th>
+                    <th>Round Results</th>
+                    <th style={{ width: 130 }}>Approval</th>
+                    <th style={{ width: 230 }} className="text-end">Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {results.map((result) => {
+                    const approval = APPROVAL_BADGE[approvalOf(result)];
+                    const ApprovalIcon = approval.icon;
+                    const rounds = (result.roundResults || []).filter((r: any) => !filterRoundType || r.roundType === filterRoundType);
+                    const isSelected = selectedSubmissions.includes(result._id);
+                    return (
+                      <tr key={result._id} className={isSelected ? 'is-selected' : ''}>
+                        <td>
+                          <input type="checkbox" className="arx-check" aria-label={`Select ${result.student.name}`} checked={isSelected} onChange={() => handleSelectOne(result._id)} />
+                        </td>
+                        <td>
+                          <div className="aui-person">
+                            <span className="aui-avatar">{initialsOf(result.student.name || '?')}</span>
+                            <div className="aui-stack">
+                              <strong>
+                                {result.student.name || 'N/A'}
+                                {result.roundResults?.some((r: any) => r.violationAutoSubmit) && (
+                                  <span className="aui-badge aui-badge-red arx-flag" title="Auto-submitted after a proctoring violation">
+                                    <FaExclamationTriangle size={8} /> Violation
+                                  </span>
+                                )}
+                              </strong>
+                              <small>{result.student.email || 'N/A'}</small>
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="arx-rounds">
+                            {rounds.length === 0 && <span className="aui-num">—</span>}
+                            {rounds.map((r: any) => {
+                              const approved = r.approvalStatus === 'approved';
+                              const cls = approved ? (r.passed ? 'aui-badge-green' : 'aui-badge-red') : 'aui-badge-muted';
+                              const Icon = approved ? (r.passed ? FaCheckCircle : FaTimesCircle) : FaClock;
+                              return (
+                                <span key={r.roundType} className={`aui-badge ${cls}`} title={approved ? (r.passed ? 'Passed · approved' : 'Failed · approved') : 'Awaiting approval'}>
+                                  <Icon size={9} /> {ROUND_SHORT[r.roundType] || r.roundType?.toUpperCase()}
+                                  <em>{r.percentage?.toFixed(0)}%</em>
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </td>
+                        <td><span className={`aui-badge ${approval.cls}`}><ApprovalIcon size={9} /> {approval.label}</span></td>
+                        <td className="text-end">
+                          <div className="arx-actions">
+                            <button
+                              type="button"
+                              className="aui-btn aui-btn-sm"
+                              onClick={() => { setSelectedResult(result); setShowDetailsModal(true); fetchDetailedAnswers(result._id); }}
+                            >
+                              <FaEye size={11} /> View
+                            </button>
+                            {result.approvalStatus === 'pending' ? (
+                              <button type="button" className="aui-btn aui-btn-sm aui-btn-soft" onClick={() => openApproval(result)}>
+                                <FaCheckCircle size={11} /> Approve
+                              </button>
+                            ) : (
+                              <button type="button" className="aui-btn aui-btn-sm" onClick={() => openApproval(result)}>
+                                <FaEdit size={11} /> Edit
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
-              <div className="pagination-wrapper">
-                <button
-                  onClick={() => setCurrentPage(p => Math.max(1, p-1))}
-                  disabled={currentPage === 1}
-                >
-                  Previous
-                </button>
-                {[...Array(Math.min(totalPages, 5))].map((_, i) => {
-                  let pageNum;
-                  if (totalPages <= 5) {
-                    pageNum = i + 1;
-                  } else if (currentPage <= 3) {
-                    pageNum = i + 1;
-                  } else if (currentPage >= totalPages - 2) {
-                    pageNum = totalPages - 4 + i;
-                  } else {
-                    pageNum = currentPage - 2 + i;
-                  }
-                  return (
-                    <button
-                      key={pageNum}
-                      className={pageNum === currentPage ? 'active' : ''}
-                      onClick={() => setCurrentPage(pageNum)}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
-                <button
-                  onClick={() => setCurrentPage(p => Math.min(totalPages, p+1))}
-                  disabled={currentPage === totalPages}
-                >
-                  Next
-                </button>
-              </div>
-            )}
+            <div className="aui-footer">
+              <span>Page <b>{currentPage}</b> of <b>{Math.max(1, totalPages)}</b> · <b>{results.length}</b> on this page</span>
+              {totalPages > 1 && (
+                <div className="aui-pages">
+                  <button type="button" className="aui-page-btn" onClick={() => setCurrentPage(p => Math.max(1, p - 1))} disabled={currentPage === 1} aria-label="Previous page"><FaChevronLeft /></button>
+                  {pageNumbers.map((p, i) => p === 'gap'
+                    ? <span key={`gap-${i}`} className="aui-page-gap">…</span>
+                    : <button type="button" key={p} className={`aui-page-btn${p === currentPage ? ' is-active' : ''}`} onClick={() => setCurrentPage(p)}>{p}</button>)}
+                  <button type="button" className="aui-page-btn" onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} disabled={currentPage === totalPages} aria-label="Next page"><FaChevronRight /></button>
+                </div>
+              )}
+            </div>
           </>
         )}
       </div>
+
+      <style>{`
+        .arx { padding: 1.25rem 1.5rem 1.5rem; }
+        .arx > .aui-stats:first-child { margin-top: 0; }
+        .arx-bulk { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; padding: 0.55rem 0.85rem; border-bottom: 1px solid #25282b; background: rgba(255,122,0,0.07); color: #d1d5db; font-size: 0.8rem; }
+        .arx-bulk b { color: #ffb15e; }
+        .arx-bulk > div { display: flex; gap: 8px; }
+        .arx-alert { margin: 0.85rem !important; }
+        .arx-check { width: 15px; height: 15px; accent-color: #ff7a00; color-scheme: dark; cursor: pointer; vertical-align: middle; }
+        .arx .aui-table tbody tr.is-selected { background: rgba(255,122,0,0.05); }
+        .arx-flag { margin-left: 8px; vertical-align: 1px; }
+        .arx-rounds { display: flex; flex-wrap: wrap; gap: 6px; }
+        .arx-rounds em { margin-left: 2px; font-style: normal; font-weight: 600; opacity: 0.8; }
+        .arx-actions { display: inline-flex; gap: 6px; }
+      `}</style>
 
       {/* Professional Details Modal */}
       <Modal show={showDetailsModal} onHide={() => { setShowDetailsModal(false); setDetailedAnswers([]); setCodeSubmissions([]); }} fullscreen className="professional-modal">
