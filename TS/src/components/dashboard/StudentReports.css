@@ -850,9 +850,30 @@
 
 .sr-table-head,
 .sr-table-row {
-  grid-template-columns: 22px minmax(0, 1.35fr) minmax(0, 0.75fr) repeat(6, minmax(0, 0.68fr)) minmax(0, 0.5fr) minmax(0, 0.45fr) minmax(0, 0.7fr) 150px;
+  /* # · student · roll · 6 modules · time spent · overall · rank · status · actions */
+  grid-template-columns: 22px minmax(0, 1.35fr) minmax(0, 0.75fr) repeat(6, minmax(0, 0.68fr)) minmax(0, 0.62fr) minmax(0, 0.5fr) minmax(0, 0.45fr) minmax(0, 0.7fr) 150px;
   column-gap: 0.6rem;
 }
+
+.sr-time-cell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.sr-time-cell strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #eceef0;
+  font-size: 0.74rem;
+  font-weight: 750;
+  white-space: nowrap;
+}
+
+.sr-time-cell strong svg { color: #38bdf8; font-size: 0.66rem; }
+.sr-time-cell small { overflow: hidden; color: #858a90; font-size: 0.64rem; text-overflow: ellipsis; white-space: nowrap; }
 
 .sr-table-head {
   min-height: 43px;

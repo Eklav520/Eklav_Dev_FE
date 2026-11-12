@@ -342,8 +342,9 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
   const [report, setReport]           = useState<Report | null>(null)
   const [trend, setTrend]             = useState<TrendPoint[]>([])
   const [exportProgress, setExportProgress] = useState<{ done: number; total: number } | null>(null)
-  const [liveRanks, setLiveRanks]     = useState<Record<string, { position: number; total: number }>>({})
+  const [liveRanks, setLiveRanks]     = useState<Record<string, { position: number; total: number; timeSecs?: number }>>({})
   const [rankSort, setRankSort]       = useState<'none' | 'asc' | 'desc'>('none')
+  const [timeSort, setTimeSort]       = useState<'none' | 'asc' | 'desc'>('none')
   const [showModal, setShowModal]     = useState(false)
   const [modalError, setModalError]   = useState('')
 
@@ -380,8 +381,27 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
       return rankSort === 'asc' ? ra - rb : rb - ra
     })
   }
+  /* Time sort also spans every page — live ranks carry each student's time for the period.
+     Students without data go last. */
+  if (timeSort !== 'none') {
+    const timeOf = (student: Student) =>
+      liveRanks[student._id]?.timeSecs ?? performanceReports[student._id]?.timeSpent?.totalSecs ?? null
+    filtered.sort((a, b) => {
+      const ta = timeOf(a), tb = timeOf(b)
+      if (ta == null || tb == null) return ta == null ? (tb == null ? 0 : 1) : -1
+      return timeSort === 'asc' ? ta - tb : tb - ta
+    })
+  }
+  // One sort at a time: picking rank clears time and vice versa
   const cycleRankSort = () => {
     setRankSort(current => current === 'none' ? 'asc' : current === 'asc' ? 'desc' : 'none')
+    setTimeSort('none')
+    setPage(1)
+  }
+  // Most time first is the useful default for time spent
+  const cycleTimeSort = () => {
+    setTimeSort(current => current === 'none' ? 'desc' : current === 'desc' ? 'asc' : 'none')
+    setRankSort('none')
     setPage(1)
   }
 
@@ -666,21 +686,21 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
         </article>
         <article className="sr-summary-card sr-card-green">
           <span className="sr-summary-icon sr-icon-green"><FaCheckCircle /></span>
-          <div><strong>{statusCounts['on-track']} <small>({currentPageReports.length ? Math.round(statusCounts['on-track'] / currentPageReports.length * 100) : 0}%)</small></strong><span>On Track · This Page</span></div>
+          <div><strong>{statusCounts['on-track']} <small>({currentPageReports.length ? Math.round(statusCounts['on-track'] / currentPageReports.length * 100) : 0}%)</small></strong><span>On Track</span></div>
         </article>
         <article className="sr-summary-card sr-card-amber">
           <span className="sr-summary-icon sr-icon-amber"><FaExclamationTriangle /></span>
-          <div><strong>{statusCounts['needs-attention']} <small>({currentPageReports.length ? Math.round(statusCounts['needs-attention'] / currentPageReports.length * 100) : 0}%)</small></strong><span>Needs Attention · This Page</span></div>
+          <div><strong>{statusCounts['needs-attention']} <small>({currentPageReports.length ? Math.round(statusCounts['needs-attention'] / currentPageReports.length * 100) : 0}%)</small></strong><span>Needs Attention</span></div>
         </article>
         <article className="sr-summary-card sr-card-red sr-summary-note">
           <span className="sr-summary-icon sr-icon-red"><FaExclamationTriangle /></span>
-          <div><strong>{statusCounts['at-risk']} <small>({currentPageReports.length ? Math.round(statusCounts['at-risk'] / currentPageReports.length * 100) : 0}%)</small></strong><span>At Risk · This Page</span></div>
+          <div><strong>{statusCounts['at-risk']} <small>({currentPageReports.length ? Math.round(statusCounts['at-risk'] / currentPageReports.length * 100) : 0}%)</small></strong><span>At Risk</span></div>
         </article>
         <article className="sr-summary-card sr-card-green sr-average-card">
           <span className="sr-average-ring" style={{ background: `conic-gradient(#31d866 ${averagePerformance * 3.6}deg, #303438 0deg)` }}>
             <span>{currentPageReports.length ? `${averagePerformance}%` : '—'}</span>
           </span>
-          <div><strong>Average Performance</strong><span>{currentPageReports.length} reports loaded on this page</span></div>
+          <div><strong>Average Performance</strong><span>Across {currentPageReports.length} student{currentPageReports.length === 1 ? '' : 's'}</span></div>
         </article>
       </section>
 
@@ -715,10 +735,16 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
         <div className="sr-table-scroll">
           <div className="sr-table">
             <div className="sr-table-head">
-              {['#', 'Student', 'Roll / Branch', 'Daily Engagement', 'Course Progress', 'AI Interview', 'English Practice', 'Assessments', 'Code Challenge', 'Overall', 'Rank', 'Status', 'Actions'].map(heading => heading === 'Rank' ? (
+              {['#', 'Student', 'Roll / Branch', 'Daily Engagement', 'Course Progress', 'AI Interview', 'English Practice', 'Assessments', 'Code Challenge', 'Time Spent', 'Overall', 'Rank', 'Status', 'Actions'].map(heading => heading === 'Rank' ? (
                 <div key={heading} aria-sort={rankSort === 'asc' ? 'ascending' : rankSort === 'desc' ? 'descending' : 'none'}>
                   <button type="button" className={`sr-sort-button${rankSort !== 'none' ? ' is-active' : ''}`} onClick={cycleRankSort} title="Sort by rank">
                     Rank {rankSort === 'asc' ? <FaSortUp /> : rankSort === 'desc' ? <FaSortDown /> : <FaSort />}
+                  </button>
+                </div>
+              ) : heading === 'Time Spent' ? (
+                <div key={heading} aria-sort={timeSort === 'asc' ? 'ascending' : timeSort === 'desc' ? 'descending' : 'none'}>
+                  <button type="button" className={`sr-sort-button${timeSort !== 'none' ? ' is-active' : ''}`} onClick={cycleTimeSort} title={timeSort === 'desc' ? 'Most time first — click for least' : timeSort === 'asc' ? 'Least time first — click to clear' : 'Sort by time spent'}>
+                    Time Spent {timeSort === 'asc' ? <FaSortUp /> : timeSort === 'desc' ? <FaSortDown /> : <FaSort />}
                   </button>
                 </div>
               ) : (
@@ -775,10 +801,16 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
                       </div>
                     ))
                     : (
-                      <div className="sr-metric-placeholder" style={{ gridColumn: 'span 6' }}>
+                      <div className="sr-metric-placeholder" style={{ gridColumn: 'span 7' }}>
                         {loadingReportIds.has(student._id) ? 'Loading performance…' : reportLoadErrors[student._id] || 'No performance data'}
                       </div>
                     )}
+                  {studentReport && (
+                    <div className="sr-time-cell" title={`${activeDays(studentReport)} active day${activeDays(studentReport) === 1 ? '' : 's'} in this period`}>
+                      <strong><FaClock /> {formatDuration(studentReport.timeSpent?.totalSecs || 0)}</strong>
+                      <small>{activeDays(studentReport)} active day{activeDays(studentReport) === 1 ? '' : 's'}</small>
+                    </div>
+                  )}
                   <div className="sr-overall-score">
                     {score == null ? '—' : <span style={{ color: scoreColor(score) }}>{Math.round(score)}%</span>}
                   </div>

@@ -462,6 +462,7 @@ type PublicStory = {
   profileImage?: string;
   profilePicture?: string;
   studentAvatar?: string;
+  gender?: string | null;
   /* Optional — shown as "Placed at …" / role when the API provides them */
   company?: string;
   placedAt?: string;
@@ -531,18 +532,62 @@ const getStoryAvatarUrl = (story: PublicStory, baseURL: string) => {
     || story.studentAvatar
     || story.avatar;
   if (!avatar) return undefined;
-  if (avatar.startsWith("http") || avatar.startsWith("/") || avatar.startsWith("data:")) return avatar;
-  return `${baseURL}/uploads/${avatar}`;
+  if (avatar.startsWith("http") || avatar.startsWith("data:") || avatar.startsWith("blob:")) return avatar;
+  // Stored paths may be "uploads/x.jpg", "/uploads/x.jpg" or a bare file name — same rule as the profile page
+  const path = avatar.replace(/^\/+/, "");
+  return `${baseURL}/${path.startsWith("uploads/") ? path : `uploads/${path}`}`;
 };
+
+/* Illustrated fallbacks (not real people) when a student has no photo */
+const BoyAvatar = () => (
+  <svg viewBox="0 0 64 64" className="story-illustration" aria-hidden="true">
+    <path d="M8 64c2-12.5 11.5-18.5 24-18.5S54 51.5 56 64z" fill="#3b2a55" />
+    <path d="M26 44.5h12l-6 6.5z" fill="#2a1d3f" />
+    <rect x="27" y="36" width="10" height="9" rx="3" fill="#e9b48c" />
+    <ellipse cx="32" cy="27.5" rx="11" ry="12.5" fill="#f1c19b" />
+    <path d="M20.4 27.5c-1.2-9.6 4.6-16 11.8-16 7.6 0 12.8 5.4 11.6 14.6-1.4-4.4-4.6-7-9.2-7.4-3.2 2.8-8 4.4-14.2 8.8z" fill="#2a1a14" />
+    <circle cx="27.8" cy="29" r="1.2" fill="#3a2418" /><circle cx="36.2" cy="29" r="1.2" fill="#3a2418" />
+    <path d="M28.8 34c1.9 1.5 4.5 1.5 6.4 0" stroke="#b9775a" strokeWidth="1.4" strokeLinecap="round" fill="none" />
+  </svg>
+);
+
+const GirlAvatar = () => (
+  <svg viewBox="0 0 64 64" className="story-illustration" aria-hidden="true">
+    <path d="M18.6 30c-2-12.6 4.4-19.6 13.4-19.6S47.4 17.4 45.4 30c1 8.4 3.2 13.6 6.4 16.6-6.4 2.2-12.6.2-15.6-3H27.8c-3 3.2-9.2 5.2-15.6 3 3.2-3 5.4-8.2 6.4-16.6z" fill="#2a1a14" />
+    <path d="M8 64c2-12.5 11.5-18.5 24-18.5S54 51.5 56 64z" fill="#8b3f8f" />
+    <rect x="27" y="36" width="10" height="9" rx="3" fill="#e9b48c" />
+    <ellipse cx="32" cy="27.5" rx="10.6" ry="12.2" fill="#f1c19b" />
+    <path d="M21.2 27c0-9.4 5-14.8 10.8-14.8 7.2 0 11.6 5.6 11.2 14.2-3.6-1-7.2-3.6-9.2-7.2-3 4.2-7.6 6.8-12.8 7.8z" fill="#2a1a14" />
+    <circle cx="27.8" cy="29.2" r="1.2" fill="#3a2418" /><circle cx="36.2" cy="29.2" r="1.2" fill="#3a2418" />
+    <path d="M28.8 34c1.9 1.5 4.5 1.5 6.4 0" stroke="#c0605a" strokeWidth="1.4" strokeLinecap="round" fill="none" />
+    <circle cx="22.4" cy="33" r="1.3" fill="#ffb347" /><circle cx="41.6" cy="33" r="1.3" fill="#ffb347" />
+  </svg>
+);
+
+const genderOf = (value?: string | null): "female" | "male" | null => {
+  const g = String(value || "").trim().toLowerCase();
+  if (["female", "f", "girl", "woman"].includes(g)) return "female";
+  if (["male", "m", "boy", "man"].includes(g)) return "male";
+  return null;
+};
+
+const storyInitials = (name?: string) =>
+  (name || "").trim().split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]).join("").toUpperCase();
 
 const StoryAvatar = ({ story, baseURL, className }: { story: PublicStory; baseURL: string; className: string }) => {
   const [imageFailed, setImageFailed] = useState(false);
   const avatar = getStoryAvatarUrl(story, baseURL);
+  const gender = genderOf(story.gender);
+  const initials = storyInitials(story.studentName);
+  const showPhoto = !!avatar && !imageFailed;
 
+  // Photo → illustrated boy/girl avatar by gender → initials
   return (
-    <span className={`${className} success-story-avatar`} role="img" aria-label={`${story.studentName || "Student"} profile`}>
-      {(!avatar || imageFailed) && <FaUser aria-hidden="true" />}
-      {avatar && !imageFailed && <img src={avatar} alt="" onError={() => setImageFailed(true)} />}
+    <span className={`${className} success-story-avatar${showPhoto ? " has-photo" : gender ? " has-illustration" : ""}`} role="img" aria-label={`${story.studentName || "Student"} profile`}>
+      {showPhoto && <img src={avatar} alt="" onError={() => setImageFailed(true)} />}
+      {!showPhoto && gender === "female" && <GirlAvatar />}
+      {!showPhoto && gender === "male" && <BoyAvatar />}
+      {!showPhoto && !gender && (initials ? <b className="story-initials" aria-hidden="true">{initials}</b> : <FaUser aria-hidden="true" />)}
     </span>
   );
 };

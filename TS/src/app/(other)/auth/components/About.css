@@ -1273,6 +1273,27 @@
   height: 42%;
 }
 
+/* Illustrated boy/girl fallback fills the circle; initials when gender is unknown */
+.success-story-avatar > svg.story-illustration {
+  width: 100%;
+  height: 100%;
+  margin-top: 10%;
+}
+
+.success-story-avatar.has-illustration { background: linear-gradient(160deg, #ffd9b0, #ffb066); }
+.success-story-preview-avatar.has-illustration { background: linear-gradient(160deg, #e3d4ff, #b794f6); }
+
+.success-story-avatar .story-initials {
+  color: #fff;
+  font-size: 1.35em;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.success-story-author-avatar .story-initials { font-size: 1.5rem; }
+.success-story-preview-avatar .story-initials { font-size: 1.3rem; color: #e9dcff; }
+
 .success-story-avatar img {
   position: absolute;
   inset: 0;
