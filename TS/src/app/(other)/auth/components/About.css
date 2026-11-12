@@ -3064,6 +3064,133 @@
   font-size: 0.67rem;
 }
 
+/* ── Animated editor demo (CodeEditorDemo) ── */
+.code-challenge-brand img {
+  display: block;
+  height: 22px;
+  width: auto;
+}
+
+.code-challenge-code > pre.code-demo-pre {
+  min-height: 0;
+  height: 196px;
+  padding: 10px 10px;
+  font-size: 0.62rem;
+  line-height: 1.6;
+}
+
+.code-demo-line {
+  display: flex;
+  min-height: 1.6em;
+  white-space: pre;
+}
+
+.code-demo-line > span {
+  flex: 0 0 18px;
+  padding-right: 0 !important;
+  color: #4f5668 !important;
+  text-align: right;
+  margin-right: 10px;
+  user-select: none;
+}
+
+.code-demo-line.is-current {
+  margin: 0 -10px;
+  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.code-demo-line code {
+  color: #d8dced;
+  font: inherit;
+}
+
+.code-demo-line em { font-style: normal; }
+.code-demo-line .tk-kw { color: #ff9a3c; }
+.code-demo-line .tk-type { color: #5fd3f3; }
+.code-demo-line .tk-num { color: #c4a5ff; }
+.code-demo-line .tk-call { color: #f3d86b; }
+
+.code-demo-cursor {
+  display: inline-block;
+  width: 6px;
+  height: 1.1em;
+  margin-left: 1px;
+  vertical-align: -2px;
+  background: #ff7a00;
+  animation: code-demo-blink 0.9s steps(1) infinite;
+}
+
+@keyframes code-demo-blink { 50% { opacity: 0; } }
+
+.code-challenge-code-toolbar button { transition: background 0.2s, box-shadow 0.2s, color 0.2s; }
+.code-challenge-code-toolbar button.is-busy { background: #2c3a55; color: #9fd2ff; box-shadow: 0 0 0 1px rgba(95, 211, 243, 0.4); }
+.code-challenge-code-toolbar button.is-busy svg { animation: code-demo-pulse 0.8s ease-in-out infinite; }
+.code-challenge-code-toolbar button.is-glow { box-shadow: 0 0 0 3px rgba(255, 121, 8, 0.25), 0 0 18px rgba(255, 121, 8, 0.55); }
+
+@keyframes code-demo-pulse { 50% { opacity: 0.35; } }
+
+.code-demo-status {
+  display: grid;
+  min-height: 52px;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 9px;
+  background: rgba(31, 41, 61, 0.6);
+  color: #aeb6c8;
+  font-size: 0.8rem;
+  transition: background 0.3s, border-color 0.3s;
+}
+
+.code-demo-status > svg, .code-demo-status > .code-demo-spinner { grid-row: span 2; }
+.code-demo-status strong { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+.code-demo-status small { grid-column: 2; margin-top: 3px; color: #8d96aa; font-size: 0.64rem; }
+.code-demo-status.is-typing > svg { color: #ff9a3c; }
+.code-demo-status.is-running { color: #9fd2ff; border-color: rgba(95, 211, 243, 0.25); }
+
+.code-demo-status.is-accepted {
+  border-color: rgba(24, 215, 128, 0.35);
+  background: rgba(14, 58, 44, 0.7);
+  color: #18d780;
+  font-size: 0.9rem;
+  animation: code-demo-pop 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.code-demo-status.is-accepted em {
+  padding: 2px 7px;
+  border-radius: 99px;
+  background: rgba(24, 215, 128, 0.16);
+  color: #6ff0b3;
+  font-size: 0.6rem;
+  font-style: normal;
+  font-weight: 700;
+}
+
+.code-demo-status.is-accepted small { color: #a9d9c2; }
+
+@keyframes code-demo-pop {
+  0% { opacity: 0; transform: translateY(8px) scale(0.96); }
+  100% { opacity: 1; transform: none; }
+}
+
+.code-demo-spinner {
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(159, 210, 255, 0.25);
+  border-top-color: #9fd2ff;
+  border-radius: 50%;
+  animation: code-demo-spin 0.75s linear infinite;
+}
+
+@keyframes code-demo-spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .code-demo-cursor, .code-demo-spinner, .code-challenge-code-toolbar button.is-busy svg, .code-demo-status.is-accepted { animation: none; }
+}
+
 .code-challenge-student {
   position: absolute;
   z-index: 2;
@@ -3129,6 +3256,56 @@
 .code-challenge-levels span {
   color: #c4c1cf;
   font-size: 0.7rem;
+}
+
+/* Difficulty pills sit below the editor (in flow) so they never overlap its border,
+   and stay compact: icon beside the text. Extra specificity beats the breakpoint min-heights. */
+.code-challenge-visual .code-challenge-levels {
+  position: relative;
+  right: auto;
+  bottom: auto;
+  width: 67%;
+  margin: 18px 0 0 auto;
+  gap: 12px;
+}
+
+.code-challenge-visual .code-challenge-levels > div {
+  display: grid;
+  min-height: 66px;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  column-gap: 12px;
+  padding: 12px 16px;
+  border-radius: 14px;
+  line-height: 1.25;
+}
+
+.code-challenge-visual .code-challenge-levels svg {
+  grid-row: span 2;
+  box-sizing: content-box;
+  width: 1.05rem;
+  height: 1.05rem;
+  margin: 0;
+  padding: 9px;
+  border-radius: 10px;
+  background: currentColor;
+  background: color-mix(in srgb, currentColor 16%, transparent);
+}
+
+.code-challenge-visual .code-challenge-levels strong { grid-column: 2; font-size: 0.95rem; }
+.code-challenge-visual .code-challenge-levels span { grid-column: 2; margin-top: 2px; font-size: 0.74rem; white-space: nowrap; }
+
+@media (max-width: 1199.98px) {
+  .code-challenge-visual .code-challenge-levels { width: 74%; gap: 10px; }
+  .code-challenge-visual .code-challenge-levels > div { padding: 10px 12px; column-gap: 10px; }
+}
+
+@media (max-width: 767.98px) {
+  .code-challenge-visual .code-challenge-levels { width: 68%; gap: 6px; margin-top: 12px; }
+  .code-challenge-visual .code-challenge-levels > div { min-height: 52px; padding: 8px 9px; border-radius: 10px; }
+  .code-challenge-visual .code-challenge-levels svg { padding: 6px; width: 0.8rem; height: 0.8rem; }
+  .code-challenge-visual .code-challenge-levels strong { font-size: 0.78rem; }
+  .code-challenge-visual .code-challenge-levels span { font-size: 0.62rem; }
 }
 
 .code-challenge-stats {
@@ -3432,7 +3609,8 @@
     min-height: 112px;
   }
 
-  .code-challenge-accepted {
+  .code-challenge-accepted,
+  .code-demo-status {
     padding: 8px 10px;
     font-size: 0.8rem;
   }

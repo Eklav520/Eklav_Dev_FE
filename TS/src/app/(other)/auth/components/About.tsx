@@ -215,6 +215,117 @@ const PublicCourseCatalog = ({ onCourseClick }: { onCourseClick?: () => void }) 
   );
 };
 
+/* ── Code Challenge editor demo ──
+   Types a solution, runs it, shows "Accepted", then loops. Pauses off-screen;
+   reduced-motion users get the finished state. */
+const DEMO_CODE = [
+  "class Solution {",
+  "  public int[] twoSum(int[] nums, int t) {",
+  "    Map<Integer,Integer> seen = new HashMap<>();",
+  "    for (int i = 0; i < nums.length; i++) {",
+  "      Integer j = seen.get(t - nums[i]);",
+  "      if (j != null) return new int[]{j, i};",
+  "      seen.put(nums[i], i);",
+  "    }",
+  "    return new int[0];",
+  "  }",
+  "}",
+];
+const DEMO_TOTAL = DEMO_CODE.reduce((sum, line) => sum + line.length + 1, 0);
+const DEMO_TOKEN = /(\b(?:class|public|int|for|if|return|new|null)\b)|(\b(?:Solution|Map|Integer|HashMap)\b)|(\b\d+\b)|(\.\w+(?=\())/g;
+
+const highlight = (text: string) => {
+  const parts: React.ReactNode[] = [];
+  let last = 0;
+  text.replace(DEMO_TOKEN, (match, kw, type, num, call, offset: number) => {
+    if (offset > last) parts.push(text.slice(last, offset));
+    const cls = kw ? "tk-kw" : type ? "tk-type" : num ? "tk-num" : call ? "tk-call" : "";
+    parts.push(<em key={offset} className={cls}>{match}</em>);
+    last = offset + match.length;
+    return match;
+  });
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+};
+
+type DemoPhase = "typing" | "running" | "accepted";
+
+const CodeEditorDemo = () => {
+  const rootRef = useRef<HTMLDivElement>(null);
+  const [typed, setTyped] = useState(0);
+  const [phase, setPhase] = useState<DemoPhase>("typing");
+  const [visible, setVisible] = useState(false);
+  const reduced = typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+
+  useEffect(() => {
+    const el = rootRef.current;
+    if (!el || typeof IntersectionObserver === "undefined") { setVisible(true); return; }
+    const io = new IntersectionObserver(([entry]) => setVisible(entry.isIntersecting), { threshold: 0.2 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
+
+  useEffect(() => {
+    if (reduced) { setTyped(DEMO_TOTAL); setPhase("accepted"); return; }
+    if (!visible) return;
+    let timer: number;
+    if (phase === "typing") {
+      timer = typed < DEMO_TOTAL
+        ? window.setTimeout(() => setTyped(n => Math.min(DEMO_TOTAL, n + 2)), 24)
+        : window.setTimeout(() => setPhase("running"), 500);
+    } else if (phase === "running") {
+      timer = window.setTimeout(() => setPhase("accepted"), 1300);
+    } else {
+      timer = window.setTimeout(() => { setTyped(0); setPhase("typing"); }, 3400);
+    }
+    return () => window.clearTimeout(timer);
+  }, [typed, phase, visible, reduced]);
+
+  // Split the typed character count across lines (+1 per line for the newline)
+  let remaining = typed;
+  const lines = DEMO_CODE.map(line => {
+    const shown = line.slice(0, Math.max(0, remaining));
+    const done = remaining > line.length;
+    remaining -= line.length + 1;
+    return { shown, done, active: !done && shown.length > 0 };
+  });
+  const cursorLine = Math.max(0, lines.findIndex(l => !l.done));
+  const typingDone = typed >= DEMO_TOTAL;
+
+  return (
+    <div className="code-challenge-code" ref={rootRef}>
+      <div className="code-challenge-code-toolbar">
+        <span>☕ Java</span>
+        <button type="button" tabIndex={-1} className={phase === "running" ? "is-busy" : ""}><FaPlay /> {phase === "running" ? "Running" : "Run"}</button>
+        <button type="button" tabIndex={-1} className={phase === "accepted" ? "is-glow" : ""}>Submit <FaArrowRight /></button>
+      </div>
+      <pre className="code-demo-pre">
+        {DEMO_CODE.map((_, i) => {
+          const line = lines[i];
+          const showCursor = phase === "typing" && (typingDone ? i === DEMO_CODE.length - 1 : i === cursorLine);
+          if (!line.shown && !showCursor && i > cursorLine) return <div key={i} className="code-demo-line is-empty"><span>{i + 1}</span></div>;
+          return (
+            <div key={i} className={`code-demo-line${showCursor ? " is-current" : ""}`}>
+              <span>{i + 1}</span>
+              <code>{highlight(line.shown)}{showCursor && <b className="code-demo-cursor" />}</code>
+            </div>
+          );
+        })}
+      </pre>
+      <div className={`code-demo-status is-${phase}`}>
+        {phase === "typing" && <><FaTerminal /> <strong>Writing solution…</strong><small>Java · O(n) hash map approach</small></>}
+        {phase === "running" && <><span className="code-demo-spinner" /> <strong>Running 3 test cases…</strong><small>Compiling and executing</small></>}
+        {phase === "accepted" && (
+          <>
+            <FaCheckCircle /> <strong>Accepted <em>3/3 passed</em></strong>
+            <small>Runtime: 2 ms&nbsp;&nbsp;·&nbsp;&nbsp;Memory: 44.2 MB&nbsp;&nbsp;·&nbsp;&nbsp;Beats 98.6%</small>
+          </>
+        )}
+      </div>
+    </div>
+  );
+};
+
 /* ── Particle Canvas ── */
 const ParticleCanvas = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -738,7 +849,7 @@ const About = ({ onStartJourneyClick, onCourseClick }: AboutProps) => {
             <div className="code-challenge-visual" aria-hidden="true">
               <div className="code-challenge-editor">
                 <div className="code-challenge-editor-nav">
-                  <span className="code-challenge-brand"><b>e</b> Eklav</span>
+                  <span className="code-challenge-brand"><img src={logoLight} alt="Eklav" /></span>
                   <span className="is-active"><FaTerminal /> Practice</span>
                   <span>Contests</span>
                   <span>Leaderboard</span>
@@ -751,11 +862,7 @@ const About = ({ onStartJourneyClick, onCourseClick }: AboutProps) => {
                     <strong>Example:</strong>
                     <pre>Input: nums = [2,7,11,15], target = 9{"\n"}Output: [0,1]</pre>
                   </div>
-                  <div className="code-challenge-code">
-                    <div className="code-challenge-code-toolbar"><span>☕ Java</span><button type="button"><FaPlay /> Run</button><button type="button">Submit <FaArrowRight /></button></div>
-                    <pre><span>1</span> class Solution {"{"}{"\n"}<span>2</span>   public int[] twoSum(int[] nums, int target) {"{"}{"\n"}<span>3</span>     <i>// Write your code here</i>{"\n"}<span>4</span>   {"}"}{"\n"}<span>5</span> {"}"}</pre>
-                    <div className="code-challenge-accepted"><FaCheckCircle /> <strong>Accepted</strong><small>Runtime: 62 ms&nbsp;&nbsp; Memory: 44.2 MB</small></div>
-                  </div>
+                  <CodeEditorDemo />
                 </div>
               </div>
               <img src={codeChallengeStudent} alt="" className="code-challenge-student" />
