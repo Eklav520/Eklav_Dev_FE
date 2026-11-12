@@ -266,9 +266,9 @@ const StudentProgressModal = ({ student, show, onHide, fetchReport }: {
                 <div><span><FaTrophy /></span><b>{rank ? rank.label : '—'}</b><small>{rank ? `Rank ${rank.total}` : 'Rank'}</small></div>
                 <div><span><FaCalendarAlt /></span><b>{activeDays(r)}<em>/{totalDays || '—'}</em></b><small>Active days</small></div>
                 <div><span><FaClock /></span><b>{formatDuration(r.timeSpent.totalSecs)}</b><small>Time spent</small></div>
-                <div><span><FaBolt /></span><b>{d?.longestStreak ?? '—'}</b><small>Longest streak (days)</small></div>
+                <div><span><FaBolt /></span><b>{d?.longestStreak ?? '—'}</b><small>Best streak (days)</small></div>
                 <div><span><FaCheckCircle /></span><b>{activitiesCompleted(r)}</b><small>Activities done</small></div>
-                <div><span><FaFire /></span><b className="spx-kpi-date">{fmtDate(d?.lastActiveDate)}</b><small>Last active</small></div>
+                <div><span><FaFire /></span><b className="spx-kpi-date" title={fmtDate(d?.lastActiveDate)}>{d?.lastActiveDate ? new Date(`${d.lastActiveDate}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: '2-digit' }) : '—'}</b><small>Last active</small></div>
               </div>
             </div>
 
@@ -311,7 +311,7 @@ const StudentProgressModal = ({ student, show, onHide, fetchReport }: {
               ]}
             >
               {r.courses.length ? (
-                <ul className="spx-courses">
+                <ul className="spx-courses" data-top="1">
                   {[...r.courses].sort((a, b) => b.progress - a.progress).map((c) => (
                     <li key={c.courseId}>
                       <span className="spx-course-name" title={c.title}>{c.title}</span>
@@ -505,6 +505,7 @@ const StudentProgressModal = ({ student, show, onHide, fetchReport }: {
         .spx-delta.is-up { background: rgba(49,216,102,0.1); color: #45dd75; }
         .spx-delta.is-down { background: rgba(251,95,103,0.1); color: #fb737a; }
 
+        .spx-row-main:has(> .spx-courses) { justify-content: flex-start; padding-top: 1.25rem; }
         .spx-courses { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 2rem; max-height: 290px; margin: 0.25rem 0 0.5rem; padding: 0 4px 0 0; overflow-y: auto; list-style: none; color-scheme: dark; }
         .spx-courses li { display: grid; grid-template-columns: minmax(0, 1fr) 110px 42px 86px; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #17191c; }
         .spx-course-name { overflow: hidden; color: #d1d5db; font-size: 0.82rem; text-overflow: ellipsis; white-space: nowrap; }
