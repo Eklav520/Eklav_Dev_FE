@@ -3,7 +3,7 @@ import { Container, Row, Col } from "react-bootstrap";
 import {
   FaArrowRight, FaBookOpen, FaChartLine, FaChevronLeft, FaChevronRight,
   FaBolt, FaCheckCircle, FaClock, FaCode, FaDatabase, FaLayerGroup, FaPlay,
-  FaQuoteLeft, FaStar, FaTerminal, FaTrophy, FaUsers, FaUser,
+  FaQuoteLeft, FaStar, FaTerminal, FaTrophy, FaUsers, FaUser, FaBriefcase,
 } from "react-icons/fa";
 import logoLight from "@/assets/images/logo_white.png";
 import heroStudent from "@/assets/images/hero-student.png";
@@ -462,6 +462,12 @@ type PublicStory = {
   profileImage?: string;
   profilePicture?: string;
   studentAvatar?: string;
+  /* Optional — shown as "Placed at …" / role when the API provides them */
+  company?: string;
+  placedAt?: string;
+  companyName?: string;
+  role?: string;
+  designation?: string;
   profile?: {
     avatar?: string;
     profileImage?: string;
@@ -473,6 +479,37 @@ type PublicStory = {
     profilePicture?: string;
   };
 };
+
+/* Corner glows + flowing dotted waves behind the success stories (decorative) */
+const WAVE_LINES = Array.from({ length: 14 }, (_, i) => i);
+const StoriesBackdrop = () => (
+  <div className="stories-backdrop" aria-hidden="true">
+    <span className="stories-glow stories-glow-left" />
+    <span className="stories-glow stories-glow-right" />
+    <svg className="stories-waves" viewBox="0 0 1600 320" preserveAspectRatio="none">
+      <defs>
+        <linearGradient id="storiesWaveL" x1="0" x2="1" y1="0" y2="0">
+          <stop offset="0" stopColor="#ff7a00" />
+          <stop offset="0.6" stopColor="#c04cff" />
+          <stop offset="1" stopColor="#7c3aed" stopOpacity="0" />
+        </linearGradient>
+        <linearGradient id="storiesWaveR" x1="1" x2="0" y1="0" y2="0">
+          <stop offset="0" stopColor="#ff7a00" />
+          <stop offset="0.6" stopColor="#ff4fa3" />
+          <stop offset="1" stopColor="#7c3aed" stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      {WAVE_LINES.map((i) => (
+        <path key={`l${i}`} className="stories-wave" stroke="url(#storiesWaveL)" style={{ opacity: 0.85 - i * 0.05, animationDelay: `${-i * 0.35}s` }}
+          d={`M0 ${70 + i * 9} C 260 ${60 + i * 6}, 420 ${330 - i * 4}, 760 ${300 + i * 2}`} />
+      ))}
+      {WAVE_LINES.map((i) => (
+        <path key={`r${i}`} className="stories-wave" stroke="url(#storiesWaveR)" style={{ opacity: 0.85 - i * 0.05, animationDelay: `${-i * 0.35}s` }}
+          d={`M1600 ${60 + i * 9} C 1340 ${50 + i * 6}, 1180 ${330 - i * 4}, 840 ${300 + i * 2}`} />
+      ))}
+    </svg>
+  </div>
+);
 
 const StoryStars = ({ rating }: { rating: number }) => (
   <div className="success-story-stars" aria-label={`${rating} out of 5 stars`}>
@@ -538,6 +575,8 @@ const SuccessStoriesSection = () => {
   const changeStory = (direction: -1 | 1) => {
     setIdx((current) => (current + direction + stories.length) % stories.length);
   };
+  const company = s.company || s.placedAt || s.companyName;
+  const role = s.role || s.designation || "Eklav learner";
 
   return (
     <section className="success-stories">
@@ -548,11 +587,17 @@ const SuccessStoriesSection = () => {
       </header>
 
       <div className={`success-stories-stage${stories.length > 2 ? " has-side-stories" : stories.length === 2 ? " has-next-story" : ""}`}>
+        {stories.length > 1 && (
+          <>
+            <button type="button" className="success-stories-arrow success-stories-side-arrow is-prev" onClick={() => changeStory(-1)} aria-label="Previous story"><FaChevronLeft /></button>
+            <button type="button" className="success-stories-arrow success-stories-side-arrow is-next" onClick={() => changeStory(1)} aria-label="Next story"><FaChevronRight /></button>
+          </>
+        )}
         {stories.length > 2 && (
           <button type="button" className="success-story-card success-story-preview" onClick={() => changeStory(-1)} aria-label={`Read story from ${previous.studentName}`}>
             <StoryAvatar story={previous} baseURL={baseURL} className="success-story-preview-avatar" />
             <span className="success-story-preview-copy">
-              <span className="success-story-preview-quote">{previous.story}</span>
+              <span className="success-story-preview-quote">&ldquo;{previous.story}&rdquo;</span>
               <StoryStars rating={previous.rating} />
             </span>
           </button>
@@ -568,10 +613,16 @@ const SuccessStoriesSection = () => {
               <StoryAvatar story={s} baseURL={baseURL} className="success-story-author-avatar" />
               <span className="success-story-author-copy">
                 <strong>{s.studentName || "Eklav Learner"}</strong>
-                <small>Eklav learner</small>
+                <small>{role}</small>
                 <StoryStars rating={s.rating} />
               </span>
             </div>
+            <span className="success-story-divider" aria-hidden="true" />
+            {company ? (
+              <span className="success-story-placed"><FaBriefcase aria-hidden="true" /> Placed at <b>{company}</b></span>
+            ) : (
+              <span className="success-story-placed"><FaCheckCircle aria-hidden="true" /> Verified <b>Eklav learner</b></span>
+            )}
           </div>
         </article>
 
@@ -579,7 +630,7 @@ const SuccessStoriesSection = () => {
           <button type="button" className="success-story-card success-story-preview success-story-preview-next" onClick={() => changeStory(1)} aria-label={`Read story from ${next.studentName}`}>
             <StoryAvatar story={next} baseURL={baseURL} className="success-story-preview-avatar" />
             <span className="success-story-preview-copy">
-              <span className="success-story-preview-quote">{next.story}</span>
+              <span className="success-story-preview-quote">&ldquo;{next.story}&rdquo;</span>
               <StoryStars rating={next.rating} />
             </span>
           </button>
@@ -588,7 +639,7 @@ const SuccessStoriesSection = () => {
 
       {stories.length > 1 && (
         <div className="success-stories-controls">
-          <button type="button" className="success-stories-arrow" onClick={() => changeStory(-1)} aria-label="Previous story"><FaChevronLeft /></button>
+          <button type="button" className="success-stories-arrow success-stories-bottom-arrow" onClick={() => changeStory(-1)} aria-label="Previous story"><FaChevronLeft /></button>
           <div className="success-stories-dots" aria-label="Choose a success story">
             {stories.map((story, i) => (
               <button
@@ -601,7 +652,7 @@ const SuccessStoriesSection = () => {
               />
             ))}
           </div>
-          <button type="button" className="success-stories-arrow" onClick={() => changeStory(1)} aria-label="Next story"><FaChevronRight /></button>
+          <button type="button" className="success-stories-arrow success-stories-bottom-arrow" onClick={() => changeStory(1)} aria-label="Next story"><FaChevronRight /></button>
         </div>
       )}
     </section>
@@ -1026,13 +1077,14 @@ const About = ({ onStartJourneyClick, onCourseClick }: AboutProps) => {
 
       {/* ── MISSION ── */}
       <section className="neo-mission">
+        <StoriesBackdrop />
         <Container style={{ position: "relative", zIndex: 1 }}>
           <div className="mission-glass-panel mission-stories-panel">
             <SuccessStoriesSection />
 
             <button
               className="neo-cta-btn"
-              style={{ marginTop: "2.5rem" }}
+              style={{ marginTop: "1.6rem" }}
               onClick={() => onStartJourneyClick ? onStartJourneyClick() : navigate("/auth/sign-in")}
             >
               <span>Begin Your Mission</span>
