@@ -23,6 +23,17 @@ export type VocabSection = {
 
 export type CourseItem = { courseId: string; title: string; progress: number }
 
+/* Extra detail returned by student-report (newer API versions) */
+export type ReportDetail = {
+  interviewTopics: { topic: string; sessions: number; avgScore: number; bestScore: number | null; lastAt: string | null }[]
+  recentInterviews: { topic: string; score: number | null; date: string | null }[]
+  code: { solvedByDifficulty: { easy: number; medium: number; hard: number }; recentSolved: { title: string; difficulty: string | null; solvedAt: string }[] }
+  recentAssessments: { score: number | null; result: string | null; date: string }[]
+  dailyActivity: { date: string; secs: number }[]
+  longestStreak: number
+  lastActiveDate: string | null
+}
+
 export type Report = {
   student: { _id: string; name: string; email: string; branch: string; rollNumber: string; gender: string; college: string; department: string; joiningYear: string | number; batch: string; skills: string[]; profileImage: string; reportId: string }
   period: { from: string | null; to: string | null }
@@ -45,6 +56,7 @@ export type Report = {
     selfInterview: TopicStat; resumeInterview: ResumeStat
     assessment: AssessmentStat
   }
+  detail?: ReportDetail | null
 }
 export type ReportStatus = 'on-track' | 'needs-attention' | 'at-risk' | 'not-started'
 export type TrendPoint = { label: string; score: number | null }

@@ -14,6 +14,7 @@ import type { IconType } from 'react-icons'
 import { useAuthContext } from '@/context/useAuthContext'
 import './StudentReports.css'
 import StudentReportDocument from './StudentReportDocument'
+import StudentProgressModal from './StudentProgressModal'
 import StudentReportsSheet, { type SheetRow } from './StudentReportsSheet'
 import logoBlack from '@/assets/images/logo_black.png'
 import { renderToStaticMarkup } from 'react-dom/server'
@@ -375,6 +376,7 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
   const [ranksStatus, setRanksStatus] = useState<'loading' | 'ready' | 'error'>('loading')
   const [ranksReload, setRanksReload] = useState(0)
   const [showModal, setShowModal]     = useState(false)
+  const [progressStudent, setProgressStudent] = useState<Student | null>(null)
   const [modalError, setModalError]   = useState('')
 
   useEffect(() => {
@@ -899,12 +901,12 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
                       : <span className="sr-status-pill sr-status-pending">{loadingReportIds.has(student._id) ? 'Loading' : 'Unavailable'}</span>}
                   </div>
                   <div className="sr-actions">
-                    <button type="button" className="sr-view-button" onClick={() => generateReport(student, 'preview')} disabled={row.loading}>
+                    <button type="button" className="sr-view-button" onClick={() => generateReport(student, 'preview')} disabled={row.loading} title="View the report; download it as PDF from there">
                       {row.loading ? <span className="sr-button-loader" /> : <FaEye />}
                       View
                     </button>
-                    <button type="button" className="sr-pdf-button" onClick={() => generateReport(student, 'download')} disabled={row.loading}>
-                      <FaFileDownload /> PDF
+                    <button type="button" className="sr-pdf-button sr-progress-button" onClick={() => setProgressStudent(student)} title="Month-by-month progress graphs for every section">
+                      <FaChartLine /> Progress
                     </button>
                   </div>
                 </div>
@@ -951,6 +953,13 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
           />
         )}
       </section>}
+
+      <StudentProgressModal
+        student={progressStudent}
+        show={!!progressStudent}
+        onHide={() => setProgressStudent(null)}
+        fetchReport={fetchStudentReport}
+      />
 
       {/* Report Modal */}
       <Modal show={showModal} onHide={() => setShowModal(false)} fullscreen>
