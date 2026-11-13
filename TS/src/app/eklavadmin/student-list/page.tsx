@@ -8,6 +8,7 @@ import { AdminPage, PageHeader, StatCards, SearchInput, AdminSelect, TableFooter
 import { FaSort, FaSortUp, FaSortDown, FaUsers, FaHourglassHalf, FaUserPlus, FaTimes, FaExclamationTriangle, FaClipboardList, FaCode, FaLaptopCode, FaUserTie, FaCalendarCheck, FaPaperPlane } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
 import * as XLSX from 'xlsx'
+import GrantAccessModal from './GrantAccessModal'
 
 interface Feedback {
   _id: string
@@ -42,6 +43,57 @@ interface Student {
   assessmentScores?: AssessmentScores
   createdAt: string
   updatedAt: string
+  /* Access window from the student's account (subscription dates live on the User) */
+  access?: {
+    userStatus: string | null
+    plan: string | null
+    startDate: string | null
+    endDate: string | null
+    source?: string | null
+    grantedAt?: string | null
+    note?: string | null
+    modules: { moduleKey: string; plan: string | null; source: string | null; endDate: string | null }[]
+  } | null
+}
+
+type AccessKind = 'active' | 'expiring' | 'expired' | 'unlimited' | 'module' | 'none'
+type AccessInfo = { kind: AccessKind; label: string; sub: string; tone: string; sortValue: number }
+
+const DAY_MS = 86400000
+const PLAN_LABEL: Record<string, string> = { '6months': '6-month plan', '12months': '12-month plan' }
+const MODULE_LABEL: Record<string, string> = { lsrw: 'LSRW', companyInterview: 'Company Interviews', aptitude: 'Aptitude' }
+const shortDate = (d: string) => new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+
+/* How long a student can use the app. A paid plan ends on subscription.endDate; after that the
+   backend moves them back to "pending". Approved with no end date (admin / institute) never expires. */
+const accessInfo = (s: Student): AccessInfo => {
+  const a = s.access
+  if (a?.endDate) {
+    const days = Math.ceil((new Date(a.endDate).getTime() - Date.now()) / DAY_MS)
+    const plan = a.source === 'admin' ? `${a.plan ? PLAN_LABEL[a.plan] || a.plan : 'Custom'} · by admin` : a.plan ? PLAN_LABEL[a.plan] || a.plan : 'Paid plan'
+    if (days < 0) return { kind: 'expired', label: 'Expired', sub: `${shortDate(a.endDate)} · moves to pending`, tone: 'red', sortValue: days }
+    if (days <= 30) return { kind: 'expiring', label: days === 0 ? 'Ends today' : `${days} day${days === 1 ? '' : 's'} left`, sub: `Ends ${shortDate(a.endDate)} · ${plan}`, tone: 'amber', sortValue: days }
+    return { kind: 'active', label: `${days} days left`, sub: `Ends ${shortDate(a.endDate)} · ${plan}`, tone: 'green', sortValue: days }
+  }
+  if ((s.status || a?.userStatus) === 'approved') return { kind: 'unlimited', label: 'No expiry', sub: a?.source === 'admin' ? 'Approved by admin · no end date' : 'Approved without an end date', tone: 'blue', sortValue: 1e6 }
+  const mod = a?.modules?.[0]
+  if (mod) {
+    const names = a!.modules.map(m => MODULE_LABEL[m.moduleKey] || m.moduleKey).join(', ')
+    if (!mod.endDate) return { kind: 'module', label: names, sub: 'Module access · no end date', tone: 'purple', sortValue: 1e6 - 1 }
+    const days = Math.ceil((new Date(mod.endDate).getTime() - Date.now()) / DAY_MS)
+    return { kind: 'module', label: names, sub: days < 0 ? `Module expired ${shortDate(mod.endDate)}` : `Module · ${days} days left`, tone: days < 0 ? 'red' : 'purple', sortValue: days }
+  }
+  return { kind: 'none', label: 'No plan', sub: 'Nothing purchased', tone: 'muted', sortValue: -1e6 }
+}
+
+const AccessCell = ({ student }: { student: Student }) => {
+  const info = accessInfo(student)
+  return (
+    <div className={`sl-access is-${info.tone}`} title={info.sub}>
+      <strong>{info.kind === 'expired' || info.kind === 'expiring' ? <span className="sl-access-dot" /> : null}{info.label}</strong>
+      <small>{info.sub}</small>
+    </div>
+  )
 }
 
 interface StudentDetailsModalProps {
@@ -145,6 +197,7 @@ const StudentDetailsModal: React.FC<StudentDetailsModalProps> = ({ show, onHide,
     { label: 'Batch', icon: FaUsers, value: student.batch || '—' },
     { label: 'Joining year', icon: MdDateRange, value: student.joiningYear || '—' },
     { label: 'Registered', icon: FaCalendarCheck, value: fmtDate(student.createdAt) },
+    { label: 'Access', icon: FaHourglassHalf, value: <AccessCell student={student} /> },
   ]
 
   const shownRating = hoverRating || feedbackRating
@@ -384,6 +437,9 @@ const StudentListPage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<string>('all')
   const [filterBatch, setFilterBatch] = useState<string>('all')
   const [filterCollege, setFilterCollege] = useState<string>('all')
+  const [filterAccess, setFilterAccess] = useState<string>('all')
+  const [grantTarget, setGrantTarget] = useState<Student | null>(null)
+  const [grantNotice, setGrantNotice] = useState('')
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
 
@@ -393,6 +449,10 @@ const StudentListPage: React.FC = () => {
   const [college, setCollege] = useState<string | null>(null)
   const [role, setRole] = useState<string | null>(null)
   const [contactMessage, setContactMessage] = useState('')
+  const [contactSubject, setContactSubject] = useState('Message from Eklav')
+  const [contactChannels, setContactChannels] = useState<{ email: boolean; inApp: boolean }>({ email: true, inApp: true })
+  const [contactError, setContactError] = useState('')
+  const [contactSent, setContactSent] = useState(false)
   const [isSendingContact, setIsSendingContact] = useState(false)
 
   // Bulk promotional messaging (email / in-app / WhatsApp) ──────────────────
@@ -504,7 +564,9 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
     const matchesFrom = !dateFrom || registeredAt >= new Date(dateFrom)
     const matchesTo = !dateTo || registeredAt <= new Date(dateTo + 'T23:59:59')
 
-    return matchesSearch && matchesStatus && matchesBatch && matchesCollege && matchesFrom && matchesTo
+    const matchesAccess = filterAccess === 'all' || accessInfo(student).kind === filterAccess
+
+    return matchesSearch && matchesStatus && matchesBatch && matchesCollege && matchesFrom && matchesTo && matchesAccess
   })
 
   // Sort students
@@ -525,6 +587,9 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
         break
       case 'college':
         comparison = (a.college || '').localeCompare(b.college || '')
+        break
+      case 'access':
+        comparison = accessInfo(a).sortValue - accessInfo(b).sortValue
         break
       default:
         comparison = 0
@@ -576,6 +641,9 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
       College: student.college || '-',
       Batch: student.batch || '-',
       Status: student.status || '-',
+      Access: accessInfo(student).label,
+      Plan: student.access?.plan ? PLAN_LABEL[student.access.plan] || student.access.plan : '-',
+      'Access Ends': student.access?.endDate ? shortDate(student.access.endDate) : '-',
       'Joining Year': student.joiningYear || '-',
     }))
     const worksheet = XLSX.utils.json_to_sheet(excelData)
@@ -587,28 +655,40 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
 
   // Send Contact Message (kept for the single-student "phone icon" flow —
   // delegates to the same bulk-send endpoint with a single target)
+  const openContactModal = (student: Student) => {
+    setSelectedStudent(student)
+    setContactMessage('')
+    setContactSubject('Message from Eklav')
+    setContactChannels({ email: true, inApp: true })
+    setContactError('')
+    setContactSent(false)
+    setShowContactModal(true)
+  }
+
   const handleSendContact = async () => {
     if (!selectedStudent || !contactMessage.trim()) return
+    const channels = [contactChannels.email && 'email', contactChannels.inApp && 'in-app'].filter(Boolean)
+    if (!channels.length) { setContactError('Choose at least one way to send it.'); return }
     setIsSendingContact(true)
+    setContactError('')
     try {
       const res = await fetch(`${baseURL}/admin/student-messages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user?.token}` },
         body: JSON.stringify({
           studentIds: [selectedStudent.userId || selectedStudent._id],
-          subject: 'Message from Eklav',
+          subject: contactSubject.trim() || 'Message from Eklav',
           body: contactMessage,
-          channels: ['email', 'in-app'],
+          channels,
           messageType: 'custom',
         }),
       })
       if (!res.ok) throw new Error('Failed to send message')
-      alert(`Message sent to ${selectedStudent.fullName}`)
+      setContactSent(true)
       setContactMessage('')
-      setShowContactModal(false)
     } catch (error) {
       console.error('Error sending message:', error)
-      alert('Failed to send message')
+      setContactError('The message could not be sent. Please try again.')
     } finally {
       setIsSendingContact(false)
     }
@@ -738,6 +818,7 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
   const isNew = (createdAt: string) => new Date(createdAt) > sevenDaysAgo
   const newCount = students.filter(s => isNew(s.createdAt)).length
+  const accessCounts = students.reduce<Record<string, number>>((acc, s) => { const k = accessInfo(s).kind; acc[k] = (acc[k] || 0) + 1; return acc }, {})
 
   const handleSortColumn = (column: string) => {
     if (sortBy === column) {
@@ -756,9 +837,9 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
     </button>
   )
 
-  const filtersActive = !!(searchTerm || filterStatus !== 'all' || filterBatch !== 'all' || filterCollege !== 'all' || dateFrom || dateTo)
+  const filtersActive = !!(searchTerm || filterStatus !== 'all' || filterBatch !== 'all' || filterCollege !== 'all' || filterAccess !== 'all' || dateFrom || dateTo)
   const resetFilters = () => {
-    setSearchTerm(''); setFilterStatus('all'); setFilterBatch('all'); setFilterCollege('all')
+    setSearchTerm(''); setFilterStatus('all'); setFilterBatch('all'); setFilterCollege('all'); setFilterAccess('all')
     setDateFrom(''); setDateTo(''); setCurrentPage(1)
   }
   const onFilter = <T,>(setter: (v: T) => void) => (value: T) => { setter(value); setCurrentPage(1) }
@@ -787,6 +868,7 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
                 { label: 'Approved', value: approvedCount, icon: FaCheckCircle, tone: 'green' },
                 { label: 'Pending', value: pendingCount, icon: FaHourglassHalf, tone: 'amber' },
                 { label: 'Rejected', value: rejectedCount, icon: FaTimesCircle, tone: 'red' },
+                { label: 'Expiring · 30 days', value: accessCounts.expiring || 0, icon: FaHourglassHalf, tone: 'red' },
                 { label: 'New · 7 days', value: newCount, icon: FaUserPlus, tone: 'blue' },
               ]}
             />
@@ -863,6 +945,12 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
           </div>
         )}
 
+        {grantNotice && (
+          <div className="aui-alert aui-alert-success"><FaCheckCircle /> <span>{grantNotice}</span>
+            <button type="button" className="aui-alert-close" onClick={() => setGrantNotice('')} aria-label="Dismiss"><FaTimes size={11} /></button>
+          </div>
+        )}
+
         {/* ── Students table ── */}
         <div className="aui-card">
           <div className="aui-toolbar">
@@ -880,10 +968,21 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
                 ]}
                 onChange={onFilter(setFilterStatus)}
               />
-              <AdminSelect label="Batch" prefix="Batch:" value={filterBatch} options={[{ value: 'all', label: 'All' }, ...batches.sort().map(b => ({ value: b, label: b }))]} onChange={onFilter(setFilterBatch)} />
-              <div className="sl-college">
-                <AdminSelect label="College" prefix="College:" value={filterCollege} options={[{ value: 'all', label: 'All' }, ...colleges.sort().map(c => ({ value: c, label: c }))]} onChange={onFilter(setFilterCollege)} />
-              </div>
+              <AdminSelect
+                label="Access"
+                prefix="Access:"
+                value={filterAccess}
+                options={[
+                  { value: 'all', label: 'All' },
+                  { value: 'expiring', label: `Ending in 30 days (${accessCounts.expiring || 0})` },
+                  { value: 'expired', label: `Expired (${accessCounts.expired || 0})` },
+                  { value: 'active', label: `Active plan (${accessCounts.active || 0})` },
+                  { value: 'unlimited', label: `No expiry (${accessCounts.unlimited || 0})` },
+                  { value: 'module', label: `Single module (${accessCounts.module || 0})` },
+                  { value: 'none', label: `No plan (${accessCounts.none || 0})` },
+                ]}
+                onChange={onFilter(setFilterAccess)}
+              />
               <div className="sl-dates" title="Registered between">
                 <MdDateRange />
                 <input type="date" className="aui-date" aria-label="Registered from" value={dateFrom} max={dateTo || undefined} onChange={e => { setDateFrom(e.target.value); setCurrentPage(1) }} />
@@ -926,12 +1025,11 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
                       </th>
                       <th style={{ width: 44 }}>#</th>
                       <th><SortHeader column="name" label="Student" /></th>
-                      <th><SortHeader column="college" label="College" /></th>
-                      <th style={{ width: 110 }}><SortHeader column="batch" label="Batch" /></th>
                       <th style={{ width: 130 }}>Phone</th>
                       <th style={{ width: 120 }}><SortHeader column="status" label="Status" /></th>
+                      <th style={{ width: 190 }}><SortHeader column="access" label="Access" /></th>
                       <th style={{ width: 130 }}><SortHeader column="date" label="Registered" /></th>
-                      <th style={{ width: 120 }} className="text-end">Actions</th>
+                      <th style={{ width: 200 }} className="text-end">Actions</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -953,17 +1051,34 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
                               </div>
                             </div>
                           </td>
-                          <td><span className="sl-college-text" title={student.college || ''}>{student.college || '—'}</span></td>
-                          <td>{student.batch ? <span className="aui-badge aui-badge-muted">{student.batch}</span> : <span className="aui-num">—</span>}</td>
                           <td>{student.phoneNo ? <span className="aui-inline-icon"><FaPhoneAlt /> {student.phoneNo}</span> : <span className="aui-num">—</span>}</td>
                           <td>{statusBadge(student.status)}</td>
+                          <td><AccessCell student={student} /></td>
                           <td className="aui-num">{fmtDate(student.createdAt)}</td>
                           <td className="text-end">
                             <div className="sl-actions">
+                              {(() => {
+                                const kind = accessInfo(student).kind
+                                if (student.status !== 'approved' || kind === 'expired') {
+                                  return (
+                                    <button type="button" className="aui-btn aui-btn-sm sl-approve" onClick={() => setGrantTarget(student)} title="Approve and set how long they can use the app">
+                                      <FaCheckCircle size={10} /> Approve
+                                    </button>
+                                  )
+                                }
+                                if (kind === 'active' || kind === 'expiring') {
+                                  return (
+                                    <button type="button" className={`aui-icon-btn${kind === 'expiring' ? ' sl-extend-soon' : ''}`} onClick={() => setGrantTarget(student)} title="Extend access" aria-label={`Extend access for ${student.fullName}`}>
+                                      <FaCalendarCheck size={11} />
+                                    </button>
+                                  )
+                                }
+                                return null
+                              })()}
                               <button type="button" className="aui-btn aui-btn-sm" onClick={() => { setSelectedStudent(student); setShowDetailsModal(true) }}>
                                 <FaEye size={11} /> View
                               </button>
-                              <button type="button" className="aui-icon-btn" title="Message student" aria-label={`Message ${student.fullName}`} onClick={() => { setSelectedStudent(student); setShowContactModal(true) }}>
+                              <button type="button" className="aui-icon-btn" title="Message student" aria-label={`Message ${student.fullName}`} onClick={() => openContactModal(student)}>
                                 <FaRegEnvelope size={11} />
                               </button>
                             </div>
@@ -987,7 +1102,56 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
           )}
         </div>
 
+        <GrantAccessModal
+          show={!!grantTarget}
+          student={grantTarget}
+          baseURL={baseURL}
+          token={user?.token}
+          onHide={() => setGrantTarget(null)}
+          onDone={({ status, access }) => {
+            const target = grantTarget
+            setStudents(prev => prev.map(s => (s._id === target?._id ? { ...s, status, access } : s)))
+            setGrantNotice(`${target?.fullName} approved${access?.endDate ? ` until ${shortDate(access.endDate)}` : ' with no end date'}.`)
+            setGrantTarget(null)
+          }}
+        />
+
         <style>{`
+          .cm-body { display: flex; flex-direction: column; gap: 0.95rem; }
+          .cm-body .aui-field { margin-bottom: 0; }
+          .cm-quick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+          .cm-quick-btn { display: flex; align-items: center; gap: 10px; min-width: 0; padding: 0.6rem 0.8rem; border: 1px solid #25282b; border-radius: 10px; background: #111315; color: #e5e7eb; font-size: 0.82rem; text-decoration: none; transition: border-color 0.15s, background 0.15s; }
+          .cm-quick-btn > svg { flex: 0 0 auto; color: #ff9a3c; }
+          .cm-quick-btn > span { display: flex; flex-direction: column; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+          .cm-quick-btn small { color: #6b7280; font-size: 0.66rem; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+          a.cm-quick-btn:hover { border-color: rgba(255,122,0,0.5); background: rgba(255,122,0,0.05); color: #fff; }
+          .cm-quick-btn.is-off { opacity: 0.55; }
+          .cm-textarea { height: auto; min-height: 120px; padding: 0.65rem 0.8rem; line-height: 1.55; resize: vertical; }
+          .cm-count { align-self: flex-end; color: #6b7280; font-size: 0.7rem; }
+          .cm-channels { display: flex; flex-wrap: wrap; gap: 8px; }
+          .cm-channel { display: inline-flex; align-items: center; gap: 8px; padding: 0.45rem 0.8rem; border: 1px solid #2c3034; border-radius: 99px; background: #141618; color: #9da2a8; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+          .cm-channel.is-on { border-color: rgba(255,122,0,0.55); background: rgba(255,122,0,0.08); color: #ffb15e; }
+          .cm-channel-box { display: grid; place-items: center; width: 16px; height: 16px; border: 1px solid #3a3f45; border-radius: 50%; }
+          .cm-channel.is-on .cm-channel-box { border-color: transparent; color: #ff7a00; }
+          .cm-sent { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 2rem 1.5rem !important; text-align: center; }
+          .cm-sent-icon { display: grid; place-items: center; width: 56px; height: 56px; margin-bottom: 4px; border-radius: 50%; background: rgba(49,216,102,0.12); color: #45dd75; font-size: 1.6rem; }
+          .cm-sent h4 { margin: 0; color: #fff; font-size: 1.05rem; }
+          .cm-sent p { margin: 0 0 0.8rem; color: #9da2a8; font-size: 0.84rem; }
+          .cm-sent-actions { display: flex; gap: 8px; }
+          @media (max-width: 575.98px) { .cm-quick { grid-template-columns: 1fr; } }
+          .sl-approve { border-color: rgba(49,216,102,0.45) !important; background: rgba(49,216,102,0.1) !important; color: #45dd75 !important; }
+          .sl-approve:hover:not(:disabled) { border-color: rgba(49,216,102,0.7) !important; background: rgba(49,216,102,0.18) !important; }
+          .sl-extend-soon { border-color: rgba(244,180,63,0.55) !important; color: #f4b43f !important; }
+          .sl-access { display: flex; flex-direction: column; gap: 1px; min-width: 150px; }
+          .sl-access strong { display: inline-flex; align-items: center; gap: 6px; font-size: 0.8rem; font-weight: 700; }
+          .sl-access small { overflow: hidden; color: #6b7280 !important; font-size: 0.7rem !important; font-weight: 500 !important; letter-spacing: 0 !important; text-overflow: ellipsis; text-transform: none !important; white-space: nowrap; }
+          .sl-access.is-green strong { color: #45dd75; }
+          .sl-access.is-amber strong { color: #f4b43f; }
+          .sl-access.is-red strong { color: #fb737a; }
+          .sl-access.is-blue strong { color: #7dd3fc; }
+          .sl-access.is-purple strong { color: #c4b5fd; }
+          .sl-access.is-muted strong { color: #6b7280; font-weight: 600; }
+          .sl-access-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent); }
           .sl-audit { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1rem; }
           .sl-audit .aui-card { margin-top: 1.25rem; }
           .sl-audit-scroll { max-height: 300px; overflow-y: auto; }
@@ -1033,63 +1197,91 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
       />
 
       {/* Contact Modal */}
-      <Modal show={showContactModal} onHide={() => setShowContactModal(false)} centered size="sm" className="contact-modal" backdropClassName="aui-backdrop">
-        <div className="modal-hero-header position-relative overflow-hidden rounded-top-3" style={{ background: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 100%)' }}>
-          <div className="position-absolute top-0 end-0 p-3">
-            <button type="button" className="btn-close btn-close-white opacity-75" onClick={() => setShowContactModal(false)} aria-label="Close" />
-          </div>
-          <div className="p-4 pb-3">
-            <div className="d-flex align-items-center gap-3">
-              <div className="rounded-circle d-flex align-items-center justify-content-center bg-orange text-white fw-bold flex-shrink-0" style={{ width: 48, height: 48, fontSize: 16 }}>
-                {selectedStudent?.fullName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
-              </div>
+      <Modal show={showContactModal} onHide={() => !isSendingContact && setShowContactModal(false)} centered contentClassName="aui-modal" backdropClassName="aui-backdrop">
+        {selectedStudent && (
+          <div className="aui-page">
+            <div className="aui-modal-head">
+              <StudentAvatar name={selectedStudent.fullName} image={selectedStudent.profileImage} baseURL={baseURL} />
               <div>
-                <h6 className="text-white fw-bold mb-0">{selectedStudent?.fullName}</h6>
-                <small className="text-white-50">Send a message</small>
+                <h3>{selectedStudent.fullName}</h3>
+                <p>Send a message · {selectedStudent.email}</p>
               </div>
+              <button type="button" className="aui-icon-btn" onClick={() => setShowContactModal(false)} disabled={isSendingContact} aria-label="Close"><FaTimes size={12} /></button>
             </div>
+
+            {contactSent ? (
+              <div className="aui-modal-body cm-sent">
+                <span className="cm-sent-icon"><FaCheckCircle /></span>
+                <h4>Message sent</h4>
+                <p>{selectedStudent.fullName.split(' ')[0]} will get it by {[contactChannels.email && 'email', contactChannels.inApp && 'in-app notification'].filter(Boolean).join(' and ')}.</p>
+                <div className="cm-sent-actions">
+                  <button type="button" className="aui-btn" onClick={() => setContactSent(false)}>Send another</button>
+                  <button type="button" className="aui-btn aui-btn-primary" onClick={() => setShowContactModal(false)}>Done</button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="aui-modal-body cm-body">
+                  <div className="cm-quick">
+                    {selectedStudent.phoneNo ? (
+                      <a href={`tel:${selectedStudent.phoneNo}`} className="cm-quick-btn"><FaPhoneAlt /> <span><small>Call</small>{selectedStudent.phoneNo}</span></a>
+                    ) : (
+                      <span className="cm-quick-btn is-off"><FaPhoneAlt /> <span><small>Call</small>No phone number</span></span>
+                    )}
+                    <a href={`mailto:${selectedStudent.email}`} className="cm-quick-btn"><FaEnvelope /> <span><small>Open in mail app</small>{selectedStudent.email}</span></a>
+                  </div>
+
+                  {contactError && <div className="aui-alert"><FaExclamationTriangle /> <span>{contactError}</span></div>}
+
+                  <div className="aui-field">
+                    <label className="aui-label" htmlFor="cm-subject">Subject</label>
+                    <input id="cm-subject" className="aui-input" value={contactSubject} maxLength={120} onChange={(e) => setContactSubject(e.target.value)} />
+                  </div>
+                  <div className="aui-field">
+                    <label className="aui-label" htmlFor="cm-message">Message</label>
+                    <textarea
+                      id="cm-message"
+                      className="aui-input cm-textarea"
+                      rows={5}
+                      maxLength={2000}
+                      placeholder={`Hi ${selectedStudent.fullName.split(' ')[0]}, …`}
+                      value={contactMessage}
+                      onChange={(e) => setContactMessage(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) handleSendContact() }}
+                      autoFocus
+                    />
+                    <span className="cm-count">{contactMessage.length} / 2000 · Ctrl + Enter to send</span>
+                  </div>
+
+                  <div className="aui-field" style={{ marginBottom: 0 }}>
+                    <span className="aui-label">Send by</span>
+                    <div className="cm-channels">
+                      {([['email', 'Email', FaEnvelope], ['inApp', 'In-app notification', FaRegEnvelope]] as const).map(([key, label, Icon]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          className={`cm-channel${contactChannels[key] ? ' is-on' : ''}`}
+                          aria-pressed={contactChannels[key]}
+                          onClick={() => setContactChannels((c) => ({ ...c, [key]: !c[key] }))}
+                        >
+                          <span className="cm-channel-box">{contactChannels[key] && <FaCheckCircle size={11} />}</span>
+                          <Icon size={12} /> {label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="aui-modal-foot">
+                  <button type="button" className="aui-btn" onClick={() => setShowContactModal(false)} disabled={isSendingContact}>Cancel</button>
+                  <button type="button" className="aui-btn aui-btn-primary" onClick={handleSendContact} disabled={isSendingContact || !contactMessage.trim()}>
+                    {isSendingContact ? <FaSpinner className="aui-spin" style={{ color: '#fff' }} /> : <FaPaperPlane size={11} />} Send message
+                  </button>
+                </div>
+              </>
+            )}
           </div>
-        </div>
-        <Modal.Body className="modal-body-dark p-4">
-          <div className="d-flex gap-3 mb-4">
-            <a
-              href={`tel:${selectedStudent?.phoneNo}`}
-              className="contact-quick-btn flex-grow-1"
-            >
-              <FaPhone size={14} className="me-2 text-orange" />
-              {selectedStudent?.phoneNo}
-            </a>
-            <a
-              href={`mailto:${selectedStudent?.email}`}
-              className="contact-quick-btn flex-grow-1"
-            >
-              <FaEnvelope size={14} className="me-2 text-orange" />
-              Email
-            </a>
-          </div>
-          <Form.Control
-            as="textarea"
-            rows={4}
-            placeholder="Type your message..."
-            value={contactMessage}
-            onChange={(e) => setContactMessage(e.target.value)}
-            className="modal-textarea mb-3"
-          />
-          <div className="d-flex gap-2 justify-content-end">
-            <Button variant="outline-secondary" size="sm" onClick={() => setShowContactModal(false)}>
-              Cancel
-            </Button>
-            <Button
-              size="sm"
-              className="btn-orange"
-              onClick={handleSendContact}
-              disabled={isSendingContact || !contactMessage.trim()}
-            >
-              {isSendingContact ? <FaSpinner className="spinner me-1" size={12} /> : null}
-              Send Message
-            </Button>
-          </div>
-        </Modal.Body>
+        )}
       </Modal>
 
       {/* Bulk Promotional Message Modal */}
