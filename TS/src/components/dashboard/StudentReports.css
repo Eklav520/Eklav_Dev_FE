@@ -1586,3 +1586,71 @@
   font-weight: 600;
   letter-spacing: 0.01em;
 }
+
+/* Report (PDF preview) modal header */
+.sr-report-head {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0.8rem 1.25rem;
+  background: #0d0f11;
+  border-bottom: 1px solid #1f2226;
+}
+.sr-report-head-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  border-radius: 10px;
+  background: rgba(255, 107, 0, 0.12);
+  color: #ff7a1a;
+}
+.sr-report-head-text { min-width: 0; }
+.sr-report-head-text h3 {
+  margin: 0;
+  overflow: hidden;
+  color: #fff;
+  font-size: 1rem;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sr-report-head-text p { margin: 2px 0 0; color: #7b8088; font-size: 0.74rem; }
+.sr-report-head-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex: 0 0 auto; }
+.sr-report-download {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid rgba(255, 122, 0, 0.45);
+  border-radius: 9px;
+  background: rgba(255, 122, 0, 0.1);
+  color: #ffa04d;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+.sr-report-download:hover { border-color: #ff7a00; background: #ff7a00; color: #fff; }
+.sr-report-close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid #2a2e33;
+  border-radius: 9px;
+  background: #16191c;
+  color: #c9cdd2;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.sr-report-close:hover { border-color: #45494f; background: #22262a; color: #fff; }
+@media (max-width: 575.98px) {
+  .sr-report-head { padding: 0.7rem 0.9rem; }
+  .sr-report-download span, .sr-report-head-text p { display: none; }
+}

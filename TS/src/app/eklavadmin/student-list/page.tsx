@@ -442,6 +442,8 @@ const StudentListPage: React.FC = () => {
   const [grantNotice, setGrantNotice] = useState('')
   const [dateFrom, setDateFrom] = useState<string>('')
   const [dateTo, setDateTo] = useState<string>('')
+  const todayIso = (() => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` })()
+  const todayOnly = dateFrom === todayIso && dateTo === todayIso
 
   const [sortBy, setSortBy] = useState<string>('date')
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc')
@@ -561,7 +563,7 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
     const matchesCollege = filterCollege === 'all' || student.college === filterCollege
 
     const registeredAt = new Date(student.createdAt)
-    const matchesFrom = !dateFrom || registeredAt >= new Date(dateFrom)
+    const matchesFrom = !dateFrom || registeredAt >= new Date(dateFrom + 'T00:00:00')
     const matchesTo = !dateTo || registeredAt <= new Date(dateTo + 'T23:59:59')
 
     const matchesAccess = filterAccess === 'all' || accessInfo(student).kind === filterAccess
@@ -983,6 +985,15 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
                 ]}
                 onChange={onFilter(setFilterAccess)}
               />
+              <button
+                type="button"
+                className={`sl-today${todayOnly ? ' is-on' : ''}`}
+                aria-pressed={todayOnly}
+                title="Students who registered today"
+                onClick={() => { const on = !todayOnly; setDateFrom(on ? todayIso : ''); setDateTo(on ? todayIso : ''); setCurrentPage(1) }}
+              >
+                Today <b>{students.filter(st => st.createdAt && new Date(st.createdAt).toDateString() === new Date().toDateString()).length}</b>
+              </button>
               <div className="sl-dates" title="Registered between">
                 <MdDateRange />
                 <input type="date" className="aui-date" aria-label="Registered from" value={dateFrom} max={dateTo || undefined} onChange={e => { setDateFrom(e.target.value); setCurrentPage(1) }} />
@@ -1140,6 +1151,11 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
           .cm-sent p { margin: 0 0 0.8rem; color: #9da2a8; font-size: 0.84rem; }
           .cm-sent-actions { display: flex; gap: 8px; }
           @media (max-width: 575.98px) { .cm-quick { grid-template-columns: 1fr; } }
+          .sl-today { display: inline-flex; align-items: center; gap: 7px; height: 44px; padding: 0 14px; border: 1px solid #2c3034; border-radius: 10px; background: #111315; color: #c9cdd2; font-size: 0.86rem; font-weight: 600; cursor: pointer; white-space: nowrap; transition: border-color 0.15s, background 0.15s, color 0.15s; }
+          .sl-today b { min-width: 22px; padding: 1px 7px; border-radius: 99px; background: #1f2326; color: #fff; font-size: 0.74rem; text-align: center; }
+          .sl-today:hover { border-color: #454a50; }
+          .sl-today.is-on { border-color: rgba(255,122,0,0.6); background: rgba(255,122,0,0.1); color: #ffa04d; }
+          .sl-today.is-on b { background: #ff7a00; color: #fff; }
           .sl-approve { border-color: rgba(49,216,102,0.45) !important; background: rgba(49,216,102,0.1) !important; color: #45dd75 !important; }
           .sl-approve:hover:not(:disabled) { border-color: rgba(49,216,102,0.7) !important; background: rgba(49,216,102,0.18) !important; }
           .sl-extend-soon { border-color: rgba(244,180,63,0.55) !important; color: #f4b43f !important; }

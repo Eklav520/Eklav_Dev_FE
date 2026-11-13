@@ -989,27 +989,28 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
 
       {/* Report Modal */}
       <Modal show={showModal} onHide={() => setShowModal(false)} fullscreen>
-        <Modal.Header closeButton style={{ background: '#0a0a0a', borderBottom: '1px solid #1a1a1a' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-            <FaUserGraduate size={16} color="#ff6b00" />
-            <div>
-              <div style={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>
-                {report ? `${report.student.name} — Performance Report` : 'Performance Report'}
-              </div>
-              {report && (
-                <div style={{ color: '#444', fontSize: '0.68rem' }}>
-                  {report.period.from || report.period.to ? `${fmt(report.period.from)} → ${fmt(report.period.to)}` : 'All Time'}
-                </div>
-              )}
-            </div>
+        {/* Own header (no Bootstrap closeButton: its dark X disappears on the dark background) */}
+        <div className="sr-report-head">
+          <span className="sr-report-head-icon"><FaUserGraduate size={15} /></span>
+          <div className="sr-report-head-text">
+            <h3>{report ? report.student.name : 'Performance Report'}</h3>
+            <p>
+              Performance report · {report
+                ? (report.period.from || report.period.to ? `${fmt(report.period.from)} → ${fmt(report.period.to)}` : 'All time')
+                : 'Loading…'}
+            </p>
           </div>
-          {report && (
-            <button onClick={triggerPrint}
-              style={{ marginLeft: 'auto', marginRight: '2rem', display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#ff6b00', border: 'none', color: '#fff', fontWeight: 700, borderRadius: 8, padding: '8px 16px', fontSize: '0.82rem', cursor: 'pointer' }}>
-              <FaFileDownload size={12} /> Download PDF
+          <div className="sr-report-head-actions">
+            {report && (
+              <button type="button" className="sr-report-download" onClick={triggerPrint}>
+                <FaFileDownload size={12} /> Download PDF
+              </button>
+            )}
+            <button type="button" className="sr-report-close" onClick={() => setShowModal(false)} aria-label="Close report" title="Close">
+              <FaTimes size={14} />
             </button>
-          )}
-        </Modal.Header>
+          </div>
+        </div>
         <Modal.Body style={{ background: '#2a2d31', padding: '1.5rem', overflowY: 'auto' as const }}>
           {modalError && (
             <div style={{ background: '#1a0a0a', border: '1px solid #5a1a1a', borderRadius: 8, padding: '10px 14px', color: '#ef4444', fontSize: '0.8rem', marginBottom: '1rem' }}>
