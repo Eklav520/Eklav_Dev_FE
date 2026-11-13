@@ -1117,6 +1117,7 @@ const colleges = [...new Set(students.map(s => s.college).filter((college): coll
         />
 
         <style>{`
+          .aui-modal-head > .aui-avatar { width: 44px; height: 44px; flex: 0 0 44px; font-size: 0.9rem; }
           .cm-body { display: flex; flex-direction: column; gap: 0.95rem; }
           .cm-body .aui-field { margin-bottom: 0; }
           .cm-quick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }

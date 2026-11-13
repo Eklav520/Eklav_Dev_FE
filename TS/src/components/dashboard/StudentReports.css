@@ -1575,3 +1575,14 @@
 }
 
 @keyframes sr-sort-spin { to { transform: rotate(360deg); } }
+
+/* Rule under each status count, so the thresholds are visible */
+.sr-summary-rule {
+  display: block;
+  margin-top: 1px;
+  color: #6b7280;
+  font-size: 0.66rem;
+  font-style: normal;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}

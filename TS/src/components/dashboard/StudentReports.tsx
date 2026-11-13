@@ -369,7 +369,7 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
   const [report, setReport]           = useState<Report | null>(null)
   const [trend, setTrend]             = useState<TrendPoint[]>([])
   const [exportProgress, setExportProgress] = useState<{ done: number; total: number } | null>(null)
-  const [liveRanks, setLiveRanks]     = useState<Record<string, { position: number; total: number; timeSecs?: number }>>({})
+  const [liveRanks, setLiveRanks]     = useState<Record<string, { position: number; total: number; score?: number; timeSecs?: number }>>({})
   const [rankSort, setRankSort]       = useState<'none' | 'asc' | 'desc'>('none')
   const [timeSort, setTimeSort]       = useState<'none' | 'asc' | 'desc'>('none')
   /* Institute-wide ranks drive both sorts; 'error' is retried on the next sort click */
@@ -529,6 +529,26 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
   const averagePerformance = currentPageReports.length
     ? Math.round(currentPageReports.reduce((total, studentReport) => total + studentReport.overallScore, 0) / currentPageReports.length)
     : 0
+
+  /* Summary boxes cover every student in the current filters, using the live overall scores from
+     /student-ranks (same Overall as the reports). Falls back to the loaded page until those arrive. */
+  const summary = (() => {
+    const scored = filtered.map(student => liveRanks[student._id]).filter((r): r is { position: number; total: number; score?: number; timeSecs?: number } => !!r && typeof r.score === 'number')
+    if (ranksStatus === 'ready' && scored.length) {
+      const counts = { 'on-track': 0, 'needs-attention': 0, 'at-risk': 0, 'not-started': 0 } as Record<ReportStatus, number>
+      let total = 0
+      scored.forEach(r => {
+        const score = r.score || 0
+        total += score
+        // No score and no time on the platform in the period = not started
+        if (score === 0 && !r.timeSecs) counts['not-started'] += 1
+        else counts[score >= 75 ? 'on-track' : score >= 50 ? 'needs-attention' : 'at-risk'] += 1
+      })
+      return { counts, base: scored.length, average: Math.round(total / scored.length), scope: 'all' as const }
+    }
+    return { counts: statusCounts, base: currentPageReports.length, average: averagePerformance, scope: 'page' as const }
+  })()
+  const pctOf = (n: number) => (summary.base ? Math.round((n / summary.base) * 100) : 0)
   const displayedStudents = paginated.filter(student => {
     const studentReport = performanceReports[student._id]
     if (!studentReport && (statusFilter !== 'all' || performanceFilter !== 'all')) return false
@@ -759,23 +779,29 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
           <span className="sr-summary-icon sr-icon-orange"><FaUsers /></span>
           <div><strong>{loadingList ? '—' : allStudents.length}</strong><span>Total Students</span></div>
         </article>
-        <article className="sr-summary-card sr-card-green">
+        <article className="sr-summary-card sr-card-green" title="Overall score of 75% or more">
           <span className="sr-summary-icon sr-icon-green"><FaCheckCircle /></span>
-          <div><strong>{statusCounts['on-track']} <small>({currentPageReports.length ? Math.round(statusCounts['on-track'] / currentPageReports.length * 100) : 0}%)</small></strong><span>On Track</span></div>
+          <div><strong>{summary.counts['on-track']} <small>({pctOf(summary.counts['on-track'])}%)</small></strong><span>On Track</span><em className="sr-summary-rule">Overall 75%+</em></div>
         </article>
-        <article className="sr-summary-card sr-card-amber">
+        <article className="sr-summary-card sr-card-amber" title="Overall score from 50% to 74%">
           <span className="sr-summary-icon sr-icon-amber"><FaExclamationTriangle /></span>
-          <div><strong>{statusCounts['needs-attention']} <small>({currentPageReports.length ? Math.round(statusCounts['needs-attention'] / currentPageReports.length * 100) : 0}%)</small></strong><span>Needs Attention</span></div>
+          <div><strong>{summary.counts['needs-attention']} <small>({pctOf(summary.counts['needs-attention'])}%)</small></strong><span>Needs Attention</span><em className="sr-summary-rule">Overall 50–74%</em></div>
         </article>
-        <article className="sr-summary-card sr-card-red sr-summary-note">
+        <article className="sr-summary-card sr-card-red sr-summary-note" title="Overall score below 50%. Students with no activity at all are counted as not started.">
           <span className="sr-summary-icon sr-icon-red"><FaExclamationTriangle /></span>
-          <div><strong>{statusCounts['at-risk']} <small>({currentPageReports.length ? Math.round(statusCounts['at-risk'] / currentPageReports.length * 100) : 0}%)</small></strong><span>At Risk</span></div>
+          <div>
+            <strong>{summary.counts['at-risk']} <small>({pctOf(summary.counts['at-risk'])}%)</small></strong><span>At Risk</span>
+            <em className="sr-summary-rule">Below 50%{summary.counts['not-started'] ? ` · +${summary.counts['not-started']} not started` : ''}</em>
+          </div>
         </article>
         <article className="sr-summary-card sr-card-green sr-average-card">
-          <span className="sr-average-ring" style={{ background: `conic-gradient(#31d866 ${averagePerformance * 3.6}deg, #303438 0deg)` }}>
-            <span>{currentPageReports.length ? `${averagePerformance}%` : '—'}</span>
+          <span className="sr-average-ring" style={{ background: `conic-gradient(#31d866 ${summary.average * 3.6}deg, #303438 0deg)` }}>
+            <span>{summary.base ? `${summary.average}%` : '—'}</span>
           </span>
-          <div><strong>Average Performance</strong><span>Across {currentPageReports.length} student{currentPageReports.length === 1 ? '' : 's'}</span></div>
+          <div>
+            <strong>Average Performance</strong>
+            <span>{summary.scope === 'all' ? `Across all ${summary.base} students` : ranksStatus === 'loading' ? `This page (${summary.base}) · loading all…` : `This page · ${summary.base} students`}</span>
+          </div>
         </article>
       </section>
 
