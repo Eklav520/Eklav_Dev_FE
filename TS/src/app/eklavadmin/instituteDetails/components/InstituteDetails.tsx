@@ -674,6 +674,10 @@ const InstituteAdmin: React.FC = () => {
 
   const thStyle: React.CSSProperties = { padding: '10px 14px', color: '#555', fontWeight: 600, textAlign: 'left', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }
   const tdStyle: React.CSSProperties = { padding: '10px 14px', verticalAlign: 'middle' }
+  // Tighter cells for the students modal table so it fits without horizontal scroll
+  const stTh: React.CSSProperties = { ...thStyle, padding: '10px 8px', overflow: 'hidden', textOverflow: 'ellipsis' }
+  const stTd: React.CSSProperties = { padding: '10px 8px', verticalAlign: 'middle', overflow: 'hidden' }
+  const ellipsis: React.CSSProperties = { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }
   const pgBtnStyle = (disabled: boolean, active = false): React.CSSProperties => ({
     minWidth: 28, height: 28, borderRadius: 6, border: active ? '1px solid #ff8c00' : '1px solid #2a2a2a',
     background: active ? '#ff8c00' : '#111', color: active ? '#000' : disabled ? '#333' : '#aaa',
@@ -1396,11 +1400,24 @@ const InstituteAdmin: React.FC = () => {
               <p style={{ fontSize: '0.85rem' }}>{studentSearch ? 'No students match your search' : 'No students enrolled yet'}</p>
             </div>
           ) : (
-            <div style={{ overflowX: 'auto', maxHeight: '55vh', overflowY: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem' }}>
+            <div style={{ overflowX: 'hidden', maxHeight: '55vh', overflowY: 'auto' }}>
+              {/* Fixed layout so the table always fits the modal width (no horizontal scroll) */}
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.82rem', tableLayout: 'fixed' }}>
+                <colgroup>
+                  <col style={{ width: 40 }} />
+                  <col style={{ width: 40 }} />
+                  <col />
+                  <col style={{ width: 110 }} />
+                  <col style={{ width: 100 }} />
+                  <col style={{ width: 80 }} />
+                  <col style={{ width: 115 }} />
+                  <col style={{ width: 100 }} />
+                  <col style={{ width: 100 }} />
+                  <col style={{ width: 88 }} />
+                </colgroup>
                 <thead>
                   <tr style={{ background: '#0d0d0d', borderBottom: '1px solid #1a1a1a', position: 'sticky', top: 0, zIndex: 1 }}>
-                    <th style={{ ...thStyle, width: 36 }}>
+                    <th style={{ ...stTh, paddingLeft: 14 }}>
                       <input
                         type="checkbox"
                         checked={studentList.length > 0 && selectedStudents.length === studentList.length}
@@ -1409,17 +1426,15 @@ const InstituteAdmin: React.FC = () => {
                         style={{ cursor: 'pointer', accentColor: '#ef4444', width: 15, height: 15 }}
                       />
                     </th>
-                    <th style={thStyle}>#</th>
-                    <th style={thStyle}>Name</th>
-                    <th style={thStyle}>Email</th>
-                    <th style={thStyle}><FaIdCard style={{ marginRight: 4 }} />Roll No</th>
-                    <th style={thStyle}><FaCodeBranch style={{ marginRight: 4 }} />Branch</th>
-                    <th style={thStyle}><FaCalendarAlt style={{ marginRight: 4 }} />Year</th>
-                    <th style={thStyle}><FaVenusMars style={{ marginRight: 4 }} />Gender</th>
-                    <th style={thStyle}><FaPhoneAlt style={{ marginRight: 4 }} />Phone</th>
-                    <th style={thStyle}>Status</th>
-                    <th style={thStyle}>Joined</th>
-                    <th style={{ ...thStyle, textAlign: 'center' }}>Actions</th>
+                    <th style={stTh}>#</th>
+                    <th style={stTh}>Student</th>
+                    <th style={stTh}><FaIdCard style={{ marginRight: 4 }} />Roll No</th>
+                    <th style={stTh}><FaCodeBranch style={{ marginRight: 4 }} />Branch</th>
+                    <th style={stTh}><FaVenusMars style={{ marginRight: 4 }} />Gender</th>
+                    <th style={stTh}><FaPhoneAlt style={{ marginRight: 4 }} />Phone</th>
+                    <th style={stTh}>Status</th>
+                    <th style={stTh}>Joined</th>
+                    <th style={{ ...stTh, textAlign: 'center' }}>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1429,7 +1444,7 @@ const InstituteAdmin: React.FC = () => {
                       onMouseEnter={e => { if (!selectedStudents.includes(s._id)) e.currentTarget.style.background = '#0f0f0f' }}
                       onMouseLeave={e => { e.currentTarget.style.background = selectedStudents.includes(s._id) ? 'rgba(239,68,68,0.05)' : 'transparent' }}
                     >
-                      <td style={{ ...tdStyle, width: 36 }}>
+                      <td style={{ ...stTd, paddingLeft: 14 }}>
                         <input
                           type="checkbox"
                           checked={selectedStudents.includes(s._id)}
@@ -1437,9 +1452,9 @@ const InstituteAdmin: React.FC = () => {
                           style={{ cursor: 'pointer', accentColor: '#ef4444', width: 15, height: 15 }}
                         />
                       </td>
-                      <td style={tdStyle}><span style={{ color: '#444', fontWeight: 600 }}>{(studentPage - 1) * STUDENT_PAGE_SIZE + i + 1}</span></td>
-                      <td style={tdStyle}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <td style={stTd}><span style={{ color: '#444', fontWeight: 600 }}>{(studentPage - 1) * STUDENT_PAGE_SIZE + i + 1}</span></td>
+                      <td style={stTd}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0 }}>
                           <div style={{
                             width: 30, height: 30, borderRadius: '50%',
                             background: `hsl(${(s.name || 'A').charCodeAt(0) * 13 % 360}, 55%, 30%)`,
@@ -1448,16 +1463,20 @@ const InstituteAdmin: React.FC = () => {
                           }}>
                             {(s.name || s.fullname || '?')[0].toUpperCase()}
                           </div>
-                          <span style={{ color: '#e0e0e0', fontWeight: 600 }}>{s.name || s.fullname || '—'}</span>
+                          <div style={{ minWidth: 0 }}>
+                            <div style={{ ...ellipsis, color: '#e0e0e0', fontWeight: 600 }} title={s.name || s.fullname}>{s.name || s.fullname || '—'}</div>
+                            <div style={{ ...ellipsis, color: '#777', fontSize: '0.74rem' }} title={s.email}>{s.email}</div>
+                          </div>
                         </div>
                       </td>
-                      <td style={tdStyle}><span style={{ color: '#888' }}>{s.email}</span></td>
-                      <td style={tdStyle}><span style={{ color: '#ff8c00', fontWeight: 600 }}>{s.rollNumber || '—'}</span></td>
-                      <td style={tdStyle}><span style={{ color: '#ccc' }}>{s.branch || '—'}</span></td>
-                      <td style={tdStyle}><span style={{ color: '#ccc' }}>{s.joiningYear || '—'}</span></td>
-                      <td style={tdStyle}><span style={{ color: '#ccc', textTransform: 'capitalize' }}>{s.gender || '—'}</span></td>
-                      <td style={tdStyle}><span style={{ color: '#888' }}>{s.phoneNumber || '—'}</span></td>
-                      <td style={tdStyle}>
+                      <td style={stTd}><div style={{ ...ellipsis, color: '#ff8c00', fontWeight: 600 }} title={s.rollNumber}>{s.rollNumber || '—'}</div></td>
+                      <td style={stTd}>
+                        <div style={{ ...ellipsis, color: '#ccc' }}>{s.branch || '—'}</div>
+                        {s.joiningYear && <div style={{ color: '#666', fontSize: '0.72rem' }}>Batch {s.joiningYear}</div>}
+                      </td>
+                      <td style={stTd}><span style={{ color: '#ccc', textTransform: 'capitalize' }}>{s.gender || '—'}</span></td>
+                      <td style={stTd}><span style={{ color: '#888', whiteSpace: 'nowrap' }}>{s.phoneNumber || '—'}</span></td>
+                      <td style={stTd}>
                         <span style={{
                           fontSize: '0.68rem', padding: '2px 8px', borderRadius: 20, fontWeight: 600,
                           background: s.status === 'approved' ? 'rgba(34,197,94,0.12)' : 'rgba(251,191,36,0.12)',
@@ -1468,12 +1487,12 @@ const InstituteAdmin: React.FC = () => {
                           {s.status || 'active'}
                         </span>
                       </td>
-                      <td style={tdStyle}>
-                        <span style={{ color: '#555', fontSize: '0.75rem' }}>
+                      <td style={stTd}>
+                        <span style={{ color: '#777', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
                           {s.createdAt ? new Date(s.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
                         </span>
                       </td>
-                      <td style={{ ...tdStyle, textAlign: 'center', whiteSpace: 'nowrap' }}>
+                      <td style={{ ...stTd, textAlign: 'center', whiteSpace: 'nowrap' }}>
                         <button
                           onClick={() => openEditStudent(s)}
                           title="Edit student"
