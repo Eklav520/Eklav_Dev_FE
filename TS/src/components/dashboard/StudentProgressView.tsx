@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import { Link } from 'react-router-dom'
 import ReactApexChart from 'react-apexcharts'
@@ -92,6 +92,28 @@ const ActivityCalendar = ({ days }: { days: { date: string; secs: number }[] }) 
   )
 }
 
+/* Fold-open on scroll. Opens when the row scrolls into view (scrolling down); folds again when
+   it leaves through the bottom of the screen (scrolling back up), so it unfolds the next time you
+   scroll down to it. Rows leaving through the top stay open. Reduced motion → always open. */
+const prefersReducedMotion = () =>
+  typeof window !== 'undefined' && !!window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+const useInView = <T extends HTMLElement>() => {
+  const ref = useRef<T>(null)
+  const staticView = prefersReducedMotion() || typeof IntersectionObserver === 'undefined'
+  const [inView, setInView] = useState(staticView)
+  useEffect(() => {
+    if (staticView || !ref.current) return
+    const io = new IntersectionObserver(([entry]) => {
+      if (entry.isIntersecting) setInView(true)
+      // left through the bottom edge → user is scrolling up: fold it away
+      else if (entry.boundingClientRect.top > (entry.rootBounds?.bottom ?? window.innerHeight) * 0.5) setInView(false)
+    }, { threshold: 0.15, rootMargin: '0px 0px -6% 0px' })
+    io.observe(ref.current)
+    return () => io.disconnect()
+  }, [staticView])
+  return [ref, inView] as const
+}
+
 export const SectionRow = ({ icon: Icon, color, title, score = null, scoreNote, delta = null, stats, children, headline, action }: {
   icon: IconType; color: string; title: string; score?: number | null; scoreNote: string; delta?: number | null
   /** Shown instead of the % score and bar (rows that are counts, not scores) */
@@ -99,13 +121,15 @@ export const SectionRow = ({ icon: Icon, color, title, score = null, scoreNote, 
   /** Link/button at the bottom of the side panel */
   action?: ReactNode
   stats: { label: string; value: ReactNode }[]; children: ReactNode
-}) => (
-  <div className="spx-row" style={{ ['--acc' as any]: color }}>
+}) => {
+  const [ref, inView] = useInView<HTMLDivElement>()
+  return (
+  <div ref={ref} className={`spx-row ${inView ? 'is-open' : 'is-folded'}`} style={{ ['--acc' as any]: color }}>
     <div className="spx-row-side">
       <div className="spx-row-title"><span className="spx-row-icon"><Icon /></span><h4>{title}</h4></div>
       {headline ?? (
         <>
-          <div className="spx-row-score"><b>{score == null ? '—' : <CountUp text={`${Math.round(score)}%`} />}</b><Delta value={delta} /></div>
+          <div className="spx-row-score"><b>{score == null ? '—' : inView ? <CountUp text={`${Math.round(score)}%`} duration={1800} delay={600} /> : '0%'}</b><Delta value={delta} /></div>
           <Bar value={score || 0} color={color} />
         </>
       )}
@@ -117,7 +141,8 @@ export const SectionRow = ({ icon: Icon, color, title, score = null, scoreNote, 
     </div>
     <div className="spx-row-main">{children}</div>
   </div>
-)
+  )
+}
 
 const RANGES: { value: Range; label: string }[] = [
   { value: 'joined', label: 'Since joining' }, { value: '12', label: '12 months' }, { value: '6', label: '6 months' }, { value: '3', label: '3 months' },
@@ -592,10 +617,38 @@ const StudentProgressView = ({ studentId, name = 'Student', fetchReport, theme =
 
         .spx-bar { display: block; height: 6px; overflow: hidden; border-radius: 99px; background: #1d2023; }
         .spx-bar > span { display: block; height: 100%; border-radius: 99px; animation: spx-grow 1.4s cubic-bezier(.16,1,.3,1) both; }
+        .spx-row.is-folded .spx-bar > span { animation: none; width: 0 !important; }
+        .spx-row.is-open .spx-bar > span { animation-duration: 1.8s; animation-delay: 0.6s; }
         @keyframes spx-grow { from { width: 0; } }
-        .spx-row, .spx-card, .spx-hero { animation: spx-rise 0.5s ease-out both; }
+        .spx-card, .spx-hero { animation: spx-rise 0.5s ease-out both; }
+
+        /* Fold-open: the side panel rises in, then the main panel swings open to the right
+           from its left edge (like a folded mat), with a shadow that fades as it flattens */
+        .spx-row { perspective: 1800px; }
+        .spx-row-side, .spx-row-main { backface-visibility: hidden; }
+        .spx-row.is-folded { opacity: 0; transform: translateY(18px); }
+        .spx-row.is-folded .spx-row-side { opacity: 0; transform: translateY(10px); }
+        .spx-row.is-folded .spx-row-main { opacity: 0; transform: rotateY(-82deg); }
+        .spx-row-main { position: relative; transform-origin: left center; }
+        .spx-row-main::after { content: ''; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(90deg, rgba(0,0,0,0.22), rgba(0,0,0,0) 70%); opacity: 0; }
+        .spx-row.is-folded .spx-row-main::after { opacity: 1; }
+        .spx-row.is-folded { transition: opacity 0.6s ease-in 0.3s, transform 0.7s ease-in 0.3s; }
+        .spx-row.is-folded .spx-row-main { transition: transform 0.9s cubic-bezier(.6,0,.8,.3), opacity 0.6s ease-in 0.3s; }
+        .spx-row.is-folded .spx-row-side { transition: opacity 0.5s ease-in 0.4s, transform 0.6s ease-in 0.4s; }
+        .spx-row.is-folded .spx-row-main::after { transition: opacity 0.6s ease-in; }
+        .spx-row.is-open { opacity: 1; transform: none; transition: opacity 0.6s ease-out, transform 0.8s ease-out; }
+        .spx-row.is-open .spx-row-side { transition: opacity 0.7s ease-out 0.1s, transform 0.9s ease-out 0.1s; }
+        .spx-row.is-open .spx-row-main { transition: transform 1.6s cubic-bezier(.22,.9,.25,1) 0.4s, opacity 0.8s ease-out 0.4s; }
+        .spx-row.is-open .spx-row-main::after { transition: opacity 1.5s ease-out 0.6s; }
+        @media (max-width: 991.98px) {
+          .spx-row-main { transform-origin: center top; }
+          .spx-row.is-folded .spx-row-main { transform: rotateX(-70deg); }
+        }
         @keyframes spx-rise { from { opacity: 0; transform: translateY(8px); } }
-        @media (prefers-reduced-motion: reduce) { .spx-bar > span, .spx-row, .spx-card, .spx-hero { animation: none; } }
+        @media (prefers-reduced-motion: reduce) {
+          .spx-bar > span, .spx-card, .spx-hero { animation: none; }
+          .spx-row, .spx-row-side, .spx-row-main, .spx-row-main::after { opacity: 1 !important; transform: none !important; transition: none !important; }
+        }
         .spx-delta { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px; background: #17191c; color: #858a90; font-size: 0.7rem; font-weight: 700; white-space: nowrap; }
         .spx-delta.is-up { background: rgba(49,216,102,0.1); color: #45dd75; }
         .spx-delta.is-down { background: rgba(251,95,103,0.1); color: #fb737a; }
