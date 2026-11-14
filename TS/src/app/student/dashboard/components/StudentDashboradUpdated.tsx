@@ -3,10 +3,18 @@ import { Link } from 'react-router-dom'
 import { useAuthContext } from '@/context/useAuthContext'
 import { useProfile } from './hooks/useProfile'
 import { useEnglishDashboardHistory } from './hooks/useEnglishDashboardHistory'
-import { FiMic, FiEdit3, FiHeadphones, FiBook, FiZap, FiAward, FiTrendingUp } from 'react-icons/fi'
+import { FiMic, FiEdit3, FiHeadphones, FiBook, FiZap, FiAward, FiTrendingUp, FiPlayCircle, FiBookOpen, FiThumbsUp } from 'react-icons/fi'
 import { MdOutlineTimer } from 'react-icons/md'
 import { BsTrophyFill, BsFire } from 'react-icons/bs'
 import { RiMoonLine } from 'react-icons/ri'
+import StudentProgressView, { SectionRow } from '@/components/dashboard/StudentProgressView'
+import { FiBriefcase, FiAlertTriangle, FiCalendar, FiSun, FiInfo, FiBookmark, FiMapPin, FiArrowRight } from 'react-icons/fi'
+import { FaTrophy, FaGraduationCap, FaMedal, FaStar, FaCertificate, FaBriefcase as FaBriefcaseSolid } from 'react-icons/fa'
+import { CountUp } from '@/components/dashboard/CountUp'
+import type { Report } from '@/components/dashboard/studentReportData'
+
+// Daily study time message: icon + text on one line
+const studyTip = (color: string): React.CSSProperties => ({ display: 'inline-flex', alignItems: 'center', gap: 5, color, fontWeight: 600 })
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 // These read from CSS custom properties (set by StudentLayout based on the
@@ -130,7 +138,7 @@ const StatCard = ({ iconBg, icon, label, value, customValue, sub }: {
     <div style={{ minWidth: 0 }}>
       <div style={{ fontSize: '0.71rem', color: GRAY, marginBottom: 3, fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
       {customValue || (
-        <div style={{ fontSize: '1.9rem', fontWeight: 800, color: TEXT, lineHeight: 1.1, marginBottom: 4, whiteSpace: 'nowrap' }}>{value}</div>
+        <div style={{ fontSize: '1.9rem', fontWeight: 800, color: TEXT, lineHeight: 1.1, marginBottom: 4, whiteSpace: 'nowrap' }}><CountUp text={value} /></div>
       )}
       {sub && <div style={{ fontSize: '0.71rem' }}>{sub}</div>}
     </div>
@@ -144,11 +152,40 @@ const StudentDashboardUpdated: React.FC = () => {
   const { data: engData } = useEnglishDashboardHistory()
   const baseURL = import.meta.env.VITE_API_BASE_URL
 
+  // The student's own progress report (same rows as the admin progress view). The server
+  // ignores the userId and always returns the logged-in student's report.
+  const fetchMyReport = async (_id: string, from?: string, to?: string): Promise<Report | null> => {
+    const params = new URLSearchParams()
+    if (from) params.set('from', from)
+    if (to) params.set('to', to)
+    const res = await fetch(`${baseURL}/api/institute/student-report?${params}`, { headers: { Authorization: `Bearer ${user?.token}` } })
+    const d = await res.json()
+    if (!d.success) throw new Error(d.message || 'Could not load your progress')
+    return d.report as Report
+  }
+
+  const [heroEl, setHeroEl] = useState<HTMLDivElement | null>(null)
   const [dashSummary, setDashSummary] = useState<any>(null)
   const [enrolledCourses, setEnrolledCourses] = useState<any[]>([])
   const [timesheetRecords, setTimesheetRecords] = useState<any[]>([])
   const [announcements, setAnnouncements] = useState<any[]>([])
   const [hrJobs, setHrJobs] = useState<any[]>([])
+  const [externalJobs, setExternalJobs] = useState<any[]>([])
+  const [jobsLoading, setJobsLoading] = useState(true)
+
+  // External job feed (same API as the Jobs page); HR jobs are shown first, then these, max 8
+  useEffect(() => {
+    if (!user?.token) return
+    let cancelled = false
+    setJobsLoading(true)
+    fetch(`${baseURL}/api/jobs/external?${new URLSearchParams({ category: 'all', query: '', location: '', page: '1' })}`, { headers: { Authorization: `Bearer ${user.token}` } })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (!cancelled && d) setExternalJobs(Array.isArray(d.jobs) ? d.jobs : []) })
+      .catch(() => {})
+      .finally(() => { if (!cancelled) setJobsLoading(false) })
+    return () => { cancelled = true }
+  }, [user?.token, baseURL])
+
   const [resumeData, setResumeData] = useState<any>(null)
   const [topicLimits, setTopicLimits] = useState<Record<string, any>>({})
   const [selectedTopic, setSelectedTopic] = useState('')
@@ -487,6 +524,126 @@ const StudentDashboardUpdated: React.FC = () => {
     )
   }
 
+  // HR jobs first, then the external feed (fetched above), max 8
+  const MAX_JOBS = 8
+  const jobList = [
+    ...hrJobs.map((j) => ({ key: `hr-${j._id || j.title}`, title: j.title, company: j.company, location: j.location?.trim(), logo: j.logo, posted: j.postedDate, source: 'HR', href: '/student/interview-details', external: false })),
+    ...externalJobs.map((j) => ({ key: `ex-${j.id}`, title: j.title, company: j.company, location: j.isRemote ? 'Remote' : j.location, logo: j.logo, posted: j.postedAt, source: j.source || 'External', href: j.applyUrl, external: true })),
+  ].slice(0, MAX_JOBS)
+
+  // Announcement / achievement types → icon + colour
+  const ANN_META: Record<string, { icon: React.ComponentType<{ size?: number }>; color: string; label: string }> = {
+    urgent: { icon: FiAlertTriangle, color: '#ef4444', label: 'Urgent' },
+    event: { icon: FiCalendar, color: '#8b5cf6', label: 'Event' },
+    holiday: { icon: FiSun, color: '#f59e0b', label: 'Holiday' },
+    info: { icon: FiInfo, color: '#3b82f6', label: 'Information' },
+    general: { icon: FiBookmark, color: '#64748b', label: 'Announcement' },
+  }
+  const ACH_META: Record<string, { icon: React.ComponentType<{ size?: number }>; color: string }> = {
+    academic: { icon: FaGraduationCap, color: '#f59e0b' },
+    sports: { icon: FaMedal, color: '#10b981' },
+    placement: { icon: FaBriefcaseSolid, color: '#3b82f6' },
+    extracurricular: { icon: FaStar, color: '#ec4899' },
+    certification: { icon: FaCertificate, color: '#8b5cf6' },
+    general: { icon: FaStar, color: '#ff7a00' },
+  }
+
+  // Stat cards shown beside the overall progress ring at the top
+  const statCards = (
+    <>
+
+          {/* Available Courses */}
+          <StatCard
+            iconBg="#fff7ed"
+            icon={<svg width="26" height="26" fill="none" stroke={ORANGE} strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              <line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="13" y2="11"/>
+            </svg>}
+            label="Available Courses"
+            value={String(coursesAvailable || enrolledCount)}
+            sub={<Link to="/student/available-courses" style={{ fontSize: '0.72rem', color: ORANGE, fontWeight: 600, textDecoration: 'none' }}>Explore Now →</Link>}
+          />
+
+          {/* Rank — Institute + Overall */}
+          <StatCard
+            iconBg="#fefce8"
+            icon={<svg width="26" height="26" fill="none" stroke="#f59e0b" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
+              <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
+              <path d="M4 22h16"/>
+              <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
+              <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
+              <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
+            </svg>}
+            label="Rank"
+            value={null}
+            customValue={
+              <div style={{ marginBottom: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, lineHeight: 1.2 }}>
+                  <span style={{ fontSize: '0.63rem', color: GRAY, width: 44, flexShrink: 0 }}>Institute</span>
+                  <span style={{ fontSize: '1.3rem', fontWeight: 800, color: '#f59e0b' }}><CountUp text={instituteRank} /></span>
+                  {instituteTotal && <span style={{ fontSize: '0.66rem', color: GRAY, whiteSpace: 'nowrap' }}>/ {instituteTotal}</span>}
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, lineHeight: 1.2 }}>
+                  <span style={{ fontSize: '0.63rem', color: GRAY, width: 44, flexShrink: 0 }}>Overall</span>
+                  <span style={{ fontSize: '1.3rem', fontWeight: 800, color: TEXT }}><CountUp text={overallRank} /></span>
+                  {overallTotal && <span style={{ fontSize: '0.66rem', color: GRAY, whiteSpace: 'nowrap' }}>/ {overallTotal}</span>}
+                </div>
+              </div>
+            }
+            sub={rankTrend ? <span style={{ color: GREEN, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}><FiTrendingUp size={12} /> {rankTrend}</span> : null}
+          />
+
+          {/* Accuracy */}
+          <StatCard
+            iconBg="#ecfdf5"
+            icon={<svg width="26" height="26" fill="none" stroke={GREEN} strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <path d="m9 12 2 2 4-4"/>
+            </svg>}
+            label="Accuracy"
+            value={accuracy}
+            sub={accuracyTrend && accuracyTrend !== 'NA'
+              ? <span style={{ color: GREEN, fontWeight: 600 }}>↑ {accuracyTrend} this month</span>
+              : <span style={{ color: GRAY }}>Keep practicing!</span>
+            }
+          />
+
+          {/* Code Challenges */}
+          <StatCard
+            iconBg="#f0f9ff"
+            icon={<svg width="26" height="26" fill="none" stroke="#0ea5e9" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="16 18 22 12 16 6"/>
+              <polyline points="8 6 2 12 8 18"/>
+            </svg>}
+            label="Code Challenges"
+            value={String(totalProblems)}
+            sub={<span style={{ color: '#0ea5e9', fontWeight: 600 }}>Completed: {completedChallenges}</span>}
+          />
+
+          {/* Daily Study Time */}
+          <StatCard
+            iconBg="#fdf4ff"
+            icon={<svg width="26" height="26" fill="none" stroke="#a855f7" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="10"/>
+              <polyline points="12 6 12 12 16 14"/>
+            </svg>}
+            label="Daily Study Time"
+            value={fmtH(todayHours)}
+            sub={
+              todayHours === 0
+                ? <span style={studyTip('#f59e0b')}><FiPlayCircle size={13} /> Start studying today!</span>
+                : todayHours < 0.5
+                ? <span style={studyTip('#ef4444')}><FiBookOpen size={13} /> Try to study more!</span>
+                : todayHours < 1
+                ? <span style={studyTip('#3b82f6')}><FiThumbsUp size={13} /> Good progress, keep going!</span>
+                : <span style={studyTip(GREEN)}><BsFire size={13} /> Excellent! Outstanding effort!</span>
+            }
+          />
+    </>
+  )
+
   return (
     <div style={{ background: PAGE_BG, minHeight: '100vh', fontFamily: '"Segoe UI", system-ui, sans-serif', overflowX: 'hidden' }}>
       <style>{`
@@ -494,7 +651,51 @@ const StudentDashboardUpdated: React.FC = () => {
         .sd-tab-btn.active { color: ${ORANGE}; border-bottom-color: ${ORANGE}; font-weight: 700; }
         .sd-tab-btn:hover:not(.active) { color: ${TEXT}; }
         .sd-check { width: 16px; height: 16px; border-radius: 50%; background: ${ORANGE}18; display: inline-flex; align-items: center; justify-content: center; margin-right: 8px; flex-shrink: 0; }
-        .sd-check::after { content: '✓'; font-size: 9px; color: ${ORANGE}; font-weight: 800; }
+        .sd-hero-slot { padding: 16px 28px 4px; background: ${CARD_BG}; }
+      .sd-hero-slot:empty { display: none; }
+      .sd-hero-slot .spx-hero { padding: 14px; }
+      /* same 1rem gap as between the progress rows (padding: .spx-wrap resets margin) */
+      .sd-extra-rows { padding-top: 1rem; }
+      .sd-col-title { margin: 0 0 0.85rem; color: var(--dash-gray, #64748b); font-size: 0.68rem; font-weight: 750; letter-spacing: 0.06em; text-transform: uppercase; }
+      .sd-news-grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) !important; align-items: stretch !important; }
+      .spx-row-main > .sd-news-grid { flex: 1; }
+      .sd-news-grid > div { display: flex; flex-direction: column; padding-top: 0.35rem; }
+      /* empty messages sit in the middle of their column */
+      .sd-news-grid .spx-empty { margin: auto 0; padding-bottom: 1.5rem; text-align: center; }
+      .sd-list { display: flex; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none; }
+      .sd-list li { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border: 1px solid ${BORDER}; border-radius: 10px; background: color-mix(in srgb, var(--c) 5%, transparent); }
+      .sd-avatar { display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 34px; overflow: hidden; border-radius: 50%; background: color-mix(in srgb, var(--c) 16%, transparent); color: var(--c); font-size: 0.85rem; }
+      .sd-avatar img { width: 100%; height: 100%; object-fit: cover; }
+      .sd-icon { display: grid; place-items: center; width: 32px; height: 32px; flex: 0 0 32px; border-radius: 9px; background: color-mix(in srgb, var(--c) 14%, transparent); color: var(--c); }
+      .sd-list-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+      .sd-list-text strong { overflow: hidden; color: ${TEXT}; font-size: 0.8rem; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+      .sd-list-text small { overflow: hidden; color: ${GRAY}; font-size: 0.7rem; text-overflow: ellipsis; white-space: nowrap; }
+      .sd-chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 99px; background: color-mix(in srgb, var(--c) 12%, transparent); color: var(--c); font-size: 0.64rem; font-weight: 700; text-transform: capitalize; white-space: nowrap; }
+      .sd-link-btn { padding: 3px 10px; border: 1px solid ${ORANGE}55; border-radius: 99px; background: transparent; color: ${ORANGE}; font-size: 0.66rem; font-weight: 700; cursor: pointer; }
+      .sd-link-btn:hover { background: ${ORANGE}14; }
+      .sd-time { flex-shrink: 0; color: ${GRAY}; font-size: 0.66rem; white-space: nowrap; }
+      .sd-empty { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 160px; color: ${GRAY}; font-size: 0.84rem; text-align: center; }
+      .sd-empty svg { color: #0ea5e9; opacity: 0.6; }
+      .spx-row-main:has(> .sd-empty) { justify-content: center; }
+      .sd-job-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; flex-shrink: 0; }
+      .sd-src { padding: 1px 8px; border-radius: 99px; background: rgba(100,116,139,0.12); color: ${GRAY}; font-size: 0.62rem; font-weight: 700; white-space: nowrap; text-transform: capitalize; }
+      .sd-src.is-hr { background: rgba(14,165,233,0.12); color: #0284c7; }
+      .sd-jobs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 0; padding: 0; list-style: none; }
+      .sd-jobs a { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: 1px solid ${BORDER}; border-radius: 12px; text-decoration: none; transition: border-color 0.15s, box-shadow 0.15s; }
+      .sd-jobs a:hover { border-color: #0ea5e966; box-shadow: 0 4px 14px rgba(14,165,233,0.1); }
+      .sd-logo { display: grid; place-items: center; width: 38px; height: 38px; flex: 0 0 38px; overflow: hidden; border-radius: 10px; background: rgba(14,165,233,0.1); color: #0ea5e9; }
+      .sd-logo img { width: 26px; height: 26px; object-fit: contain; }
+      .sd-list-text small svg { vertical-align: -1px; }
+      @media (max-width: 1199.98px) { .sd-news-grid { grid-template-columns: 1fr !important; } }
+      @media (max-width: 767.98px) { .sd-jobs { grid-template-columns: 1fr; } }
+      .sd-progress-block { padding: 18px 28px 22px; background: ${CARD_BG}; border-bottom: 1px solid ${BORDER}; }
+      .sd-eng-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-auto-rows: 1fr; gap: 12px; margin-bottom: 12px; }
+      .sd-eng-tile { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 16px 12px; border: 1px solid #f1f5f9; border-radius: 12px; background: #fcfcfd; min-width: 0; text-align: center; }
+      .sd-eng-tile > div:last-child > div:first-child { justify-content: center; }
+      .sd-eng-summary { gap: 0; border-color: #fed7aa; background: #fff7ed; }
+      @media (max-width: 1280px) { .sd-eng-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+      @media (max-width: 575px) { .sd-eng-grid { grid-template-columns: 1fr; } }
+      .sd-check::after { content: '✓'; font-size: 9px; color: ${ORANGE}; font-weight: 800; }
         .sd-topic-select { width: 100%; border: 1px solid ${BORDER}; border-radius: 8px; padding: 9px 12px; font-size: 0.82rem; color: ${TEXT}; background: ${CARD_BG}; appearance: none; cursor: pointer; outline: none; }
         .sd-topic-select:focus { border-color: ${ORANGE}; box-shadow: 0 0 0 2px ${ORANGE}18; }
         .sd-btn-orange { background: ${ORANGE}; color: #fff; border: none; border-radius: 9px; padding: 10px 18px; font-size: 0.82rem; font-weight: 600; cursor: pointer; width: 100%; display: flex; align-items: center; justify-content: center; gap: 6px; }
@@ -559,99 +760,141 @@ const StudentDashboardUpdated: React.FC = () => {
         </div>
       </div>
 
-      {/* ── STATS ROW ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', alignItems: 'stretch', gap: 14, padding: '16px 28px 20px', background: CARD_BG, borderBottom: `1px solid ${BORDER}` }}>
+      {/* ── STATS ROW: overall progress ring + the stat cards (rendered by My Progress below) ── */}
+      <div ref={setHeroEl} className="sd-hero-slot" />
 
-        {/* Available Courses */}
-        <StatCard
-          iconBg="#fff7ed"
-          icon={<svg width="26" height="26" fill="none" stroke={ORANGE} strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-            <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-            <line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="13" y2="11"/>
-          </svg>}
-          label="Available Courses"
-          value={String(coursesAvailable || enrolledCount)}
-          sub={<Link to="/student/available-courses" style={{ fontSize: '0.72rem', color: ORANGE, fontWeight: 600, textDecoration: 'none' }}>Explore Now →</Link>}
-        />
+      {/* ════ My progress — one row per section (same view as the admin progress report) ════ */}
+      {user?.token && (
+        <div className="sd-progress-block">
+          <StudentProgressView
+            studentId={String(profile?.userId || profile?._id || 'me')}
+            name={profile?.fullName || 'Your'}
+            fetchReport={fetchMyReport}
+            theme="light"
+            title="My Progress"
+            subtitle="Every section since you joined, month by month"
+            heroTarget={heroEl}
+            heroAside={statCards}
+            aptitudeLink="/student/aptitude"
+          />
+          <div className="spx-root is-light">
+            <div className="spx-wrap sd-extra-rows">
+              {/* ── Student achievements & announcements ── */}
+              <SectionRow
+                icon={FaTrophy} color="#f59e0b" title="Achievements & News"
+                headline={<div className="spx-headline"><b>{instituteAchievements.length}</b><span>recent achievement{instituteAchievements.length === 1 ? '' : 's'}</span></div>}
+                scoreNote="Celebrating students from your institute, plus the latest announcements"
+                stats={[
+                  { label: 'Achievements', value: instituteAchievements.length },
+                  { label: 'Announcements', value: announcements.length },
+                  { label: 'Latest update', value: announcements[0]?.createdAt ? timeAgo(announcements[0].createdAt) : '—' },
+                ]}
+              >
+                <div className="spx-main-grid sd-news-grid">
+                  <div>
+                    <h5 className="sd-col-title">Student achievements</h5>
+                    {instituteAchievements.length === 0 ? (
+                      <p className="spx-empty">No achievements yet.</p>
+                    ) : (
+                      <ul className="sd-list">
+                        {instituteAchievements.map((a, i) => {
+                          const meta = ACH_META[a.category] || ACH_META.general
+                          const Icon = meta.icon
+                          return (
+                            <li key={a._id || i} style={{ ['--c' as any]: meta.color }}>
+                              <span className="sd-avatar">
+                                {a.studentPic ? <img src={a.studentPic} alt="" /> : <b>{a.studentName?.charAt(0)?.toUpperCase() || '?'}</b>}
+                              </span>
+                              <div className="sd-list-text">
+                                <strong>{a.studentName}</strong>
+                                <small>{a.title}</small>
+                              </div>
+                              <span className="sd-chip"><Icon size={10} /> {a.category || 'general'}</span>
+                              <button type="button" className="sd-link-btn" onClick={() => setAchModal(a)}>View</button>
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                  <div className="spx-sub">
+                    <h5>Announcements</h5>
+                    {announcements.length === 0 ? (
+                      <p className="spx-empty">No announcements yet.</p>
+                    ) : (
+                      <ul className="sd-list">
+                        {announcements.map((a, i) => {
+                          const meta = ANN_META[a.type] || ANN_META.general
+                          const Icon = meta.icon
+                          return (
+                            <li key={a._id || i} style={{ ['--c' as any]: meta.color }}>
+                              <span className="sd-icon"><Icon size={14} /></span>
+                              <div className="sd-list-text">
+                                <strong>{a.title}</strong>
+                                <small>{(a.description || '').replace(/<[^>]+>/g, '').trim() || meta.label}</small>
+                              </div>
+                              {a.createdAt && <span className="sd-time">{timeAgo(a.createdAt)}</span>}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    )}
+                  </div>
+                </div>
+              </SectionRow>
 
-        {/* Rank — Institute + Overall */}
-        <StatCard
-          iconBg="#fefce8"
-          icon={<svg width="26" height="26" fill="none" stroke="#f59e0b" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/>
-            <path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/>
-            <path d="M4 22h16"/>
-            <path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/>
-            <path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/>
-            <path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/>
-          </svg>}
-          label="Rank"
-          value={null}
-          customValue={
-            <div style={{ marginBottom: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, lineHeight: 1.2 }}>
-                <span style={{ fontSize: '0.63rem', color: GRAY, width: 44, flexShrink: 0 }}>Institute</span>
-                <span style={{ fontSize: '1.45rem', fontWeight: 800, color: '#f59e0b' }}>{instituteRank}</span>
-                {instituteTotal && <span style={{ fontSize: '0.63rem', color: GRAY }}>/ {instituteTotal}</span>}
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, lineHeight: 1.2 }}>
-                <span style={{ fontSize: '0.63rem', color: GRAY, width: 44, flexShrink: 0 }}>Overall</span>
-                <span style={{ fontSize: '1.45rem', fontWeight: 800, color: TEXT }}>{overallRank}</span>
-                {overallTotal && <span style={{ fontSize: '0.63rem', color: GRAY }}>/ {overallTotal}</span>}
-              </div>
+              {/* ── Latest jobs (HR first, then the external job feed) ── */}
+              <SectionRow
+                icon={FiBriefcase} color="#0ea5e9" title="Latest Jobs"
+                headline={<div className="spx-headline"><b>{jobList.length}</b><span>latest opening{jobList.length === 1 ? '' : 's'}</span></div>}
+                scoreNote="Jobs from HR partners first, then matching openings from job boards"
+                stats={[
+                  { label: 'By HR', value: hrJobs.length },
+                  { label: 'From job boards', value: jobsLoading ? '…' : externalJobs.length },
+                  { label: 'Companies', value: new Set(jobList.map((j) => j.company).filter(Boolean)).size },
+                ]}
+                action={<Link to="/student/interview-details">Browse all jobs <FiArrowRight size={13} /></Link>}
+              >
+                {jobsLoading && jobList.length === 0 ? (
+                  <div className="sd-empty"><span className="spx-spin" /> Loading jobs…</div>
+                ) : jobList.length === 0 ? (
+                  <div className="sd-empty"><FiBriefcase size={22} /> No jobs available right now.</div>
+                ) : (
+                  <ul className="sd-jobs">
+                    {jobList.map((job) => {
+                      const inner = (
+                        <>
+                          <span className="sd-logo">
+                            {job.logo
+                              ? <img src={job.logo} alt="" onError={(e) => ((e.target as HTMLImageElement).style.display = 'none')} />
+                              : <FaBriefcaseSolid size={14} />}
+                          </span>
+                          <div className="sd-list-text">
+                            <strong title={job.title}>{job.title}</strong>
+                            <small>{job.company}{job.location ? <> · <FiMapPin size={10} /> {job.location}</> : null}</small>
+                          </div>
+                          <div className="sd-job-meta">
+                            <span className={`sd-src${job.source === 'HR' ? ' is-hr' : ''}`}>{job.source === 'HR' ? 'HR' : job.source}</span>
+                            {job.posted && <span className="sd-time">{timeAgo(job.posted)}</span>}
+                          </div>
+                        </>
+                      )
+                      return (
+                        <li key={job.key}>
+                          {job.external
+                            ? <a href={job.href} target="_blank" rel="noopener noreferrer">{inner}</a>
+                            : <Link to={job.href}>{inner}</Link>}
+                        </li>
+                      )
+                    })}
+                  </ul>
+                )}
+              </SectionRow>
             </div>
-          }
-          sub={rankTrend ? <span style={{ color: GREEN, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 3 }}><FiTrendingUp size={12} /> {rankTrend}</span> : null}
-        />
+          </div>
+        </div>
+      )}
 
-        {/* Accuracy */}
-        <StatCard
-          iconBg="#ecfdf5"
-          icon={<svg width="26" height="26" fill="none" stroke={GREEN} strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <path d="m9 12 2 2 4-4"/>
-          </svg>}
-          label="Accuracy"
-          value={accuracy}
-          sub={accuracyTrend && accuracyTrend !== 'NA'
-            ? <span style={{ color: GREEN, fontWeight: 600 }}>↑ {accuracyTrend} this month</span>
-            : <span style={{ color: GRAY }}>Keep practicing!</span>
-          }
-        />
-
-        {/* Code Challenges */}
-        <StatCard
-          iconBg="#f0f9ff"
-          icon={<svg width="26" height="26" fill="none" stroke="#0ea5e9" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="16 18 22 12 16 6"/>
-            <polyline points="8 6 2 12 8 18"/>
-          </svg>}
-          label="Code Challenges"
-          value={String(totalProblems)}
-          sub={<span style={{ color: '#0ea5e9', fontWeight: 600 }}>Completed: {completedChallenges}</span>}
-        />
-
-        {/* Daily Study Time */}
-        <StatCard
-          iconBg="#fdf4ff"
-          icon={<svg width="26" height="26" fill="none" stroke="#a855f7" strokeWidth="1.8" viewBox="0 0 24 24" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>}
-          label="Daily Study Time"
-          value={fmtH(todayHours)}
-          sub={
-            todayHours === 0
-              ? <span style={{ color: '#f59e0b', fontWeight: 600 }}>💪 Start studying today!</span>
-              : todayHours < 0.5
-              ? <span style={{ color: '#ef4444', fontWeight: 600 }}>📚 Try to study more!</span>
-              : todayHours < 1
-              ? <span style={{ color: '#3b82f6', fontWeight: 600 }}>👍 Good progress, keep going!</span>
-              : <span style={{ color: GREEN, fontWeight: 600 }}>🔥 Excellent! Outstanding effort!</span>
-          }
-        />
-      </div>
 
       {/* ── SUCCESS STORY PROMPT — only shown before the student has submitted
           a story; once submitted (any status), it's hidden for good. ── */}
@@ -672,694 +915,7 @@ const StudentDashboardUpdated: React.FC = () => {
         </div>
       )}
 
-      {/* ── MAIN BODY — ROW LAYOUT ── */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 14, padding: '18px 28px' }}>
-
-        {/* ════ ROW 1: Course Progress + English Practice + Daily Aptitude ════ */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.6fr 1fr', gap: 14 }}>
-        {/* placeholder-open */}
-
-          {/* Course Progress */}
-          <Card>
-            <CardHeader title="My Course Progress" sub="(This Month)" />
-            <div style={{ marginBottom: 14 }}>
-              <div style={{ fontSize: '0.75rem', color: GRAY, marginBottom: 6 }}>Overall Progress</div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <span style={{ fontSize: '1.7rem', fontWeight: 800, color: TEXT }}>{avgProgress}%</span>
-                <div style={{ flex: 1 }}><Bar pct={avgProgress} /></div>
-                <span style={{ fontSize: '0.72rem', color: GREEN, fontWeight: 600, whiteSpace: 'nowrap' }}>↑ 12% from last month</span>
-              </div>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {enrolledCourses.length > 0 ? enrolledCourses.map((c, i) => (
-                <div key={i} className="sd-course-row">
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
-                    <span style={{ fontSize: '0.8rem', color: TEXT, fontWeight: 500 }}>{c.name}</span>
-                    <span style={{ fontSize: '0.8rem', fontWeight: 700, color: GRAY }}>{c.progress}%</span>
-                  </div>
-                  <Bar pct={c.progress} />
-                </div>
-              )) : (
-                <p style={{ fontSize: '0.8rem', color: GRAY, textAlign: 'center', padding: '16px 0' }}>No enrolled courses yet.</p>
-              )}
-            </div>
-          </Card>
-
-          {/* English Practice Progress */}
-          <Card>
-            <CardHeader title="English Practice Progress" sub="(This Month)" />
-            {(() => {
-              const skills = [
-                { key: 'SPEAKING',      label: 'Speaking',      icon: <FiMic size={15} /> },
-                { key: 'WRITING',       label: 'Writing',       icon: <FiEdit3 size={15} /> },
-                { key: 'LISTENING',     label: 'Listening',     icon: <FiHeadphones size={15} /> },
-                { key: 'READING',       label: 'Reading',       icon: <FiBook size={15} /> },
-                { key: 'JUST_A_MINUTE', label: 'Speaking Practice', icon: <MdOutlineTimer size={16} /> },
-              ]
-              const trendMeta = (trend: string) => {
-                if (trend === 'IMPROVED') return { label: '↑ Improved',      color: GREEN }
-                if (trend === 'FIRST')    return { label: 'First attempt', color: ORANGE }
-                return { label: 'No attempts', color: '#94a3b8' }
-              }
-              const SkillCircle = ({ sk }: { sk: (typeof skills)[number] }) => {
-                const d = (engData as any)?.[sk.key]
-                const score: number | null = d?.summary?.bestScore ?? null
-                const used: number = d?.attemptsUsed ?? 0
-                const limit: number = d?.monthlyLimit ?? 30
-                const pct = limit > 0 ? (used / limit) * 100 : 0
-                const tm = trendMeta(d?.summary?.trend ?? 'NA')
-                const C = 2 * Math.PI * 30
-                return (
-                  <div style={{ textAlign: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4, marginBottom: 5, color: ORANGE }}>
-                      {sk.icon}
-                      <span style={{ fontSize: '0.72rem', fontWeight: 600, color: TEXT }}>{sk.label}</span>
-                    </div>
-                    <div style={{ position: 'relative', width: 80, height: 80, margin: '0 auto 5px' }}>
-                      <svg width="80" height="80">
-                        <circle cx="40" cy="40" r="30" fill="none" stroke="#f1f5f9" strokeWidth="7" />
-                        <circle cx="40" cy="40" r="30" fill="none" stroke={ORANGE} strokeWidth="7"
-                          strokeDasharray={`${(pct / 100) * C} ${C}`}
-                          strokeDashoffset={C * 0.25} strokeLinecap="round" />
-                      </svg>
-                      <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <span style={{ fontSize: score !== null ? '1rem' : '0.85rem', fontWeight: 800, color: TEXT, lineHeight: 1 }}>
-                          {score !== null ? `${score}%` : '—'}
-                        </span>
-                      </div>
-                    </div>
-                    <div style={{ fontSize: '0.66rem', fontWeight: 600, color: tm.color, marginBottom: 1 }}>{tm.label}</div>
-                    <div style={{ fontSize: '0.62rem', color: GRAY }}>{score !== null ? `Score: ${score}/100` : 'Not attempted'}</div>
-                    <div style={{ fontSize: '0.6rem', color: '#94a3b8', marginTop: 1 }}>{used}/{limit} uses</div>
-                  </div>
-                )
-              }
-              return (
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 6, marginBottom: 8 }}>
-                    {skills.slice(0, 3).map(sk => <SkillCircle key={sk.key} sk={sk} />)}
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6, maxWidth: '66%', margin: '0 auto 8px' }}>
-                    {skills.slice(3).map(sk => <SkillCircle key={sk.key} sk={sk} />)}
-                  </div>
-                </>
-              )
-            })()}
-            <div style={{ padding: '9px 12px', background: '#fff7ed', borderRadius: 8, fontSize: '0.74rem', color: '#92400e' }}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}><FiAward size={14} color={ORANGE} /> Practice everyday to improve your communication skills.</span>
-            </div>
-          </Card>
-          {/* Daily Aptitude */}
-          {(() => {
-            const stats = aptitudeData?.stats
-            const days = aptitudeData?.days || []
-            const today = days.find((d: any) => d.isToday)
-            const last7 = days.filter((d: any) => !d.isFuture).slice(-7)
-
-            const CAT_COLOR: Record<string, string> = {
-              Reasoning: '#7c3aed', Technical: '#2563eb',
-              Puzzle: '#d97706', Aptitude: '#10b981',
-            }
-            const todayColor = today ? (CAT_COLOR[today.category] || ORANGE) : ORANGE
-
-            // Compute stats from the selected month's days array
-            const pastDays = days.filter((d: any) => !d.isFuture)
-            const attendedDays = pastDays.filter((d: any) => d.attended)
-            const attendedCount = attendedDays.length
-            const attendancePct = pastDays.length > 0 ? Math.round((attendedCount / pastDays.length) * 100) : 0
-            const monthAvgScore = attendedDays.length > 0
-              ? Math.round(attendedDays.reduce((sum: number, d: any) => sum + (d.score / d.total) * 100, 0) / attendedDays.length)
-              : 0
-
-            // Monthly category breakdown
-            const categories = ['Reasoning', 'Technical', 'Puzzle', 'Aptitude']
-            const catStats = categories.map(cat => {
-              const catDays = days.filter((d: any) => d.category === cat && !d.isFuture)
-              const attended = catDays.filter((d: any) => d.attended)
-              const totalScore = attended.reduce((s: number, d: any) => s + (d.score || 0), 0)
-              const totalPossible = attended.reduce((s: number, d: any) => s + (d.total || 0), 0)
-              const pct = totalPossible > 0 ? Math.round((totalScore / totalPossible) * 100) : 0
-              return { cat, attended: attended.length, total: catDays.length, totalScore, totalPossible, pct }
-            })
-
-            return (
-              <Card style={{ display: 'flex', flexDirection: 'column' }}>
-                {/* Header with month filter */}
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14, gap: 8 }}>
-                  <div>
-                    <div style={{ fontSize: '0.95rem', fontWeight: 700, color: TEXT }}>Daily Aptitude</div>
-                    <div style={{ fontSize: '0.72rem', color: GRAY }}>Monthly Progress</div>
-                  </div>
-                  <div style={{ position: 'relative', flexShrink: 0 }}>
-                    <select
-                      value={aptitudeMonth}
-                      onChange={e => setAptitudeMonth(e.target.value)}
-                      style={{
-                        border: `1.5px solid ${BORDER}`, borderRadius: 8,
-                        padding: '4px 24px 4px 8px', fontSize: '0.7rem',
-                        fontWeight: 600, color: ORANGE, background: '#fff7ed',
-                        appearance: 'none', cursor: 'pointer', outline: 'none',
-                      }}
-                    >
-                      {Array.from({ length: 12 }, (_, i) => {
-                        const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - i)
-                        const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
-                        return (
-                          <option key={val} value={val}>
-                            {d.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })}
-                          </option>
-                        )
-                      })}
-                    </select>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke={ORANGE} strokeWidth="2.5" strokeLinecap="round"
-                      style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
-                      <polyline points="6 9 12 15 18 9"/>
-                    </svg>
-                  </div>
-                </div>
-
-                {/* Stats row */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 14 }}>
-                  {[
-                    { label: 'Attended',  value: attendedCount, color: GREEN, bg: '#f0fdf4' },
-                    { label: 'Attendance', value: `${attendancePct}%`, color: ORANGE, bg: '#fff7ed' },
-                    { label: 'Avg Score', value: attendedCount > 0 ? `${monthAvgScore}%` : '—', color: '#7c3aed', bg: '#f5f3ff' },
-                  ].map(s => (
-                    <div key={s.label} style={{ textAlign: 'center', background: s.bg, borderRadius: 8, padding: '10px 6px' }}>
-                      <div style={{ fontSize: '1.1rem', fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
-                      <div style={{ fontSize: '0.6rem', color: GRAY, marginTop: 3 }}>{s.label}</div>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Monthly category progress */}
-                <div style={{ marginBottom: 14 }}>
-                  <div style={{ fontSize: '0.72rem', fontWeight: 700, color: TEXT, marginBottom: 8 }}>Monthly Progress by Category</div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                    {catStats.map(({ cat, attended, total, totalScore, totalPossible, pct }) => {
-                      const color = CAT_COLOR[cat]
-                      return (
-                        <div key={cat}>
-                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                              <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, flexShrink: 0 }} />
-                              <span style={{ fontSize: '0.72rem', fontWeight: 600, color: TEXT }}>{cat}</span>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                              <span style={{ fontSize: '0.65rem', color: GRAY }}>{attended}/{total} days</span>
-                              <span style={{ fontSize: '0.72rem', fontWeight: 700, color: attended > 0 ? color : '#94a3b8' }}>
-                                {attended > 0 ? `${totalScore}/${totalPossible}` : '—'}
-                              </span>
-                            </div>
-                          </div>
-                          <div style={{ height: 6, background: '#f1f5f9', borderRadius: 4, overflow: 'hidden' }}>
-                            <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: 4, transition: 'width 0.4s' }} />
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                {/* Today's quiz */}
-                {today && (
-                  <div style={{ border: `1.5px solid ${todayColor}33`, borderRadius: 10, padding: '9px 12px', marginBottom: 10, background: `${todayColor}08` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: today.attended && today.total ? 5 : 0 }}>
-                      <div>
-                        <div style={{ fontSize: '0.62rem', color: GRAY }}>Today's Quiz</div>
-                        <div style={{ fontSize: '0.78rem', fontWeight: 700, color: todayColor }}>{today.category}</div>
-                      </div>
-                      {today.attended ? (
-                        <div style={{ textAlign: 'right' }}>
-                          <div style={{ fontSize: '0.62rem', color: GREEN, fontWeight: 700 }}>Completed</div>
-                          <div style={{ fontSize: '0.75rem', fontWeight: 800, color: TEXT }}>{today.score}/{today.total}</div>
-                        </div>
-                      ) : (
-                        <Link to="/student/aptitude" style={{ fontSize: '0.7rem', fontWeight: 700, color: '#fff', background: todayColor, borderRadius: 7, padding: '4px 10px', textDecoration: 'none' }}>
-                          Start →
-                        </Link>
-                      )}
-                    </div>
-                    {today.attended && today.total && (
-                      <Bar pct={(today.score / today.total) * 100} color={todayColor} />
-                    )}
-                  </div>
-                )}
-
-                {/* Last 7 days mini dots */}
-                <div style={{ marginTop: 'auto' }}>
-                  <div style={{ fontSize: '0.65rem', color: GRAY, fontWeight: 600, marginBottom: 5 }}>Last 7 Days</div>
-                  <div style={{ display: 'flex', gap: 3 }}>
-                    {last7.map((d: any, i: number) => {
-                      const dotColor = d.isToday ? (CAT_COLOR[d.category] || ORANGE) : d.attended ? GREEN : '#fca5a5'
-                      return (
-                        <div key={i} title={`${d.date} · ${d.category}${d.attended ? ` · ${d.score}/${d.total}` : ' · Missed'}`}
-                          style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2 }}>
-                          <div style={{ width: '100%', height: 22, borderRadius: 5, background: `${dotColor}18`, border: `1.5px solid ${dotColor}44`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <div style={{ width: 7, height: 7, borderRadius: '50%', background: dotColor }} />
-                          </div>
-                          <span style={{ fontSize: '0.52rem', color: GRAY }}>{new Date(d.date + 'T00:00:00').getDate()}</span>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </div>
-              </Card>
-            )
-          })()}
-
-        </div>{/* end Row 1 */}
-
-        {/* ════ ROW 2: Code Challenges + Time Sheet ════ */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: 14 }}>
-
-          {/* Code Challenges */}
-          <Card style={{ display: 'flex', flexDirection: 'column' }}>
-            <CardHeader title="Code Challenges" />
-            <div style={{ display: 'flex', gap: 10, marginBottom: 16 }}>
-              {[
-                { label: 'Total',     value: totalProblems,                              bg: PAGE_BG, border: BORDER,      color: TEXT  },
-                { label: 'Completed', value: completedChallenges,                        bg: '#f0fdf4', border: '#bbf7d0',   color: GREEN },
-                { label: 'Remaining', value: Math.max(totalProblems - completedChallenges, 0), bg: PAGE_BG, border: BORDER, color: TEXT },
-              ].map(s => (
-                <div key={s.label} style={{ flex: 1, background: s.bg, border: `1px solid ${s.border}`, borderRadius: 10, padding: '12px 10px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '1.5rem', fontWeight: 800, color: s.color, lineHeight: 1.1 }}>{s.value}</div>
-                  <div style={{ fontSize: '0.68rem', color: s.color === GREEN ? GREEN : GRAY, fontWeight: s.color === GREEN ? 600 : 400, marginTop: 3 }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-              {[
-                { label: 'Easy',   done: codeStats.easy,   color: GREEN,    bg: '#f0fdf4' },
-                { label: 'Medium', done: codeStats.medium, color: '#d97706', bg: '#fffbeb' },
-                { label: 'Hard',   done: codeStats.hard,   color: '#dc2626', bg: '#fef2f2' },
-              ].map(d => (
-                <div key={d.label} style={{ flex: 1, background: d.bg, borderRadius: 8, padding: '8px 10px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '0.66rem', fontWeight: 700, color: d.color, marginBottom: 3 }}>{d.label}</div>
-                  <div style={{ fontSize: '0.9rem', fontWeight: 800, color: d.color }}>{d.done}</div>
-                  <div style={{ fontSize: '0.62rem', color: GRAY }}>solved</div>
-                </div>
-              ))}
-            </div>
-            <div style={{ fontSize: '0.78rem', fontWeight: 700, color: TEXT, marginBottom: 10 }}>Top Problems Solved</div>
-            {topProblems.length > 0 ? topProblems.slice(0, 3).map((ch, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 0', borderBottom: i < topProblems.length - 1 ? `1px solid #f1f5f9` : 'none' }}>
-                <div style={{ width: 24, height: 24, borderRadius: 6, background: '#f0f9ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <svg width="12" height="12" fill="none" stroke="#0ea5e9" strokeWidth="2" viewBox="0 0 24 24">
-                    <polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/>
-                  </svg>
-                </div>
-                <span style={{ flex: 1, fontSize: '0.78rem', color: TEXT }}>{ch.title}</span>
-                <span style={{
-                  fontSize: '0.65rem', fontWeight: 700, padding: '2px 8px', borderRadius: 20,
-                  background: ch.difficulty === 'Easy' ? '#ecfdf5' : ch.difficulty === 'Medium' ? '#fffbeb' : '#fef2f2',
-                  color: ch.difficulty === 'Easy' ? GREEN : ch.difficulty === 'Medium' ? '#d97706' : '#dc2626',
-                }}>{ch.difficulty}</span>
-              </div>
-            )) : (
-              <p style={{ fontSize: '0.78rem', color: GRAY, textAlign: 'center', padding: '12px 0', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 5 }}><FiZap size={13} color={ORANGE} /> No challenges solved yet — start now!</p>
-            )}
-            <Link to="/student/problem-statement" style={{ fontSize: '0.78rem', color: ORANGE, fontWeight: 600, textDecoration: 'none', display: 'block', marginTop: 'auto', paddingTop: 12 }}>
-              Go to Code Challenges →
-            </Link>
-          </Card>
-
-          {/* Time Sheet */}
-          <Card>
-            {/* Header: title + streak badge + filter controls */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10, gap: 10 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                <div>
-                  <div style={{ fontSize: '0.95rem', fontWeight: 700, color: TEXT }}>Time Sheet</div>
-                  <div style={{ fontSize: '0.72rem', color: GRAY }}>Study time tracker</div>
-                </div>
-                {/* Streak badge in header */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 4, background: studyStreak > 0 ? '#fff7ed' : '#f1f5f9', border: `1px solid ${studyStreak > 0 ? ORANGE + '40' : BORDER}`, borderRadius: 20, padding: '4px 10px' }}>
-                  <span style={{ display: 'flex', alignItems: 'center', color: studyStreak > 0 ? ORANGE : GRAY }}>{studyStreak > 0 ? <BsFire size={15} /> : <RiMoonLine size={15} />}</span>
-                  <span style={{ fontSize: '0.72rem', fontWeight: 700, color: studyStreak > 0 ? ORANGE : GRAY }}>{studyStreak} day streak</span>
-                </div>
-              </div>
-
-              {/* Filter controls */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                {/* 7 Days / This Month pill toggle */}
-                <div style={{ display: 'flex', background: '#f1f5f9', borderRadius: 8, padding: 3, gap: 2 }}>
-                  {([
-                    { key: 'week',  label: '7 Days'     },
-                    { key: 'month', label: 'This Month' },
-                  ] as const).map(f => (
-                    <button key={f.key} onClick={() => { setTsFilter(f.key); setHistoryMonth('') }} style={{
-                      border: 'none', cursor: 'pointer', borderRadius: 6, padding: '5px 12px',
-                      fontSize: '0.72rem', fontWeight: 600,
-                      background: tsFilter === f.key ? CARD_BG : 'transparent',
-                      color: tsFilter === f.key ? ORANGE : GRAY,
-                      boxShadow: tsFilter === f.key ? '0 1px 3px rgba(0,0,0,0.1)' : 'none',
-                      transition: 'all 0.15s',
-                    }}>{f.label}</button>
-                  ))}
-                </div>
-
-                {/* Month picker dropdown */}
-                <div style={{ position: 'relative' }}>
-                  <select
-                    value={historyMonth}
-                    onChange={e => { setHistoryMonth(e.target.value); if (e.target.value) setTsFilter('history') }}
-                    style={{
-                      border: `1.5px solid ${tsFilter === 'history' ? ORANGE : BORDER}`,
-                      borderRadius: 8, padding: '5px 28px 5px 10px', fontSize: '0.72rem',
-                      fontWeight: 600, color: tsFilter === 'history' ? ORANGE : GRAY,
-                      background: tsFilter === 'history' ? '#fff7ed' : CARD_BG,
-                      appearance: 'none', cursor: 'pointer', outline: 'none',
-                      minWidth: 110,
-                    }}
-                  >
-                    <option value="">Select Month</option>
-                    {pastMonthOptions.map(o => (
-                      <option key={o.value} value={o.value}>{o.label}</option>
-                    ))}
-                  </select>
-                  {/* chevron icon */}
-                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke={tsFilter === 'history' ? ORANGE : GRAY} strokeWidth="2.5" strokeLinecap="round"
-                    style={{ position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }}>
-                    <polyline points="6 9 12 15 18 9"/>
-                  </svg>
-                </div>
-              </div>
-            </div>
-
-            {/* Chart + Week Breakdown Panel */}
-            <div style={{ display: 'flex', gap: 14, alignItems: 'stretch', marginTop: 14 }}>
-
-              {/* Bar chart — wider, anchored to bottom */}
-              <div style={{ flex: 4, minWidth: 0, position: 'relative', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end' }}>
-                {historyLoading && (
-                  <div style={{ position: 'absolute', inset: 0, background: 'rgba(255,255,255,0.8)', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 8, zIndex: 1 }}>
-                    <div style={{ width: 24, height: 24, border: `3px solid #f1f5f9`, borderTop: `3px solid ${ORANGE}`, borderRadius: '50%', animation: 'sd-spin 0.8s linear infinite' }} />
-                  </div>
-                )}
-                {/* Chart label when drilling into a week */}
-                {selectedWeek && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                    <button onClick={() => setSelectedWeek(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: ORANGE, fontSize: '0.75rem', fontWeight: 600, padding: 0, display: 'flex', alignItems: 'center', gap: 3 }}>
-                      ← Back
-                    </button>
-                    <span style={{ fontSize: '0.75rem', color: GRAY }}>
-                      Week {selectedWeek} · {weekSummaries.find(w => w.idx === selectedWeek)?.range}
-                    </span>
-                  </div>
-                )}
-                <BarChart days={
-                  selectedWeek && drillDays ? drillDays
-                  : tsFilter === 'week' ? last7
-                  : tsFilter === 'month' ? monthWeeks
-                  : historyWeeks
-                } />
-              </div>
-
-              {/* Week Breakdown Panel */}
-              <div style={{ flex: 1.5, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5 }}>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: TEXT }}>
-                    {tsFilter === 'week' ? 'This Month — Weekly' : tsFilter === 'history' ? `${historyLabel} — Weekly` : 'This Month — Weekly'}
-                  </span>
-                  {selectedWeek && (
-                    <button onClick={() => setSelectedWeek(null)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '0.68rem', color: ORANGE, fontWeight: 600, padding: 0 }}>Clear</button>
-                  )}
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-                  {weekSummaries.map(w => {
-                    const pct = maxWeekHours > 0 ? (w.total / maxWeekHours) * 100 : 0
-                    const isSelected = selectedWeek === w.idx
-                    const isActive = w.total > 0
-                    return (
-                      <div
-                        key={w.idx}
-                        onClick={() => isActive ? setSelectedWeek(isSelected ? null : w.idx) : undefined}
-                        style={{
-                          padding: '5px 8px', borderRadius: 7,
-                          border: `1.5px solid ${isSelected ? ORANGE : isActive ? BORDER : '#f1f5f9'}`,
-                          background: isSelected ? '#fff7ed' : isActive ? CARD_BG : PAGE_BG,
-                          cursor: isActive ? 'pointer' : 'default',
-                          transition: 'all 0.15s',
-                        }}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 3 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                            <span style={{ fontSize: '0.7rem', fontWeight: 700, color: isSelected ? ORANGE : isActive ? TEXT : '#94a3b8', minWidth: 18 }}>{w.label}</span>
-                            <span style={{ fontSize: '0.63rem', color: GRAY }}>{w.range}</span>
-                          </div>
-                          <div style={{ textAlign: 'right' }}>
-                            <span style={{ fontSize: '0.72rem', fontWeight: 700, color: isSelected ? ORANGE : isActive ? TEXT : '#94a3b8' }}>
-                              {isActive ? fmtH(w.total) : '—'}
-                            </span>
-                            {isActive && <span style={{ fontSize: '0.6rem', color: GRAY, marginLeft: 4 }}>{w.activeDays}d</span>}
-                          </div>
-                        </div>
-                        {/* Mini progress bar */}
-                        <div style={{ height: 4, background: '#f1f5f9', borderRadius: 2, overflow: 'hidden' }}>
-                          <div style={{ height: '100%', width: `${pct}%`, background: isSelected ? ORANGE : `${ORANGE}80`, borderRadius: 2, transition: 'width 0.3s' }} />
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-                <div style={{ marginTop: 8, fontSize: '0.65rem', color: '#94a3b8', textAlign: 'center' }}>
-                  Click a week to see daily breakdown
-                </div>
-              </div>
-            </div>
-
-            {/* Stats row: 5 boxes */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6, marginTop: 8, paddingTop: 8, borderTop: `1px solid ${BORDER}` }}>
-              {[
-                { label: 'Today',       value: fmtH(todayHours),  color: ORANGE, bg: `${ORANGE}10` },
-                { label: 'This Week',   value: fmtH(weeklyTotal), color: TEXT,   bg: PAGE_BG },
-                { label: tsFilter === 'history' ? historyLabel.split(' ')[0] : 'This Month',
-                                        value: tsFilter === 'history' ? fmtH(historyTotal) : fmtH(monthlyTotal),
-                                                                   color: TEXT,   bg: PAGE_BG },
-                { label: 'Active Days', value: String(tsFilter === 'history' ? historyRecords.filter(r => r.hours > 0).length : presentDays.length),
-                                                                   color: GREEN,  bg: '#f0fdf4' },
-                { label: 'Daily Avg',   value: fmtH(avgPerDay),   color: TEXT,   bg: PAGE_BG },
-              ].map(s => (
-                <div key={s.label} style={{ textAlign: 'center', background: s.bg, borderRadius: 8, padding: '9px 6px' }}>
-                  <div style={{ fontSize: '0.88rem', fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
-                  <div style={{ fontSize: '0.62rem', color: GRAY, marginTop: 3 }}>{s.label}</div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-        </div>{/* end Row 2 */}
-
-        {/* ════ ROW 3: AI Mock Interview + Announcements & Achievements + Jobs ════ */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 2fr 1.2fr', gap: 14 }}>
-
-          {/* AI Mock Interview */}
-          <Card style={{ display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: TEXT }}>AI Mock Interview</span>
-              <Link to="/student/selfInterview" style={{ fontSize: '0.76rem', color: ORANGE, fontWeight: 600, textDecoration: 'none' }}>View History</Link>
-            </div>
-            <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}`, marginBottom: 14 }}>
-              <button className={`sd-tab-btn ${aiTab === 'resume' ? 'active' : ''}`} onClick={() => setAiTab('resume')}>Resume Based</button>
-              <button className={`sd-tab-btn ${aiTab === 'topic' ? 'active' : ''}`} onClick={() => setAiTab('topic')}>Topic Based</button>
-            </div>
-            {aiTab === 'resume' && (
-              <div>
-                {/* Usage stats */}
-                {resumeData && (() => {
-                  const score: number | null = resumeData.bestScore ?? null
-                  const pct = score ?? 0
-                  const R = 42
-                  const C2 = 2 * Math.PI * R
-                  return (
-                    <>
-                      {/* 3 stat boxes */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, marginBottom: 16 }}>
-                        {[
-                          { label: 'Total Attempts', value: resumeData.attempts?.length ?? 0, color: TEXT,   bg: PAGE_BG },
-                          { label: 'Used / Month',   value: `${resumeData.used}/${resumeData.limit}`,        color: ORANGE, bg: `${ORANGE}10` },
-                          { label: 'Remaining',      value: resumeData.remaining ?? resumeData.limit,        color: GREEN,  bg: '#f0fdf4' },
-                        ].map(s => (
-                          <div key={s.label} style={{ textAlign: 'center', background: s.bg, borderRadius: 8, padding: '10px 6px' }}>
-                            <div style={{ fontSize: '1rem', fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
-                            <div style={{ fontSize: '0.6rem', color: GRAY, marginTop: 3 }}>{s.label}</div>
-                          </div>
-                        ))}
-                      </div>
-
-                      {/* Best Score circular ring */}
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, paddingTop: 4 }}>
-                        <div style={{ position: 'relative', width: 110, height: 110 }}>
-                          <svg width="110" height="110">
-                            <circle cx="55" cy="55" r={R} fill="none" stroke="#f1f5f9" strokeWidth="9" />
-                            <circle cx="55" cy="55" r={R} fill="none" stroke={ORANGE} strokeWidth="9"
-                              strokeDasharray={`${(pct / 100) * C2} ${C2}`}
-                              strokeDashoffset={C2 * 0.25} strokeLinecap="round" />
-                          </svg>
-                          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                            <span style={{ fontSize: score !== null ? '1.4rem' : '1.2rem', fontWeight: 800, color: TEXT, lineHeight: 1 }}>
-                              {score !== null ? `${score}%` : '—'}
-                            </span>
-                          </div>
-                        </div>
-                        <div style={{ fontSize: '0.75rem', fontWeight: 600, color: GRAY }}>Best Score</div>
-                        {resumeData.avgScore != null && (
-                          <div style={{ fontSize: '0.68rem', color: GRAY }}>Avg Score: <strong style={{ color: TEXT }}>{resumeData.avgScore}%</strong></div>
-                        )}
-                      </div>
-                    </>
-                  )
-                })()}
-              </div>
-            )}
-            {aiTab === 'topic' && (
-              <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
-                {/* Topic grid with remaining counts */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 6, marginBottom: 8 }}>
-                  {Object.entries(topicLimits).slice(0, 8).map(([topic, info]: [string, any]) => {
-                    const rem = info?.remaining ?? 0
-                    const depleted = rem === 0
-                    return (
-                      <div
-                        key={topic}
-                        onClick={() => !depleted && setSelectedTopic(topic)}
-                        style={{
-                          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                          padding: '6px 10px', borderRadius: 8, cursor: depleted ? 'default' : 'pointer',
-                          border: `1.5px solid ${selectedTopic === topic ? ORANGE : depleted ? '#f1f5f9' : BORDER}`,
-                          background: selectedTopic === topic ? `${ORANGE}10` : depleted ? PAGE_BG : CARD_BG,
-                          transition: 'all 0.15s',
-                          opacity: depleted ? 0.6 : 1,
-                        }}
-                      >
-                        <span style={{ fontSize: '0.7rem', fontWeight: 500, color: depleted ? GRAY : TEXT, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{topic}</span>
-                        <span style={{
-                          fontSize: '0.65rem', fontWeight: 700, marginLeft: 6, flexShrink: 0,
-                          color: depleted ? '#ef4444' : rem <= 2 ? '#d97706' : GREEN,
-                        }}>{depleted ? '✕' : `${rem} left`}</span>
-                      </div>
-                    )
-                  })}
-                </div>
-                {Object.keys(topicLimits).length > 8 && (
-                  <Link to="/student/selfInterview" style={{ fontSize: '0.72rem', color: ORANGE, fontWeight: 600, textDecoration: 'none', marginTop: 'auto', paddingTop: 8, display: 'block' }}>
-                    +{Object.keys(topicLimits).length - 8} more topics →
-                  </Link>
-                )}
-              </div>
-            )}
-          </Card>
-
-          {/* Announcements + Student Achievements (tabbed) */}
-          <Card style={{ display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: TEXT }}>Student Achievements & Announcements</span>
-            </div>
-            {/* Tabs */}
-            <div style={{ display: 'flex', borderBottom: `1px solid ${BORDER}`, marginBottom: 14 }}>
-              <button className={`sd-tab-btn ${annAchTab === 'achievements' ? 'active' : ''}`} onClick={() => setAnnAchTab('achievements')}>Student Achievements</button>
-              <button className={`sd-tab-btn ${annAchTab === 'announcements' ? 'active' : ''}`} onClick={() => setAnnAchTab('announcements')}>Announcements</button>
-            </div>
-
-            {/* Announcements tab */}
-            {annAchTab === 'announcements' && (
-              announcements.length === 0 ? (
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <p style={{ fontSize: '0.8rem', color: GRAY, textAlign: 'center', margin: 0 }}>No announcements yet.</p>
-                </div>
-              ) : (
-                announcements.map((a, i) => (
-                  <div key={i} className="sd-ann-row">
-                    <div style={{ width: 28, height: 28, borderRadius: 7, background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.85rem', flexShrink: 0 }}>
-                      {ANNOUNCE_ICON[a.type] || '📌'}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '0.78rem', fontWeight: 600, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</div>
-                      <div style={{ fontSize: '0.68rem', color: GRAY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                        {a.description?.replace(/<[^>]+>/g, '').slice(0, 40)}...
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )
-            )}
-
-            {/* Student Achievements tab */}
-            {annAchTab === 'achievements' && (
-              instituteAchievements.length === 0 ? (
-                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '20px 0', gap: 6 }}>
-                  <BsTrophyFill size={28} color="#e2e8f0" />
-                  <p style={{ fontSize: '0.8rem', color: GRAY, textAlign: 'center', margin: 0 }}>No achievements yet.</p>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {instituteAchievements.map((a, i) => {
-                    const CAT_COLORS: Record<string, string> = {
-                      academic: '#f59e0b', sports: '#10b981', placement: '#3b82f6',
-                      extracurricular: '#ec4899', certification: '#8b5cf6', general: '#ff7a00',
-                    }
-                    const CAT_ICONS: Record<string, string> = {
-                      academic: '🎓', sports: '🏆', placement: '💼',
-                      extracurricular: '🌟', certification: '📜', general: '⭐',
-                    }
-                    const color = CAT_COLORS[a.category] || '#ff7a00'
-                    const icon = CAT_ICONS[a.category] || '⭐'
-                    return (
-                      <div key={a._id || i} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', background: `${color}08`, border: `1px solid ${color}22`, borderRadius: 10 }}>
-                        <div style={{ width: 36, height: 36, borderRadius: '50%', background: `${color}18`, border: `2px solid ${color}33`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-                          {a.studentPic
-                            ? <img src={a.studentPic} alt={a.studentName} style={{ width: 36, height: 36, borderRadius: '50%', objectFit: 'cover' }} />
-                            : <span style={{ fontSize: '0.85rem', fontWeight: 800, color }}>{a.studentName?.charAt(0)?.toUpperCase() || icon}</span>
-                          }
-                        </div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ fontSize: '0.75rem', fontWeight: 700, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.studentName}</div>
-                          <div style={{ fontSize: '0.67rem', color: GRAY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{a.title}</div>
-                        </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexShrink: 0 }}>
-                          <span style={{ fontSize: '0.62rem', fontWeight: 700, color, background: `${color}14`, border: `1px solid ${color}28`, borderRadius: 20, padding: '2px 8px', textTransform: 'capitalize' }}>{icon} {a.category}</span>
-                          <button onClick={() => setAchModal(a)} style={{ fontSize: '0.62rem', fontWeight: 700, color: ORANGE, background: '#fff7ed', border: `1px solid ${ORANGE}44`, borderRadius: 20, padding: '2px 10px', cursor: 'pointer', whiteSpace: 'nowrap' }}>View →</button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              )
-            )}
-          </Card>
-
-          {/* Latest Jobs by HR — moved to end */}
-          <Card style={{ display: 'flex', flexDirection: 'column' }}>
-            <CardHeader title="Latest Jobs by HR" />
-            <div style={{ flex: 1 }}>
-            {hrJobs.length === 0 ? (
-              <p style={{ fontSize: '0.8rem', color: GRAY, textAlign: 'center', padding: '12px 0' }}>No jobs available.</p>
-            ) : (
-              hrJobs.map((job, i) => (
-                <div key={i} className="sd-job-row">
-                  <div style={{ width: 30, height: 30, background: '#f1f5f9', borderRadius: 7, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-                    {job.logo
-                      ? <img src={job.logo} alt={job.company} style={{ width: 22, height: 22, objectFit: 'contain' }} onError={e => ((e.target as HTMLImageElement).style.display = 'none')} />
-                      : <svg width="13" height="13" fill="none" stroke={GRAY} strokeWidth="2" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
-                    }
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '0.76rem', fontWeight: 600, color: TEXT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{job.title}</div>
-                    <div style={{ fontSize: '0.66rem', color: GRAY }}>{job.company}{job.location ? ` · ${job.location.trim()}` : ''}</div>
-                  </div>
-                  <div style={{ fontSize: '0.62rem', color: '#94a3b8', flexShrink: 0, textAlign: 'right' }}>{timeAgo(job.postedDate)}</div>
-                </div>
-              ))
-            )}
-            </div>
-            <Link to="/student/interview-details" style={{ fontSize: '0.76rem', color: ORANGE, fontWeight: 600, textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4, marginTop: 'auto', paddingTop: 12, borderTop: `1px solid #f1f5f9` }}>
-              Browse All Jobs <span style={{ fontSize: '0.9rem' }}>→</span>
-            </Link>
-          </Card>
-
-        </div>
-      </div>
+      {/* Course, English, AI interview, code and time-sheet boxes were replaced by the My Progress rows above */}
 
       {/* Achievement detail modal */}
       {achModal && (() => {

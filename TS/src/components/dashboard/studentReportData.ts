@@ -21,7 +21,13 @@ export type VocabSection = {
   currentLevel: string; nextLevel: string | null
 }
 
-export type CourseItem = { courseId: string; title: string; progress: number }
+export type AptitudeSection = {
+  attempts: number; avgScore: number | null; bestScore: number | null; totalTimeSecs: number; streak: number
+  byCategory: { category: string; attempts: number; avgScore: number | null; bestScore: number | null }[]
+  recent: { date: string; category: string; score: number; total: number; pct: number }[]
+  today: { date: string; category: string; attended: boolean }
+}
+export type CourseItem = { courseId: string; title: string; progress: number; enrolledAt?: string | null; lastAccessedAt?: string | null }
 
 /* Extra detail returned by student-report (newer API versions) */
 export type ReportDetail = {
@@ -45,6 +51,7 @@ export type Report = {
   rank: { position: number; total: number; score?: number; overallPosition?: number | null; overallTotal?: number | null } | null
   timeSpent: { totalSecs: number; uniqueDays: number; avgMinPerDay: number; label: string }
   courses: CourseItem[]
+  aptitude?: AptitudeSection | null
   totalCoursesAvailable: number
   overallCourseProgress: number
   codeStats: { available: { easy: number; medium: number; hard: number }; solved: number }
