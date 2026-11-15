@@ -342,31 +342,79 @@ const InterviewModalLayout = () => {
       </div>
 
       {/* ── Stats Bar ──────────────────────────────────────── */}
-      <div style={{ background: CARD_BG, border: `1px solid ${PAGE_BORDER}`, borderRadius: 14, padding: '18px 24px', marginBottom: 28, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 16, boxShadow: '0 1px 4px rgba(0,0,0,0.03)' }}>
-        {[
-          { label: 'Topic Interviews Used', value: `${totalTopicUsed}` },
-          { label: 'Topic Interviews Remaining', value: `${totalTopicRemaining}` },
-          { label: 'Resume Interviews Used', value: `${resumeUsed}` },
-          { label: 'Resume Interviews Remaining', value: `${resumeRemaining}` },
-          { label: 'Total Completed', value: `${totalInterviews}`, color: '#ff7a00' },
-        ].map((s) => (
-          <div key={s.label}>
-            <div style={{ fontSize: 11, color: PAGE_GRAY, marginBottom: 4 }}>{s.label}</div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: s.color || PAGE_TEXT }}>{s.value}</div>
+      {(() => {
+        const topicTotal = totalTopicUsed + totalTopicRemaining
+        const resumeTotal = resumeUsed + resumeRemaining
+        const grandTotal = topicTotal + resumeTotal
+        const leftPct = grandTotal ? Math.round((totalAvailable / grandTotal) * 100) : 0
+        const tiles = [
+          { label: 'Topic Interviews', icon: FaLaptopCode, color: '#3b82f6', tint: 'rgba(59,130,246,0.12)', used: totalTopicUsed, remaining: totalTopicRemaining, total: topicTotal },
+          { label: 'Resume Interviews', icon: FaFileAlt, color: '#8b5cf6', tint: 'rgba(139,92,246,0.12)', used: resumeUsed, remaining: resumeRemaining, total: resumeTotal },
+        ]
+        return (
+          <div className="sit-stats">
+            {tiles.map(t => {
+              const pct = t.total ? Math.min(100, (t.used / t.total) * 100) : 0
+              return (
+                <div key={t.label} className="sit-tile">
+                  <div className="sit-tile-head">
+                    <span className="sit-icon" style={{ background: t.tint, color: t.color }}><t.icon size={15} /></span>
+                    <span className="sit-label">{t.label}</span>
+                  </div>
+                  <div className="sit-value"><b>{t.used}</b><small> used of {t.total}</small></div>
+                  <div className="sit-bar"><span style={{ width: `${pct}%`, background: t.color }} /></div>
+                  <div className="sit-foot"><span><i style={{ background: t.color }} /> {t.remaining} remaining</span></div>
+                </div>
+              )
+            })}
+            <div className="sit-tile">
+              <div className="sit-tile-head">
+                <span className="sit-icon" style={{ background: 'rgba(255,122,0,0.12)', color: '#ff7a00' }}><FaTrophy size={14} /></span>
+                <span className="sit-label">Total Completed</span>
+              </div>
+              <div className="sit-value"><b style={{ color: '#ff7a00' }}>{totalInterviews}</b><small> interview{totalInterviews === 1 ? '' : 's'}</small></div>
+              <div className="sit-split">
+                <span><i style={{ background: '#3b82f6' }} /> {totalTopicUsed} topic</span>
+                <span><i style={{ background: '#8b5cf6' }} /> {resumeUsed} resume</span>
+              </div>
+            </div>
+            <div className="sit-ring-wrap">
+              <div className="sit-ring" style={{ background: `conic-gradient(#16a34a ${leftPct * 3.6}deg, ${PAGE_BORDER} 0deg)` }}>
+                <div><b>{totalAvailable}</b><small>of {grandTotal}</small></div>
+              </div>
+              <div className="sit-ring-text">
+                <b>Attempts Left</b>
+                <span>{leftPct}% of this month's quota still available</span>
+              </div>
+            </div>
+            <style>{`
+              .sit-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 14px; margin-bottom: 28px; padding: 16px; border: 1px solid ${PAGE_BORDER}; border-radius: 16px; background: ${CARD_BG}; box-shadow: 0 1px 4px rgba(0,0,0,0.03); }
+              .sit-tile { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 14px 16px; border: 1px solid ${PAGE_BORDER}; border-radius: 12px; background: ${PAGE_BG}; }
+              .sit-tile-head { display: flex; align-items: center; gap: 10px; }
+              .sit-icon { display: inline-grid; place-items: center; width: 32px; height: 32px; flex: 0 0 32px; border-radius: 9px; }
+              .sit-label { color: ${PAGE_GRAY}; font-size: 12px; font-weight: 700; letter-spacing: 0.02em; }
+              .sit-value b { color: ${PAGE_TEXT}; font-size: 24px; font-weight: 800; line-height: 1; }
+              .sit-value small { color: ${PAGE_GRAY}; font-size: 12px; font-weight: 600; }
+              .sit-bar { height: 6px; overflow: hidden; border-radius: 99px; background: ${PAGE_BORDER}; }
+              .sit-bar span { display: block; height: 100%; border-radius: 99px; transition: width 0.6s ease; }
+              .sit-foot, .sit-split { display: flex; flex-wrap: wrap; gap: 14px; color: ${PAGE_GRAY}; font-size: 11.5px; font-weight: 600; }
+              .sit-foot span, .sit-split span { display: inline-flex; align-items: center; gap: 6px; }
+              .sit-foot i, .sit-split i { width: 8px; height: 8px; border-radius: 50%; }
+              .sit-split { margin-top: auto; }
+              .sit-ring-wrap { display: flex; align-items: center; gap: 14px; padding: 10px 16px; border: 1px solid rgba(22,163,74,0.25); border-radius: 12px; background: rgba(22,163,74,0.06); }
+              .sit-ring { display: grid; place-items: center; width: 78px; height: 78px; flex: 0 0 78px; border-radius: 50%; }
+              .sit-ring > div { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 62px; height: 62px; border-radius: 50%; background: ${CARD_BG}; }
+              .sit-ring b { color: ${PAGE_TEXT}; font-size: 20px; font-weight: 800; line-height: 1; }
+              .sit-ring small { color: ${PAGE_GRAY}; font-size: 10px; font-weight: 600; }
+              .sit-ring-text { display: flex; flex-direction: column; gap: 4px; max-width: 150px; }
+              .sit-ring-text b { color: #16a34a; font-size: 14px; font-weight: 800; }
+              .sit-ring-text span { color: ${PAGE_GRAY}; font-size: 11.5px; line-height: 1.4; }
+              @media (max-width: 1199.98px) { .sit-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+              @media (max-width: 575.98px) { .sit-stats { grid-template-columns: 1fr; } }
+            `}</style>
           </div>
-        ))}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4 }}>
-          <div style={{
-            width: 56, height: 56, borderRadius: '50%',
-            border: `4px solid ${attemptsRingColor}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: 13, fontWeight: 800, color: PAGE_TEXT,
-          }}>
-            {totalAvailable}
-          </div>
-          <div style={{ fontSize: 10, color: PAGE_GRAY }}>Attempts Left</div>
-        </div>
-      </div>
+        )
+      })()}
 
       {/* ── Two Interview Cards ────────────────────────────── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 20, marginBottom: 36 }}>
