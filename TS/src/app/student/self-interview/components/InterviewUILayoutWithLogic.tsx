@@ -39,7 +39,7 @@ const CODE_LANGUAGES = [
   { label: 'CSS', extension: css() },
   { label: 'SQL', extension: sql() },
 ] as const
-import { FaMicrophone, FaMicrophoneSlash, FaCode, FaBullseye, FaClipboardList, FaCog, FaCheckCircle, FaBoxOpen, FaChartBar, FaLightbulb, FaShieldAlt, FaEye, FaHandPaper, FaVideo, FaSun, FaVolumeUp, FaUserCheck, FaClock, FaStop, FaStar, FaArrowRight, FaCheck } from 'react-icons/fa'
+import { FaMicrophone, FaMicrophoneSlash, FaCode, FaBullseye, FaClipboardList, FaCog, FaCheckCircle, FaBoxOpen, FaChartBar, FaLightbulb, FaShieldAlt, FaEye, FaHandPaper, FaVideo, FaSun, FaVolumeUp, FaUserCheck, FaClock, FaStop, FaStar, FaArrowRight, FaCheck, FaTimes } from 'react-icons/fa'
 
 type AnswerItem = {
   question: string
@@ -314,6 +314,11 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
   const [loadingFinalFeedback, setLoadingFinalFeedback] = useState(false)
   const [stopRecording, setStopRecording] = useState(false);
   const [isRecordingActive, setIsRecordingActive] = useState(true);
+  // System-level mic mute (OS / hardware switch): the browser still gets a stream, but it is pure silence
+  const [micSysMuted, setMicSysMuted] = useState(false)
+  const [showMicMutePopup, setShowMicMutePopup] = useState(false)
+  const micMutePopupDismissedRef = useRef(false)
+  const micCheckRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const [centerTab, setCenterTab] = useState<'question' | 'feedback'>('question')
   const [videoElement, setVideoElement] = useState<HTMLVideoElement | null>(null)
   const [lightingLabel, setLightingLabel] = useState<string>('Checking...')
@@ -1039,6 +1044,57 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
 
     recognitionRef.current = rec
     return rec
+  }
+
+  useEffect(() => {
+    if (micSysMuted) {
+      if (!micMutePopupDismissedRef.current) setShowMicMutePopup(true)
+    } else {
+      micMutePopupDismissedRef.current = false
+      setShowMicMutePopup(false)
+    }
+  }, [micSysMuted])
+
+  // Watch for a system mute for the whole interview, not only while answering.
+  // A system-muted mic delivers exact digital silence (every bin 0); real rooms never do.
+  // Two zero readings in a row (~1.5s) before warning, so a momentary gap doesn't flash it.
+  useEffect(() => {
+    let cancelled = false
+    let stream: MediaStream | null = null
+    let ctx: AudioContext | null = null
+    navigator.mediaDevices?.getUserMedia({ audio: { noiseSuppression: false, echoCancellation: false, autoGainControl: false } })
+      .then((s) => {
+        if (cancelled) { s.getTracks().forEach((t) => t.stop()); return }
+        stream = s
+        ctx = new (window.AudioContext || (window as any).webkitAudioContext)()
+        const analyser = ctx.createAnalyser()
+        analyser.fftSize = 256
+        ctx.createMediaStreamSource(s).connect(analyser)
+        const freq = new Uint8Array(analyser.frequencyBinCount)
+        const track = s.getAudioTracks()[0]
+        let zeroRuns = 0
+        micCheckRef.current = setInterval(() => {
+          if (ctx?.state === 'suspended') ctx.resume().catch(() => { })
+          analyser.getByteFrequencyData(freq)
+          const silent = track?.muted || freq.every((v) => v === 0)
+          zeroRuns = silent ? zeroRuns + 1 : 0
+          setMicSysMuted(zeroRuns >= 2)
+        }, 750)
+      })
+      .catch(() => { }) // no mic permission: nothing to monitor
+    return () => {
+      cancelled = true
+      if (micCheckRef.current) { clearInterval(micCheckRef.current); micCheckRef.current = null }
+      stream?.getTracks().forEach((t) => t.stop())
+      ctx?.close().catch(() => { })
+    }
+  }, [])
+
+  // Opens the OS sound settings where a deep link exists (Windows / macOS)
+  const openSoundSettings = () => {
+    const ua = navigator.userAgent
+    if (ua.includes('Windows')) window.location.href = 'ms-settings:sound'
+    else if (ua.includes('Mac')) window.location.href = 'x-apple.systempreferences:com.apple.preference.sound'
   }
 
   // Start fast listening
@@ -1947,6 +2003,37 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
 
               {/* Controls row */}
               <div style={{ display: 'flex', alignItems: 'center', padding: '8px 14px', gap: 10, background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+                <div style={{ position: 'relative', flexShrink: 0 }}>
+                {showMicMutePopup && micSysMuted && !showFeedback && !hasSubmitted && (
+                  <>
+                    <div onClick={() => { setShowMicMutePopup(false); micMutePopupDismissedRef.current = true }} style={{ position: 'fixed', inset: 0, zIndex: 40 }} />
+                    <div style={{ position: 'absolute', bottom: 'calc(100% + 14px)', left: -10, width: 290, background: '#3c4043', borderRadius: 12, boxShadow: '0 10px 30px rgba(0,0,0,0.35)', padding: '14px 16px', zIndex: 50, textAlign: 'left' }}>
+                      <button
+                        onClick={() => { setShowMicMutePopup(false); micMutePopupDismissedRef.current = true }}
+                        aria-label="Close"
+                        style={{ position: 'absolute', top: 10, right: 10, background: 'none', border: 'none', color: '#9aa0a6', cursor: 'pointer', padding: 2, display: 'flex' }}
+                      >
+                        <FaTimes size={13} />
+                      </button>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, paddingRight: 18 }}>
+                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: '#fbbc04', color: '#202124', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 12, fontWeight: 900 }}>!</div>
+                        <span style={{ fontSize: 13.5, fontWeight: 700, color: '#fff' }}>Microphone muted by system</span>
+                      </div>
+                      <p style={{ fontSize: 12.5, color: '#dadce0', margin: '0 0 10px', lineHeight: 1.5 }}>
+                        Go to your computer's settings to unmute your mic and increase its level
+                      </p>
+                      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                        <button
+                          onClick={() => { openSoundSettings(); setShowMicMutePopup(false); micMutePopupDismissedRef.current = true }}
+                          style={{ background: 'none', border: 'none', color: '#8ab4f8', fontSize: 13, fontWeight: 600, cursor: 'pointer', padding: '4px 2px' }}
+                        >
+                          Open Sound Settings
+                        </button>
+                      </div>
+                      <div style={{ position: 'absolute', top: '100%', left: 20, width: 0, height: 0, borderLeft: '8px solid transparent', borderRight: '8px solid transparent', borderTop: '8px solid #3c4043' }} />
+                    </div>
+                  </>
+                )}
                 <button
                   onClick={isListening ? stopListening : startListening}
                   disabled={showFeedback || hasSubmitted}
@@ -1962,9 +2049,19 @@ const InterviewUILayoutWithLogic: React.FC<Props> = ({ interviewId, questions, t
                 >
                   {isListening ? <FaMicrophone size={13} /> : <FaMicrophoneSlash size={13} />}
                 </button>
+                {micSysMuted && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setShowMicMutePopup((p) => !p); micMutePopupDismissedRef.current = false }}
+                    title="Microphone muted by system"
+                    style={{ position: 'absolute', top: -4, right: -4, width: 16, height: 16, borderRadius: '50%', background: '#fbbc04', color: '#202124', border: '2px solid #fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10, fontWeight: 900, cursor: 'pointer', padding: 0 }}
+                  >
+                    !
+                  </button>
+                )}
+                </div>
                 {!showFeedback && !hasSubmitted && (
-                  <span style={{ color: isListening ? '#dc2626' : '#94a3b8', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
-                    {isListening ? 'Recording' : 'Muted — tap mic'}
+                  <span style={{ color: micSysMuted ? '#d97706' : isListening ? '#dc2626' : '#94a3b8', fontSize: 11, fontWeight: 700, flexShrink: 0 }}>
+                    {micSysMuted ? 'Mic muted by system' : isListening ? 'Recording' : 'Muted — tap mic'}
                   </span>
                 )}
                 <canvas ref={canvasRef} width={200} height={34} style={{ flex: 1, height: 34, background: 'transparent', border: 'none' }} />
