@@ -58,8 +58,8 @@ const BookLibrary = ({ onSelectBook }: Props) => {
 
       {/* ── Hero Banner ── */}
       <div style={{
-        margin: "20px 24px 20px",
-        borderRadius: 20,
+        margin: "20px 0",
+        borderRadius: 0,
         background: "linear-gradient(120deg, #f3e8ff 0%, #e9d5ff 55%, #d8b4fe 100%)",
         border: "1px solid #e9d5ff",
         display: "flex",
@@ -118,7 +118,7 @@ const BookLibrary = ({ onSelectBook }: Props) => {
       </div>
 
       {/* ── Category Pills + Search/Filter ── */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "10px 24px 16px" }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "10px 0 16px" }}>
         <div style={{ overflowX: "auto" }}>
           <div style={{ display: "flex", gap: 8, width: "max-content" }}>
             {CATEGORIES.map(cat => (
@@ -158,7 +158,7 @@ const BookLibrary = ({ onSelectBook }: Props) => {
       </div>
 
       {/* ── Divider ── */}
-      <div style={{ height: 1, background: PAGE_BORDER, margin: "0 24px 20px" }} />
+      <div style={{ height: 1, background: PAGE_BORDER, margin: "0 0 20px" }} />
 
       {/* ── Grid ── */}
       {filtered.length === 0 ? (
@@ -167,7 +167,7 @@ const BookLibrary = ({ onSelectBook }: Props) => {
           <div style={{ fontWeight: 600 }}>No books found</div>
         </div>
       ) : (
-        <div style={{ padding: "0 24px", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 20 }}>
           {filtered.map((book: any) => {
             const meta = BOOK_META[book.id] ?? { category: "General", author: "Author", catColor: "#64748b", catBg: "#f8fafc" }
             return (

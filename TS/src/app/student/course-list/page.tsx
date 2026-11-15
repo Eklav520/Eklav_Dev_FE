@@ -6,7 +6,7 @@ import CourseCertificate from './components/CourseCertificate'
 import {
   FaPlay, FaStar, FaRegStar, FaStarHalfAlt, FaCheck,
   FaBookOpen, FaTrophy, FaClock, FaAward,
-  FaThLarge, FaList, FaSearch,
+  FaThLarge, FaList, FaSearch, FaHeart, FaExclamationTriangle,
 } from 'react-icons/fa'
 import { BsCheckCircleFill, BsLightningFill } from 'react-icons/bs'
 
@@ -489,7 +489,7 @@ const CourseListPage = () => {
   if (error) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '60vh', textAlign: 'center' }}>
       <div>
-        <div style={{ fontSize: 40, marginBottom: 12 }}>⚠️</div>
+        <div style={{ display: 'inline-grid', placeItems: 'center', width: 64, height: 64, borderRadius: '50%', background: 'rgba(220,53,69,0.1)', color: '#dc3545', fontSize: 26, marginBottom: 14 }}><FaExclamationTriangle /></div>
         <h5 style={{ color: '#dc3545' }}>Something went wrong</h5>
         <p style={{ color: '#64748b' }}>{error}</p>
         <button onClick={fetchEnrolledCourses} style={{ background: '#ff7a00', border: 'none', borderRadius: 8, color: '#fff', fontWeight: 700, padding: '10px 24px', cursor: 'pointer' }}>Try Again</button>
@@ -614,7 +614,9 @@ const CourseListPage = () => {
         {/* ── Course List ── */}
         {filteredCourses.length === 0 ? (
           <div style={{ textAlign: 'center', padding: '64px 0', color: PAGE_GRAY }}>
-            <div style={{ fontSize: 48, marginBottom: 12 }}>📚</div>
+            <div style={{ display: 'inline-grid', placeItems: 'center', width: 72, height: 72, borderRadius: '50%', background: 'rgba(255,122,0,0.12)', color: '#ff7a00', fontSize: 30, marginBottom: 16 }}>
+              {searchTerm ? <FaSearch /> : activeTab === 'wishlist' ? <FaHeart /> : <FaBookOpen />}
+            </div>
             <h5 style={{ color: PAGE_TEXT, marginBottom: 8 }}>
               {searchTerm ? 'No courses match your search' : activeTab === 'wishlist' ? 'Your wishlist is empty' : 'No courses here yet'}
             </h5>
