@@ -60,8 +60,8 @@ const comboOptions = (labels: string[], color: string, countLabel: string, score
   grid: { borderColor: dark ? '#202326' : '#eef2f6', strokeDashArray: 3, padding: { top: 14, left: 4, right: 8 } },
   xaxis: { categories: labels, axisBorder: { color: dark ? '#25282b' : '#e2e8f0' }, axisTicks: { color: dark ? '#25282b' : '#e2e8f0' }, labels: { style: { fontSize: '11px' }, hideOverlappingLabels: true }, tooltip: { enabled: false }, crosshairs: { stroke: { color: '#34383d' } } },
   yaxis: [
-    { title: { text: countLabel, style: { color: '#6b7280', fontWeight: 500 } }, min: 0, forceNiceScale: true, labels: { formatter: (v: number) => `${Math.round(v)}` } },
-    { opposite: true, title: { text: scoreLabel, style: { color: '#6b7280', fontWeight: 500 } }, min: 0, max: 100, tickAmount: 4, labels: { formatter: (v: number) => `${Math.round(v)}%` } },
+    { min: 0, forceNiceScale: true, labels: { formatter: (v: number) => `${Math.round(v)}` } },
+    { opposite: true, min: 0, max: 100, tickAmount: 4, labels: { formatter: (v: number) => `${Math.round(v)}%` } },
   ],
   dataLabels: { enabled: false },
   legend: { position: 'top', horizontalAlign: 'left', fontSize: '12px', markers: { size: 5 } as any, itemMargin: { horizontal: 8 }, offsetY: -2 },
@@ -401,7 +401,7 @@ const StudentProgressView = ({ studentId, name = 'Student', fetchReport, theme =
                 <p className="spx-courses-more">Showing {shownCourses.length} of {r.courses.length} courses · courses in progress first, then the latest enrolled</p>
               )}
               </>
-            ) : <p className="spx-empty">Not enrolled in any course yet.</p>}
+            ) : <p className="spx-empty is-center">Not enrolled in any course yet.</p>}
           </SectionRow>
 
           {/* ── 3. AI interview ── */}
@@ -698,6 +698,7 @@ const StudentProgressView = ({ studentId, name = 'Student', fetchReport, theme =
         .spx-ellipsis { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .spx-cap { text-transform: capitalize; }
         .spx-empty { margin: 0.5rem 0; color: #6b7280; font-size: 0.8rem; }
+        .spx-empty.is-center { margin: 0; text-align: center; font-size: 0.86rem; }
         .spx-note { margin: 0; color: #6b7280; font-size: 0.72rem; }
 
         .spx-cal-wrap { overflow-x: auto; }

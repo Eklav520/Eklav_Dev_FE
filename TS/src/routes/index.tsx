@@ -105,6 +105,7 @@ const ProblemStatement = lazy(() => import('@/app/eklavadmin/problem-statement/p
 const ProblemStatementScore = lazy(() => import('@/app/eklavadmin/dailyChallengeScore/page'))
 const AdminSelfInterview = lazy(() => import('@/app/eklavadmin/self-interview/page'))
 const AdminCompanyInterview = lazy(() => import('@/app/eklavadmin/company-interviews/page'))
+const AdminCompanyPrep = lazy(() => import('@/app/eklavadmin/company-prep/page'))
 const AdminInterviewDetails = lazy(() => import('@/app/eklavadmin/interview-details/page'))
 // Parked for later (Eklav admin Online Classes); uncomment with its route below
 // const ScheduleOnlineClasses = lazy(() => import('@/app/eklavadmin/online-classes/page'))
@@ -139,6 +140,7 @@ const FreelancingTaskListPage = lazy(() => import('@/app/institute/freelencing/t
 const InstituteCollegeLabsUpload = lazy(() => import('@/app/institute/college-labs-upload/page'))
 const InstitutePlacementDrives = lazy(() => import('@/app/institute/placement-drives/page'))
 const InstituteAptitudeAssessments = lazy(() => import('@/app/institute/aptitudeAssessments/page'))
+const InstituteCompanyPrep = lazy(() => import('@/app/institute/company-prep/page'))
 
 //Student
 const StudentFreelancing = lazy(() => import('@/app/student/freelencing/pages'))
@@ -167,6 +169,7 @@ const Reels = lazy(() => import('@/app/student/reel-courses/page'))
 const Materials = lazy(() => import('@/app/student/materials/page'))
 const InterviewDetails = lazy(() => import('@/app/student/interview-details/page'))
 const Aptitude = lazy(() => import('@/app/student/Aptitude Preparation/page'))
+const StudentCompanyPrep = lazy(() => import('@/app/student/company-prep/page'))
 const Resume = lazy(() => import('@/app/student/resume-preparation/page'))
 const Atschecker = lazy(() => import('@/app/student/atsChecker/pages'))
 const StudentBlog = lazy(() => import('@/app/student/student-Blog/page'))
@@ -708,6 +711,11 @@ export const EklavAdminRoutes: RoutesProps[] = [
     element: <AdminCompanyInterview />,
   },
   {
+    path: '/eklavadmin/company-prep',
+    name: 'Company Preparation',
+    element: <AdminCompanyPrep />,
+  },
+  {
     path: '/eklavadmin/admin-interview-details',
     name: 'Interview Details',
     element: <AdminInterviewDetails />,
@@ -856,6 +864,11 @@ export const InstituteAdminRoutes: RoutesProps[] = [
     name: 'Aptitude Assessments',
     element: <InstituteAptitudeAssessments />,
   },
+  {
+    path: '/institute/company-prep',
+    name: 'Company Preparation',
+    element: <InstituteCompanyPrep />,
+  },
 
 ]
 
@@ -982,6 +995,11 @@ export const studentRoutes: RoutesProps[] = [
     path: '/student/aptitude',
     name: 'Aptitude',
     element: <Aptitude />,
+  },
+  {
+    path: '/student/company-prep',
+    name: 'Company Preparation',
+    element: <StudentCompanyPrep />,
   },
   {
     path: '/student/resume',

@@ -4,6 +4,7 @@ import {
   BsBasketFill,
   BsBook,
   BsBriefcase,
+  BsBuilding,
   BsCalculator,
   BsCameraVideo,
   BsCardChecklist,
@@ -332,6 +333,13 @@ export const EKLAVADMIN_MENU_ITEMS: MenuItemType[] = [
         url: '/eklavadmin/company-interview',
         parentKey: 'eklavadmin',
       },
+      {
+        key: 'companyPrep',
+        label: 'Company Preparation',
+        icon: BsBuilding,
+        url: '/eklavadmin/company-prep',
+        parentKey: 'eklavadmin',
+      },
     ],
   },
   {
@@ -641,6 +649,13 @@ export const INSTITUTEADMIN_MENU_ITEMS: MenuItemType[] = [
     parentKey: 'instituteadmin',
   },
   {
+    key: 'companyPrepResults',
+    label: 'Company Preparation',
+    icon: BsBuilding,
+    url: '/institute/company-prep',
+    parentKey: 'instituteadmin',
+  },
+  {
     key: 'instituteAnnouncements',
     label: 'Achievements',
     icon: BsBellFill,
@@ -841,6 +856,13 @@ export const STUDENT_MENU_ITEMS: MenuItemType[] = [
         label: 'By Company', 
         icon: FaUserTie, 
         url: '/student/company-rounds',
+        parentKey: 'preparation',
+      },
+      {
+        key: 'companyPrep',
+        label: 'Company Preparation',
+        icon: BsBuilding,
+        url: '/student/company-prep',
         parentKey: 'preparation',
       },
       /* {
