@@ -4,13 +4,14 @@ import axios from 'axios'
 import { useAuthContext } from '@/context/useAuthContext'
 import RoboAvatar from './RoboAvatar'
 import AnimatedRobotSVG from './AnimatedRobotSVG'
+import CoachAvatar3D, { COACH_OUTFITS, CoachAvatarHandle, CoachClip, CoachOutfit } from './CoachAvatar3D'
 import {
   FaMicrophoneSlash, FaRobot, FaUser, FaMicrophone, FaClock, FaPause, FaPlay, FaStop,
   FaComments, FaClipboardList, FaEdit, FaTrash, FaSyncAlt, FaExclamationTriangle,
   FaLightbulb, FaChartLine, FaBolt, FaBullseye, FaUniversity, FaRocket, FaLaptop,
   FaCheck, FaFileAlt, FaMale, FaFemale, FaArrowUp, FaArrowDown, FaInfoCircle,
   FaChevronRight, FaChevronLeft, FaBriefcase, FaGlobe, FaBook, FaUsers, FaVolumeUp, FaVideo, FaStar,
-  FaSpellCheck, FaTachometerAlt, FaFont, FaTimes, FaTrophy,
+  FaSpellCheck, FaTachometerAlt, FaFont, FaTimes, FaTrophy, FaTshirt,
 } from 'react-icons/fa'
 import robotSpeakingImg from '@/assets/images/Robo.png'
 
@@ -54,6 +55,47 @@ const NATIVE_LANG_STORAGE_KEY = 'eklav_speaking_native_lang'
 
 // Length of one speaking-practice session.
 const SESSION_SECONDS = 360 // 6 minutes
+const SESSION_MINUTES = Math.round(SESSION_SECONDS / 60)
+const PASS_SCORE = 60
+
+/* "Areas to Improve" tips from the session feedback text. A numbered heading whose text sits on the
+   next line (e.g. "4. **Overall encouraging note:**") gets that line joined instead of showing empty. */
+const cleanFeedbackMd = (t: string) =>
+  t.replace(/\*\*(.*?)\*\*/g, '$1')
+   .replace(/\*(.*?)\*/g, '$1')
+   .replace(/^[*\-•.\s]*[1-9]?[0-9]?[️⃣🔟1234567890]*[.):\s]*/u, '')
+   .replace(/^[*\-•.\s]+/, '')
+   .trim()
+const isFeedbackScoreLine = (l: string) =>
+  /score\s*:\s*\*?\*?\s*\d+\/10/i.test(l) ||
+  /grammar score|fluency score|vocabulary score/i.test(l) ||
+  /friendly improvement tips?/i.test(l) ||
+  /improvement tips?:/i.test(l)
+const extractFeedbackTips = (feedback: string): string[] => {
+  const tips: string[] = []
+  for (const l of feedback.split('\n').map(x => x.trim()).filter(Boolean)) {
+    if (isFeedbackScoreLine(l)) continue
+    if (/^[-•*.1-9]|^\d+[.)]/.test(l) || l.startsWith('.')) tips.push(cleanFeedbackMd(l))
+    else if (tips.length && /:\s*$/.test(tips[tips.length - 1])) tips[tips.length - 1] += ' ' + cleanFeedbackMd(l)
+  }
+  return tips.filter(t => t.length > 8 && !/:\s*$/.test(t))
+}
+
+/* What the coach says after a low score: the key advice from each improvement tip (examples left out). */
+const buildCoachAdvice = (tips: string[], score: number) => {
+  const order = ['First', 'Second', 'Third']
+  const parts = tips
+    .filter(t => !/overall|encourag/i.test(t.slice(0, 40)))
+    .slice(0, 3)
+    .map((t, i) => {
+      const c = t.indexOf(':')
+      const body = c > 0 && c < 40 ? t.slice(c + 1).trim() : t
+      const sentences = body.split(/(?<=[.!?])\s+/).filter(x => !/for example|instead of|e\.g\./i.test(x))
+      return `${order[i]}, ${sentences.slice(0, 3).join(' ') || body}`
+    })
+  if (!parts.length) return ''
+  return `You scored ${score} percent this time. Don't worry, here is how you can improve. ${parts.join(' ')} Keep practising, and you will do better next time.`
+}
 
 const EnglishVoicePractice: React.FC = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
@@ -301,6 +343,20 @@ const EnglishVoicePractice: React.FC = () => {
   // The currently-playing ElevenLabs clip (if any) — so Pause can actually stop it.
   // speechSynthesis.cancel() only affects the browser-TTS fallback, not these <audio> clips.
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
+  // Realistic 3D coach; falls back to the animated robot if WebGL / the model can't load
+  const coachRef = useRef<CoachAvatarHandle>(null)
+  const [coachFailed, setCoachFailed] = useState(false)
+  const adviceTimerRef = useRef<number | null>(null)
+  useEffect(() => () => { if (adviceTimerRef.current) clearTimeout(adviceTimerRef.current) }, [])
+  // Coach outfit, picked like the background (remembered on this device)
+  const [coachOutfit, setCoachOutfit] = useState<CoachOutfit>(() => {
+    try { const v = localStorage.getItem('eklav.coachOutfit'); return v && v in COACH_OUTFITS ? (v as CoachOutfit) : 'tshirt' } catch { return 'tshirt' }
+  })
+  const [showOutfitPicker, setShowOutfitPicker] = useState(false)
+  const pickOutfit = (v: CoachOutfit) => {
+    setCoachOutfit(v); setShowOutfitPicker(false); setCoachFailed(false)
+    try { localStorage.setItem('eklav.coachOutfit', v) } catch { /* private mode */ }
+  }
 
   const audioCtxRef = useRef<AudioContext | null>(null)
   const micCheckRef = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -835,12 +891,18 @@ const EnglishVoicePractice: React.FC = () => {
   // relying on the browser's built-in TTS proved unreliable (missing Indian-language
   // voices entirely on most devices, robotic-sounding, inconsistent across browsers).
   // tw: same typewriter sync as speak() below, driven off actual playback instead of utterance events.
-  const speakAudioUrl = (url: string, tw?: { msgId: string; displayText: string; displayOffset?: number }) =>
-    new Promise<void>((resolve) => {
+  const speakAudioUrl = (url: string, tw?: { msgId: string; displayText: string; displayOffset?: number }, spokenText?: string) =>
+    new Promise<void>(async (resolve) => {
       if (!sessionActiveRef.current) return resolve()
       onTTSStart()
+      // Decode the clip for the 3D coach's lip-sync first (never hold the voice back more than 600ms)
+      const coach = coachRef.current
+      const clip: CoachClip | null = coach?.isReady()
+        ? await Promise.race([coach.prepare(url, spokenText ?? tw?.displayText), new Promise<null>(r => setTimeout(() => r(null), 600))])
+        : null
       const audio = new Audio(url)
       currentAudioRef.current = audio
+      if (clip) audio.addEventListener('playing', () => coachRef.current?.start(clip), { once: true })
 
       let twInterval: any = null
       if (tw) {
@@ -863,6 +925,7 @@ const EnglishVoicePractice: React.FC = () => {
         if (twInterval) clearInterval(twInterval)
         if (tw) setTypewriterMap(prev => ({ ...prev, [tw.msgId]: tw.displayText.length }))
         if (currentAudioRef.current === audio) currentAudioRef.current = null
+        coachRef.current?.stop()
         onTTSEnd()
         resolve()
       }
@@ -873,6 +936,22 @@ const EnglishVoicePractice: React.FC = () => {
       audio.onpause = done
       audio.play().catch(done)
     })
+
+  // After the session: the coach reads its improvement advice aloud (lip-synced), in the session's voice
+  const speakCoachAdvice = async (text: string) => {
+    try {
+      const r = await axios.post(`${baseURL}/api/english/speak`, { text, voiceGender }, { headers: { Authorization: `Bearer ${token}` } })
+      if (!r.data?.audio) return
+      const coach = coachRef.current
+      const clip = coach?.isReady() ? await coach.prepare(r.data.audio, text) : null
+      const audio = new Audio(r.data.audio)
+      currentAudioRef.current = audio
+      if (clip) audio.addEventListener('playing', () => coachRef.current?.start(clip), { once: true })
+      const done = () => { coachRef.current?.stop(); if (currentAudioRef.current === audio) currentAudioRef.current = null }
+      audio.onended = done; audio.onpause = done; audio.onerror = done
+      await audio.play().catch(done)
+    } catch { /* advice voice is optional — the written feedback is already on screen */ }
+  }
 
   // tw: typewriter sync — drives character-by-character reveal timed to actual TTS playback
   // lang: BCP-47 locale (e.g. 'te-IN') to speak this utterance in a native-language browser
@@ -1007,7 +1086,7 @@ const EnglishVoicePractice: React.FC = () => {
 
           // 1) Native-language intro first (static header line, no typewriter).
           if (data.correctionIntroAudio) {
-            await speakAudioUrl(data.correctionIntroAudio)
+            await speakAudioUrl(data.correctionIntroAudio, undefined, data.correctionIntro)
           }
 
           // 2) Then the corrected sentence itself, with its typewriter reveal. No spoken
@@ -1029,7 +1108,7 @@ const EnglishVoicePractice: React.FC = () => {
         // already shown under the correction bubble regardless of whether audio came back.
         if (data.mistakeNote) {
           if (data.mistakeNoteAudio) {
-            steps.push(() => speakAudioUrl(data.mistakeNoteAudio))
+            steps.push(() => speakAudioUrl(data.mistakeNoteAudio, undefined, data.mistakeNote))
           } else {
             // ElevenLabs unavailable/failed — try the browser's own voice for the
             // student's chosen language (if the device has one installed) rather than
@@ -1100,6 +1179,8 @@ const EnglishVoicePractice: React.FC = () => {
     conversationRef.current = ''
     lastUserRef.current = ''
     setMessages([])
+    if (adviceTimerRef.current) { clearTimeout(adviceTimerRef.current); adviceTimerRef.current = null }
+    currentAudioRef.current?.pause()
     setFeedback('')
     setFeedbackScore(null)
     setFeedbackBreakdown(null)
@@ -1190,6 +1271,15 @@ const EnglishVoicePractice: React.FC = () => {
       }, { headers: { Authorization: `Bearer ${token}` } })
       setFeedback(res.data.feedback || '')
       setFeedbackScore(res.data.score ?? null)
+      // Coach reacts to the result: celebrates a pass (60%+); below it, cries, then reads the advice aloud
+      if (typeof res.data.score === 'number') {
+        const passed = res.data.score >= PASS_SCORE
+        coachRef.current?.react(passed ? 'cheer' : 'sad')
+        if (!passed) {
+          const advice = buildCoachAdvice(extractFeedbackTips(res.data.feedback || ''), Math.round(res.data.score))
+          if (advice) adviceTimerRef.current = window.setTimeout(() => speakCoachAdvice(advice), 4500)
+        }
+      }
       setFeedbackBreakdown(res.data.breakdown ?? null)
       setFeedbackMistakes(res.data.mistakes ?? mistakesRef.current)
       setFeedbackConversation(res.data.conversation ?? conversationRef.current)
@@ -1284,7 +1374,10 @@ const EnglishVoicePractice: React.FC = () => {
   // AI Coach panel is just a colored backdrop behind the robot avatar (no
   // camera involved), so it keeps a real color as its default — only the
   // student's own camera panel defaults to "None" (raw feed, no processing).
-  const [aiBgStyle, setAiBgStyle] = useState(BG_OPTIONS[1].style)
+  // Coach panel backdrop: photo backgrounds are shown as the actual photo (softly out of focus,
+  // like a real video call); colour options stay plain. Defaults to the office photo.
+  const aiBgOf = (o: (typeof BG_OPTIONS)[number]) => ((o as any).imageUrl ? `url(${(o as any).imageUrl}) center / cover no-repeat, ${o.style}` : o.style)
+  const [aiBgStyle, setAiBgStyle] = useState(() => aiBgOf(BG_OPTIONS.find(o => o.id === 'office') || BG_OPTIONS[1]))
   const [youBgOption, setYouBgOption] = useState(BG_OPTIONS[0])
   // Whether the student has opted into a virtual background — until they do,
   // the raw webcam feed is shown as-is and the (heavier) ML segmentation
@@ -1348,6 +1441,8 @@ const EnglishVoicePractice: React.FC = () => {
     setSessionStarted(false)
     setSessionEnded(false)
     setMessages([])
+    if (adviceTimerRef.current) { clearTimeout(adviceTimerRef.current); adviceTimerRef.current = null }
+    currentAudioRef.current?.pause()
     setFeedback('')
     setFeedbackScore(null)
     setFeedbackBreakdown(null)
@@ -1562,24 +1657,54 @@ const EnglishVoicePractice: React.FC = () => {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6, flex: 1 }}>
 
             {/* AI Coach panel — equal height */}
-            <div style={{ position: 'relative', background: aiBgStyle, display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+            <div style={{ position: 'relative', background: '#1e293b', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: 12, overflow: 'hidden', flex: 1, minHeight: 0 }}>
+              <div aria-hidden style={{
+                position: 'absolute', inset: aiBgStyle.startsWith('url(') ? -12 : 0, zIndex: 0, background: aiBgStyle,
+                filter: aiBgStyle.startsWith('url(') ? 'blur(3px) brightness(0.92) saturate(0.95)' : 'none',
+              }} />
               <div style={{ position: 'absolute', top: 10, left: 10, background: '#22c55e', borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 700, color: '#fff', display: 'flex', alignItems: 'center', gap: 5, zIndex: 3 }}>
                 <FaRobot style={{ fontSize: 9 }} /> AI Coach
               </div>
-              <button onClick={() => { setShowAiBgPicker(p => !p); setShowYouBgPicker(false) }}
+              <button onClick={() => { setShowAiBgPicker(p => !p); setShowYouBgPicker(false); setShowOutfitPicker(false) }}
                 style={{ position: 'absolute', top: 10, right: 10, zIndex: 4, width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12 }}
                 title="Change background">🎨</button>
-              {showAiBgPicker && (
-                <div style={{ position: 'absolute', top: 42, right: 10, zIndex: 20, background: CARD_BG, borderRadius: 12, padding: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.25)', display: 'flex', gap: 8, flexWrap: 'wrap', width: 160 }}>
-                  {BG_OPTIONS.map(o => (
-                    <button key={o.id} onClick={() => { setAiBgStyle(o.style); setShowAiBgPicker(false) }} title={o.label}
-                      style={{ width: 32, height: 32, borderRadius: 8, background: o.style, border: aiBgStyle === o.style ? `3px solid ${ORANGE}` : '2px solid #e2e8f0', cursor: 'pointer' }} />
+              <button onClick={() => { setShowOutfitPicker(p => !p); setShowAiBgPicker(false) }}
+                style={{ position: 'absolute', top: 10, right: 42, zIndex: 4, width: 26, height: 26, borderRadius: '50%', background: 'rgba(255,255,255,0.85)', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, color: '#334155' }}
+                title="Change coach outfit" aria-label="Change coach outfit"><FaTshirt /></button>
+              {showOutfitPicker && (
+                <div style={{ position: 'absolute', top: 42, right: 42, zIndex: 20, background: CARD_BG, borderRadius: 12, padding: 6, boxShadow: '0 8px 32px rgba(0,0,0,0.25)', display: 'flex', flexDirection: 'column', gap: 2, minWidth: 150 }}>
+                  {(Object.keys(COACH_OUTFITS) as CoachOutfit[]).map(k => (
+                    <button key={k} type="button" onClick={() => pickOutfit(k)}
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, padding: '8px 10px', border: 'none', borderRadius: 8, cursor: 'pointer', fontSize: 12.5, fontWeight: 600, textAlign: 'left', background: coachOutfit === k ? 'rgba(255,122,0,0.1)' : 'transparent', color: coachOutfit === k ? ORANGE : PAGE_TEXT }}>
+                      {COACH_OUTFITS[k]} {coachOutfit === k && <FaCheck size={10} />}
+                    </button>
                   ))}
                 </div>
               )}
-              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 16px', zIndex: 2 }}>
-                <AnimatedRobotSVG isSpeaking={botSpeaking} isListening={isListening} isTyping={isTyping} />
-              </div>
+              {showAiBgPicker && (
+                <div style={{ position: 'absolute', top: 42, right: 10, zIndex: 20, background: CARD_BG, borderRadius: 12, padding: '10px', boxShadow: '0 8px 32px rgba(0,0,0,0.25)', display: 'flex', gap: 8, flexWrap: 'wrap', width: 160 }}>
+                  {BG_OPTIONS.map(o => (
+                    <button key={o.id} onClick={() => { setAiBgStyle(aiBgOf(o)); setShowAiBgPicker(false) }} title={o.label}
+                      style={{ width: 32, height: 32, borderRadius: 8, background: (o as any).thumb ? `url(${(o as any).thumb}) center / cover, ${o.style}` : o.style, border: aiBgStyle === aiBgOf(o) ? `3px solid ${ORANGE}` : '2px solid #e2e8f0', cursor: 'pointer' }} />
+                  ))}
+                </div>
+              )}
+              {coachFailed ? (
+                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '8px 16px', zIndex: 2 }}>
+                  <AnimatedRobotSVG isSpeaking={botSpeaking} isListening={isListening} isTyping={isTyping} />
+                </div>
+              ) : (
+                <div style={{ position: 'absolute', inset: 0, zIndex: 2 }}>
+                  <CoachAvatar3D
+                    key={`${voiceGender}-${coachOutfit}`}
+                    ref={coachRef}
+                    gender={voiceGender}
+                    outfit={coachOutfit}
+                    state={botSpeaking ? 'speaking' : isTyping ? 'thinking' : isListening ? 'listening' : 'idle'}
+                    onError={() => setCoachFailed(true)}
+                  />
+                </div>
+              )}
               <div style={{ position: 'absolute', bottom: 10, left: 12, display: 'flex', gap: 2, alignItems: 'flex-end', zIndex: 3 }}>
                 {[3,5,9,6,11,8,5,7,4,9,5,3,6,4,8].map((h, i) => (
                   <div key={i} style={{ width: 3, height: botSpeaking ? h * 2.5 : 4, background: ORANGE, borderRadius: 2, transition: 'height .18s', opacity: 0.95 }} />
@@ -1831,11 +1956,7 @@ const EnglishVoicePractice: React.FC = () => {
                       /friendly improvement tips?/i.test(l) ||
                       /improvement tips?:/i.test(l)
 
-                    const tips = lines
-                      .filter(l => !isScoreLine(l))
-                      .filter(l => /^[-•*.1-9]|^\d+[.)]/.test(l) || l.startsWith('.'))
-                      .map(l => cleanMd(l))
-                      .filter(t => t.length > 8)
+                    const tips = extractFeedbackTips(feedback)
 
                     const overallLine = lines.filter(l =>
                       !isScoreLine(l) && (
@@ -2269,8 +2390,14 @@ const EnglishVoicePractice: React.FC = () => {
                   )
                 })()}
               </div>
-              <div style={{ fontSize: 12, color: '#94a3b8', marginTop: 8, display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                <FaClock /> Jump into a real conversation for just 60 seconds!
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, marginTop: 14 }}>
+                {[
+                  { icon: <FaClock />, text: `Live conversation of up to ${SESSION_MINUTES} minutes` },
+                ].map(f => (
+                  <span key={f.text} style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 999, background: 'rgba(255,255,255,0.75)', border: '1px solid rgba(236,72,153,0.18)', color: '#334155', fontSize: 12.5, fontWeight: 600, lineHeight: 1.3 }}>
+                    <span style={{ display: 'inline-flex', color: ORANGE, fontSize: 12 }}>{f.icon}</span>{f.text}
+                  </span>
+                ))}
               </div>
             </div>
             <div style={{ position: 'relative', zIndex: 2, flexShrink: 0 }}>
@@ -2649,7 +2776,7 @@ const EnglishVoicePractice: React.FC = () => {
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 16 }}>
                 {[
                   { num: '1', color: '#f97316', bg: '#fff7ed', icon: <FaMicrophone />, title: 'Start a Topic', desc: "Select a topic you're interested in from various real-life scenarios and conversations." },
-                  { num: '2', color: '#3b82f6', bg: '#eff6ff', icon: <FaMicrophone />, title: 'Speak & Record', desc: 'Speak naturally for 60 seconds. Our AI will listen to your pronunciation, fluency and clarity.' },
+                  { num: '2', color: '#3b82f6', bg: '#eff6ff', icon: <FaMicrophone />, title: 'Speak & Record', desc: `Speak naturally for up to ${SESSION_MINUTES} minutes. Our AI listens to your pronunciation, fluency and clarity.` },
                   { num: '3', color: '#8b5cf6', bg: '#f5f3ff', icon: <FaRobot />, title: 'AI Analysis', desc: 'Our AI analyzes your speech on multiple parameters like fluency, grammar, vocabulary and pronunciation.' },
                   { num: '4', color: '#16a34a', bg: '#f0fdf4', icon: <FaChartLine />, title: 'Get Feedback', desc: 'Receive detailed feedback, score and suggestions to help you improve your speaking skills.' },
                   { num: '5', color: '#f59e0b', bg: '#fffbeb', icon: <FaBullseye />, title: 'Track & Improve', desc: 'Track your progress over time and keep practicing to achieve your best score.' },

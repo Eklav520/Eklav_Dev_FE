@@ -29,6 +29,7 @@
     "@mediapipe/camera_utils": "^0.3.1675466862",
     "@mediapipe/face_mesh": "^0.4.1633559619",
     "@mediapipe/selfie_segmentation": "^0.1.1675465747",
+    "@met4citizen/talkinghead": "^1.8.2",
     "@monaco-editor/react": "^4.7.0",
     "@popperjs/core": "^2.11.8",
     "@react-navigation/stack": "^7.4.5",

@@ -1000,6 +1000,13 @@
   dependencies:
     "@chevrotain/types" "~11.1.1"
 
+"@met4citizen/talkinghead@^1.8.2":
+  version "1.8.2"
+  resolved "https://registry.npmjs.org/@met4citizen/talkinghead/-/talkinghead-1.8.2.tgz"
+  integrity sha512-+1EVKIQovJav2uBW7TE6ul50jI2Yh0F40AFWMLIX3sVY3AphpUZ1ebWhZO4I7M/GKdc95gE2eb0qbLtcYWQvZw==
+  dependencies:
+    three "^0.186"
+
 "@monaco-editor/loader@^1.5.0":
   version "1.5.0"
   resolved "https://registry.npmjs.org/@monaco-editor/loader/-/loader-1.5.0.tgz"
@@ -4442,6 +4449,11 @@ text-segmentation@^1.0.3:
   integrity sha512-iOiPUo/BGnZ6+54OsWxZidGCsdU8YbE4PSpdPinp7DeMtUJNJBoJ/ouUSTJjHkh1KntHaltHl/gDs2FC4i5+Nw==
   dependencies:
     utrie "^1.0.2"
+
+three@^0.186:
+  version "0.186.1"
+  resolved "https://registry.npmjs.org/three/-/three-0.186.1.tgz"
+  integrity sha512-blFeqb49wRCSGUGj7gtpfnSGHy2lwDk94RhUmS1c/hTby70kvChbWpkJ4Pm1390LqzzvTmzgXKHPEafJwCb8jA==
 
 tiny-case@^1.0.3:
   version "1.0.3"
