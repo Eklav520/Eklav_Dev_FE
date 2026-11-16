@@ -51,61 +51,6 @@ const estimateTimings = (text: string, durMs: number) => {
   return { words, wtimes, wdurations }
 }
 
-/* A few loose strands falling from the hairline across the forehead towards one eye — softens the
-   slicked-back bun. Built from the eye position, in head-bone space, so they move with the head. */
-const STRAND_COLOR = 0x3a2a22
-const addFaceStrands = (THREE: any, head: any) => {
-  const arm = head.armature
-  const bone = arm?.getObjectByName('Head')
-  let eyes: any = null
-  arm?.traverse((o: any) => { if (!eyes && o.isMesh && /high-poly/i.test(o.name)) eyes = o })
-  if (!bone || !eyes) return
-  arm.updateMatrixWorld(true)
-  const box = new THREE.Box3().setFromObject(eyes)
-  const c = box.getCenter(new THREE.Vector3())
-  const w = box.getSize(new THREE.Vector3()).x          // distance across both eyes ≈ 6–7 cm
-  const front = box.max.z                                // front of the eyes; the face looks along +z
-  const side = 1                                         // her left side (viewer's right)
-  const scale = bone.getWorldScale(new THREE.Vector3()).x || 1
-  const material = new THREE.MeshStandardMaterial({ color: STRAND_COLOR, roughness: 0.5, metalness: 0, transparent: true, opacity: 0.92 })
-  // a soft lock of fine strands: starts under the hairline near the parting, sweeps outward over the
-  // forehead and ends beside the outer eyebrow (never across the eye)
-  const strands = [
-    { dx: 0.10, end: 0.14, r: 0.00094 }, { dx: 0.13, end: 0.10, r: 0.00085 }, { dx: 0.16, end: 0.16, r: 0.00102 },
-    { dx: 0.08, end: 0.20, r: 0.00076 }, { dx: 0.19, end: 0.12, r: 0.00085 }, { dx: 0.12, end: 0.24, r: 0.00068 },
-    { dx: 0.15, end: 0.08, r: 0.00076 },
-  ]
-  for (const st of strands) {
-    const x0 = c.x + side * w * st.dx
-    const pts = [
-      new THREE.Vector3(x0, c.y + w * 1.0, front - w * 0.30),                                       // tucked inside the hair
-      new THREE.Vector3(x0 + side * w * 0.04, c.y + w * 0.82, front - w * 0.03),                    // emerging at the hairline
-      new THREE.Vector3(x0 + side * w * 0.12, c.y + w * 0.62, front + w * 0.075),                   // lifting off the forehead
-      new THREE.Vector3(x0 + side * w * 0.27, c.y + w * 0.36, front + w * 0.085),                   // sweeping outward
-      new THREE.Vector3(x0 + side * w * (0.40 + st.end * 0.3), c.y + w * st.end, front + w * 0.05), // beside the outer brow
-    ].map(v => bone.worldToLocal(v))
-    const curve = new THREE.CatmullRomCurve3(pts)
-    const SEG = 32, RAD = 5
-    const geo = new THREE.TubeGeometry(curve, SEG, st.r / scale, RAD, false)
-    // taper each strand towards its tip, like real hair
-    const pos = geo.attributes.position
-    const v = new THREE.Vector3()
-    for (let i = 0; i <= SEG; i++) {
-      const centre = curve.getPointAt(i / SEG)
-      const k = 1 - 0.75 * (i / SEG)
-      for (let j = 0; j <= RAD; j++) {
-        const idx = i * (RAD + 1) + j
-        v.fromBufferAttribute(pos, idx).sub(centre).multiplyScalar(k).add(centre)
-        pos.setXYZ(idx, v.x, v.y, v.z)
-      }
-    }
-    pos.needsUpdate = true
-    const mesh = new THREE.Mesh(geo, material)
-    mesh.name = 'coachFaceStrand'
-    bone.add(mesh)
-  }
-}
-
 const CoachAvatar3D = forwardRef<CoachAvatarHandle, { state: CoachState; gender?: 'female' | 'male'; outfit?: CoachOutfit; onError?: () => void }>(({ state, gender = 'female', outfit = 'tshirt', onError }, ref) => {
   const nodeRef = useRef<HTMLDivElement>(null)
   const headRef = useRef<any>(null)
@@ -117,10 +62,9 @@ const CoachAvatar3D = forwardRef<CoachAvatarHandle, { state: CoachState; gender?
     let disposed = false
     ;(async () => {
       try {
-        const [{ TalkingHead }, { LipsyncEn }, THREE] = await Promise.all([
+        const [{ TalkingHead }, { LipsyncEn }] = await Promise.all([
           import('@met4citizen/talkinghead'),
           import('@met4citizen/talkinghead/modules/lipsync-en.mjs'),
-          import('three'),
         ])
         if (disposed || !nodeRef.current) return
         const head = new TalkingHead(nodeRef.current, {
@@ -130,8 +74,11 @@ const CoachAvatar3D = forwardRef<CoachAvatarHandle, { state: CoachState; gender?
           cameraView: 'upper',
           cameraRotateEnable: false,
           mixerGainSpeech: 0, // the page plays the audio; the avatar only moves to it
-          avatarIdleEyeContact: 0.6,
-          avatarSpeakingEyeContact: 0.8,
+          // Look at the student nearly all the time, with only small natural head movement
+          avatarIdleEyeContact: 0.9,
+          avatarSpeakingEyeContact: 0.95,
+          avatarIdleHeadMove: 0.2,
+          avatarSpeakingHeadMove: 0.25,
           modelPixelRatio: Math.min(2, window.devicePixelRatio || 1),
           lightAmbientIntensity: 2.2,
           lightDirectIntensity: 28,
@@ -159,7 +106,6 @@ const CoachAvatar3D = forwardRef<CoachAvatarHandle, { state: CoachState; gender?
         )
         if (disposed) { head.dispose?.(); return }
         if (upright) head.setPoseFromTemplate?.(upright, 0)
-        if (gender === 'female') { try { addFaceStrands(THREE, head) } catch (e) { console.warn('Face strands skipped', e) } }
         setReady(true)
       } catch (err) {
         console.error('Coach avatar failed to load', err)
@@ -180,10 +126,35 @@ const CoachAvatar3D = forwardRef<CoachAvatarHandle, { state: CoachState; gender?
     if (!head || !ready) return
     try {
       if (state === 'thinking') { head.setMood('neutral'); head.lookAhead(1200) }
-      else if (state === 'listening') { head.setMood('happy'); head.makeEyeContact(2500) }
+      else if (state === 'listening') { head.setMood('happy'); head.lookAtCamera(600); head.makeEyeContact(6000) }
       else if (state === 'speaking') { head.setMood('happy'); head.lookAtCamera(800) }
       else head.setMood('neutral')
     } catch { /* mood changes are cosmetic */ }
+  }, [state, ready])
+
+  // Body language: while the student talks the coach visibly listens (small nods, an encouraging
+  // smile, steady eye contact); while the coach talks her hands move naturally, like a real speaker.
+  useEffect(() => {
+    const head = headRef.current
+    if (!head || !ready || (state !== 'listening' && state !== 'speaking')) return
+    let timer = 0
+    const rand = (a: number, b: number) => a + Math.random() * (b - a)
+    const tick = () => {
+      try {
+        if (state === 'listening') {
+          const r = Math.random()
+          if (r < 0.5) head.speakEmoji('yes')            // gentle nod
+          else if (r < 0.75) head.speakEmoji('🙂')       // encouraging smile
+          // always come back to the student's eyes after a nod or smile
+          window.setTimeout(() => { try { head.lookAtCamera(500); head.makeEyeContact(5000) } catch { /* cosmetic */ } }, 1300)
+        } else {
+          head.speakWithHands(0, 0.9)                    // a new natural hand movement
+        }
+      } catch { /* body language is cosmetic */ }
+      timer = window.setTimeout(tick, state === 'listening' ? rand(2600, 4800) : rand(2000, 3400))
+    }
+    timer = window.setTimeout(tick, state === 'listening' ? rand(1200, 2200) : rand(400, 900))
+    return () => clearTimeout(timer)
   }, [state, ready])
 
   useImperativeHandle(ref, () => ({
