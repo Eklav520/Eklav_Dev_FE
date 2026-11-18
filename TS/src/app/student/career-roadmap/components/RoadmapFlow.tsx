@@ -12,8 +12,10 @@ import {
   FaRegClock,
   FaStar,
   FaTable,
+  FaTimes,
 } from 'react-icons/fa'
-import { BsArrowLeft } from 'react-icons/bs'
+import Lottie from 'lottie-react'
+import runnerAnim from '@/assets/roadmap-runner.json'
 import { useNavigate } from 'react-router-dom'
 import { useAuthContext } from '@/context/useAuthContext'
 import { type CareerRoadmap, type RoadmapStep } from '../data/roadmaps'
@@ -97,6 +99,15 @@ const imgSrc = (image?: string, title?: string) =>
 /* ─────────────────────────────────────────────────
    Course Quick-View Modal
 ───────────────────────────────────────────────── */
+
+/* The roadmap runner: "Running character" run cycle by drysk_creative on LottieFiles (Lottie Simple
+   License — free for commercial use), background layer removed. Faces right. */
+const PixelRunner = () => (
+  <span className="rm-runner-stride">
+    <Lottie animationData={runnerAnim} loop autoplay rendererSettings={{ preserveAspectRatio: 'xMidYMax meet' }} />
+  </span>
+)
+
 const CourseModal = ({
   course,
   enrolledIds,
@@ -484,6 +495,13 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
   const { user } = useAuthContext()
   const token = user?.token
   const navigate = useNavigate()
+  // Esc closes the roadmap, like the ✕ button
+  useEffect(() => {
+    // (not while a popup is open — Esc then closes the popup instead)
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('.modal.show')) navigate('/student/career-roadmap') }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [navigate])
 
   const flowRef = React.useRef<HTMLDivElement>(null)
   const runnerRef = React.useRef<HTMLDivElement>(null)
@@ -577,13 +595,13 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
           const el = flowEl.querySelector(`[data-step-id="${step.id}"]`) as HTMLElement | null
           if (!el) return
           const r = el.getBoundingClientRect()
-          positions.push({ x: r.left - flowRect.left + r.width / 2, y: r.top - flowRect.top + 18, right: !isRTL })
+          positions.push({ x: r.left - flowRect.left + r.width / 2, y: r.top - flowRect.top, right: !isRTL })
         })
       })
       if (positions.length < 2) return
       const kf: Keyframe[] = positions.map((p, i) => ({
         offset: i / (positions.length - 1),
-        transform: `translate(${p.x - 12}px, ${p.y - 12}px) scaleX(${p.right ? -1 : 1})`,
+        transform: `translate(${p.x - 42}px, ${p.y - 80}px) scaleX(${p.right ? 1 : -1})`,
       }))
       runnerEl.animate(kf, { duration: positions.length * 1400, easing: 'linear', fill: 'forwards', delay: 300 })
     }, 200)
@@ -628,8 +646,9 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
       <div className="rm-root">
         {/* ── Header ── */}
         <div className="rm-header">
-          <button className="rm-back-btn" onClick={() => navigate('/student/career-roadmap')}>
-            <BsArrowLeft className="me-1" /> All Roadmaps
+          {/* Close — back to all roadmaps (also Esc) */}
+          <button type="button" className="rm-close-btn" onClick={() => navigate('/student/career-roadmap')} title="Close roadmap" aria-label="Close roadmap and go back to all roadmaps">
+            <FaTimes />
           </button>
 
           <div className="d-flex justify-content-between align-items-start flex-wrap gap-4 mt-2">
@@ -684,7 +703,7 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
         <div className="rm-flow-body" ref={flowRef}>
           {/* Running boy */}
           <div className="rm-runner" ref={runnerRef} key={roadmap.id}>
-            <span className="rm-runner-icon">🏃</span>
+            <span className="rm-runner-icon"><PixelRunner /></span>
           </div>
 
           {rows.map((row, rowIdx) => {
@@ -827,9 +846,28 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
 
         /* Header */
         .rm-header {
+          position: relative;
           padding: 28px 36px 24px;
           border-bottom: 1px solid #1a2035;
         }
+        .rm-close-btn {
+          position: absolute;
+          top: 16px;
+          right: 16px;
+          z-index: 2;
+          display: grid;
+          place-items: center;
+          width: 36px;
+          height: 36px;
+          border: 1px solid #2a3350;
+          border-radius: 50%;
+          background: #111827;
+          color: #94a3b8;
+          font-size: 14px;
+          cursor: pointer;
+          transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .rm-close-btn:hover { background: #1f2937; color: #fff; border-color: #475569; }
         .rm-back-btn {
           background: none;
           border: none;
@@ -1070,10 +1108,10 @@ const RoadmapFlow = ({ roadmap }: RoadmapFlowProps) => {
         }
         .rm-runner-icon {
           display: block;
-          font-size: 22px;
-          line-height: 1;
-          animation: rmBounce 0.32s infinite ease-in-out;
+          line-height: 0;
+          filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
         }
+        .rm-runner-stride { display: block; width: 84px; height: 84px; }
         @keyframes rmBounce {
           0%, 100% { transform: translateY(0px); }
           50%       { transform: translateY(-4px); }
