@@ -2,6 +2,7 @@
 import { Spinner } from 'react-bootstrap'
 import axios from 'axios'
 import { useAuthContext } from '@/context/useAuthContext'
+import { useProfile } from '@/app/student/dashboard/components/hooks/useProfile'
 import RoboAvatar from './RoboAvatar'
 import AnimatedRobotSVG from './AnimatedRobotSVG'
 import CoachAvatar3D, { COACH_OUTFITS, CoachAvatarHandle, CoachClip, CoachOutfit } from './CoachAvatar3D'
@@ -11,7 +12,7 @@ import {
   FaLightbulb, FaChartLine, FaBolt, FaBullseye, FaUniversity, FaRocket, FaLaptop,
   FaCheck, FaFileAlt, FaMale, FaFemale, FaArrowUp, FaArrowDown, FaInfoCircle,
   FaChevronRight, FaChevronLeft, FaBriefcase, FaGlobe, FaBook, FaUsers, FaVolumeUp, FaVideo, FaStar,
-  FaSpellCheck, FaTachometerAlt, FaFont, FaTimes, FaTrophy, FaTshirt,
+  FaSpellCheck, FaTachometerAlt, FaFont, FaTimes, FaTrophy, FaTshirt, FaPaperPlane,
 } from 'react-icons/fa'
 import robotSpeakingImg from '@/assets/images/Robo.png'
 
@@ -57,6 +58,7 @@ const NATIVE_LANG_STORAGE_KEY = 'eklav_speaking_native_lang'
 const SESSION_SECONDS = 360 // 6 minutes
 const SESSION_MINUTES = Math.round(SESSION_SECONDS / 60)
 const PASS_SCORE = 60
+const GREETING_RE = /^\s*(hi+|hello+|hey+|hai|namaste|good\s+(morning|afternoon|evening))/i
 
 /* "Areas to Improve" tips from the session feedback text. A numbered heading whose text sits on the
    next line (e.g. "4. **Overall encouraging note:**") gets that line joined instead of showing empty. */
@@ -100,6 +102,7 @@ const buildCoachAdvice = (tips: string[], score: number) => {
 const EnglishVoicePractice: React.FC = () => {
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const { user } = useAuthContext()
+  const { profile } = useProfile()
   const token = user?.token
 
   // Full access (status === 'approved', same as institute-granted students)
@@ -343,11 +346,28 @@ const EnglishVoicePractice: React.FC = () => {
   // The currently-playing ElevenLabs clip (if any) — so Pause can actually stop it.
   // speechSynthesis.cancel() only affects the browser-TTS fallback, not these <audio> clips.
   const currentAudioRef = useRef<HTMLAudioElement | null>(null)
+  // Every coach clip that is playing, and a counter bumped on exit: a clip whose voice finished
+  // loading after the student left must never start playing.
+  const liveAudiosRef = useRef(new Set<HTMLAudioElement>())
+  const exitGenRef = useRef(0)
+  const stopAllCoachAudio = () => {
+    exitGenRef.current += 1
+    liveAudiosRef.current.forEach(a => { try { a.pause(); a.src = '' } catch { /* already gone */ } })
+    liveAudiosRef.current.clear()
+    currentAudioRef.current = null
+    try { speechSynthesis.cancel() } catch { /* not supported */ }
+  }
+  // leaving the page mid-session (another menu item, browser back) silences the coach too
+  useEffect(() => () => { if (adviceTimerRef.current) clearTimeout(adviceTimerRef.current); stopAllCoachAudio() }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
   // Realistic 3D coach; falls back to the animated robot if WebGL / the model can't load
   const coachRef = useRef<CoachAvatarHandle>(null)
   const [coachFailed, setCoachFailed] = useState(false)
+  // Today's topic (picked at Start, brought in by the coach after the greeting exchange)
+  const topicRef = useRef('')
+  // the login token carries no name — it comes from the student's profile
+  const studentName = profile?.fullName || profile?.name || profile?.firstName || user?.firstName || user?.fullName || ''
   const adviceTimerRef = useRef<number | null>(null)
-  useEffect(() => () => { if (adviceTimerRef.current) clearTimeout(adviceTimerRef.current) }, [])
   // Coach outfit, picked like the background (remembered on this device)
   const [coachOutfit, setCoachOutfit] = useState<CoachOutfit>(() => {
     try { const v = localStorage.getItem('eklav.coachOutfit'); return v && v in COACH_OUTFITS ? (v as CoachOutfit) : 'tshirt' } catch { return 'tshirt' }
@@ -397,8 +417,13 @@ const EnglishVoicePractice: React.FC = () => {
   // How long to wait after the student's last spoken word before sending their
   // turn to the AI. Kept generous — learners speak slowly with mid-sentence
   // pauses, and a short window was cutting them off and sending fragments.
-  const PAUSE_BEFORE_SEND_MS = 5000
+  // Fallback auto-send after a long silence. The student normally taps → Send the moment they've
+  // finished (instant reply); this only catches the case where they forget to.
+  const PAUSE_BEFORE_SEND_MS = 6000
   const ttsCountRef = useRef(0)
+  // Send what the student has said so far (→ button, or the silence fallback). Kept in a ref so the
+  // speech-recognition callbacks, created once, always call the latest version.
+  const sendAnswerRef = useRef<(extra?: string) => void>(() => { })
   const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([])
   const [voiceGender, setVoiceGender] = useState<'male' | 'female'>('female')
   const [selectedVoiceName, setSelectedVoiceName] = useState<string>('')
@@ -636,12 +661,14 @@ const EnglishVoicePractice: React.FC = () => {
     if (token) fetchSpeakingHistory(selectedHistoryMonth)
   }, [token, selectedHistoryMonth])
 
-  // Auto-scroll to bottom when messages change
+  // Auto-scroll to the bottom whenever the chat grows: new messages, the student's live speech, and
+  // every step of a typewriter reveal (a growing bubble used to slip under the bottom bar)
   useEffect(() => {
-    if (chatBodyRef.current) {
-      chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight
-    }
-  }, [messages, liveSpeech, isTyping])
+    const el = chatBodyRef.current
+    if (!el) return
+    const raf = requestAnimationFrame(() => { el.scrollTop = el.scrollHeight })
+    return () => cancelAnimationFrame(raf)
+  }, [messages, liveSpeech, isTyping, typewriterMap])
 
   useEffect(() => {
     if (!sessionStarted || sessionEnded || isPaused) return
@@ -793,25 +820,8 @@ const EnglishVoicePractice: React.FC = () => {
         setLiveSpeech(accumulatedRef.current)
         clearTimeout(speechPauseTimerRef.current)
         // Wait for a real pause (not a slow speaker's mid-sentence gap) before sending
-        speechPauseTimerRef.current = setTimeout(async () => {
-          const text = accumulatedRef.current.trim()
-          if (!sessionActiveRef.current || !text || text === lastUserRef.current) return
-          lastUserRef.current = text
-          accumulatedRef.current = ''
-          setLiveSpeech('')
-          clearSilenceTimer()
-          // Stop listening the moment the answer is sent — otherwise the recognizer
-          // keeps running silently through the whole "thinking" wait: the mic stays
-          // technically live (can pick up stray sound) and the "Listening for your
-          // answer" placeholder lingers under a message that's already been sent.
-          // It restarts on its own once the coach finishes speaking (onTTSEnd).
-          awaitingReplyRef.current = true
-          stopListening()
-          setMessages((p) => [...p, { id: mkId(), sender: 'user', text, type: 'user' }])
-          transcriptRef.current += `You: ${text}\n`
-          conversationRef.current += `You: ${text}\n`
-          await sendToRob(text)
-        }, PAUSE_BEFORE_SEND_MS)
+        // Fallback only — the student normally taps the → Send button when they've finished
+        speechPauseTimerRef.current = setTimeout(() => sendAnswerRef.current(), PAUSE_BEFORE_SEND_MS)
       }
 
       if (interim.trim()) {
@@ -900,7 +910,9 @@ const EnglishVoicePractice: React.FC = () => {
       const clip: CoachClip | null = coach?.isReady()
         ? await Promise.race([coach.prepare(url, spokenText ?? tw?.displayText), new Promise<null>(r => setTimeout(() => r(null), 600))])
         : null
+      const gen = exitGenRef.current
       const audio = new Audio(url)
+      liveAudiosRef.current.add(audio)
       currentAudioRef.current = audio
       if (clip) audio.addEventListener('playing', () => coachRef.current?.start(clip), { once: true })
 
@@ -934,21 +946,27 @@ const EnglishVoicePractice: React.FC = () => {
       // handlePause() calls audio.pause() directly to interrupt playback — without this,
       // that pause would leave this promise (and the turn's playback loop awaiting it) stuck forever.
       audio.onpause = done
+      audio.addEventListener('ended', () => liveAudiosRef.current.delete(audio))
+      if (gen !== exitGenRef.current) return done() // left while the voice was loading
       audio.play().catch(done)
     })
 
   // After the session: the coach reads its improvement advice aloud (lip-synced), in the session's voice
   const speakCoachAdvice = async (text: string) => {
+    const gen = exitGenRef.current
     try {
       const r = await axios.post(`${baseURL}/api/english/speak`, { text, voiceGender }, { headers: { Authorization: `Bearer ${token}` } })
       if (!r.data?.audio) return
       const coach = coachRef.current
       const clip = coach?.isReady() ? await coach.prepare(r.data.audio, text) : null
+      if (gen !== exitGenRef.current) return
       const audio = new Audio(r.data.audio)
+      liveAudiosRef.current.add(audio)
       currentAudioRef.current = audio
       if (clip) audio.addEventListener('playing', () => coachRef.current?.start(clip), { once: true })
       const done = () => { coachRef.current?.stop(); if (currentAudioRef.current === audio) currentAudioRef.current = null }
       audio.onended = done; audio.onpause = done; audio.onerror = done
+      audio.addEventListener('ended', () => liveAudiosRef.current.delete(audio))
       await audio.play().catch(done)
     } catch { /* advice voice is optional — the written feedback is already on screen */ }
   }
@@ -1045,6 +1063,27 @@ const EnglishVoicePractice: React.FC = () => {
     speechSynthesis.speak(utter)
   })
 
+  sendAnswerRef.current = async (extra?: string) => {
+    clearTimeout(speechPauseTimerRef.current)
+    const text = (extra ?? accumulatedRef.current).trim()
+    if (!sessionActiveRef.current || !text || text === lastUserRef.current) return
+    lastUserRef.current = text
+    accumulatedRef.current = ''
+    setLiveSpeech('')
+    clearSilenceTimer()
+    // Stop listening the moment the answer is sent — otherwise the recognizer
+    // keeps running silently through the whole "thinking" wait: the mic stays
+    // technically live (can pick up stray sound) and the "Listening for your
+    // answer" placeholder lingers under a message that's already been sent.
+    // It restarts on its own once the coach finishes speaking (onTTSEnd).
+    awaitingReplyRef.current = true
+    stopListening()
+    setMessages((p) => [...p, { id: mkId(), sender: 'user', text, type: 'user' }])
+    transcriptRef.current += `You: ${text}\n`
+    conversationRef.current += `You: ${text}\n`
+    await sendToRob(text)
+  }
+
   const sendToRob = async (msg: string) => {
     if (!sessionActiveRef.current) return
     setIsTyping(true)
@@ -1057,7 +1096,23 @@ const EnglishVoicePractice: React.FC = () => {
         history: historyRef.current,
         nativeLanguage,
         voiceGender,
+        studentName,
+        topic: topicRef.current,
+        textOnly: true,
       })
+      // Voice clips are requested separately and all at once: the first one starts playing as soon
+      // as it's ready instead of the whole reply waiting for the slowest clip.
+      const fetchVoice = (text: string, native = false): Promise<string | null> =>
+        axios.post(`${baseURL}/api/english/speak`, { text, voiceGender, native }, { headers: { Authorization: `Bearer ${token}` } })
+          .then(r => r.data?.audio || null).catch(() => null)
+      const hasCorrection = !!data.correction && data.correction !== '-'
+      const voice = {
+        correction: hasCorrection ? fetchVoice(data.correctionIntro ? data.correction : 'Correction: ' + data.correction) : Promise.resolve(null),
+        note: hasCorrection && data.mistakeNote && data.correctionIntro ? fetchVoice(data.mistakeNote, true) : Promise.resolve(null),
+        reply: data.reply ? fetchVoice(data.reply) : Promise.resolve(null),
+      }
+      // "Hi Chitti" / "Hello" / "Good morning"… → the coach waves while she greets them back
+      const greeted = GREETING_RE.test(msg)
 
       const turn: { role: 'user' | 'assistant'; content: string }[] = [{ role: 'user', content: msg }]
       if (data.reply) turn.push({ role: 'assistant', content: data.reply })
@@ -1092,8 +1147,9 @@ const EnglishVoicePractice: React.FC = () => {
           // 2) Then the corrected sentence itself, with its typewriter reveal. No spoken
           // "Correction:" prefix when an intro already announced it.
           const sg = setTimeout(() => clearTypewriter(id), 8000)
-          if (data.correctionAudio) {
-            await speakAudioUrl(data.correctionAudio, { msgId: id, displayText: data.correction })
+          const correctionAudio = await voice.correction
+          if (correctionAudio) {
+            await speakAudioUrl(correctionAudio, { msgId: id, displayText: data.correction })
           } else if (data.correctionIntro) {
             await speak(data.correction, { msgId: id, displayText: data.correction })
           } else {
@@ -1107,16 +1163,16 @@ const EnglishVoicePractice: React.FC = () => {
         // student's chosen help language (mistakeNoteAudio) via ElevenLabs. Text is
         // already shown under the correction bubble regardless of whether audio came back.
         if (data.mistakeNote) {
-          if (data.mistakeNoteAudio) {
-            steps.push(() => speakAudioUrl(data.mistakeNoteAudio, undefined, data.mistakeNote))
-          } else {
+          steps.push(async () => {
+            const noteAudio = await voice.note
+            if (noteAudio) return speakAudioUrl(noteAudio, undefined, data.mistakeNote)
             // ElevenLabs unavailable/failed — try the browser's own voice for the
             // student's chosen language (if the device has one installed) rather than
             // defaulting to English; going silent here reads as "the voice broke" rather
             // than a graceful fallback (confirmed by testing with the key removed).
             const langInfo = NATIVE_LANGUAGES.find(l => l.code === nativeLanguage)
-            steps.push(() => speak(data.mistakeNote, undefined, langInfo?.ttsLang))
-          }
+            return speak(data.mistakeNote, undefined, langInfo?.ttsLang)
+          })
         }
       }
 
@@ -1128,7 +1184,9 @@ const EnglishVoicePractice: React.FC = () => {
           setTypewriterMap(prev => ({ ...prev, [id]: 0 }))
           const sg = setTimeout(() => clearTypewriter(id), 8000)
           const tw = { msgId: id, displayText: data.reply }
-          if (data.replyAudio) await speakAudioUrl(data.replyAudio, tw)
+          if (greeted) coachRef.current?.wave()
+          const replyAudio = await voice.reply
+          if (replyAudio) await speakAudioUrl(replyAudio, tw)
           else await speak(data.reply, tw)
           clearTimeout(sg)
           clearTypewriter(id)
@@ -1228,14 +1286,16 @@ const EnglishVoicePractice: React.FC = () => {
     startMicMonitor()
 
     try {
-      const res = await axios.post(`${baseURL}/api/english/start`, { voiceGender })
+      const res = await axios.post(`${baseURL}/api/english/start`, { voiceGender, studentName })
       if (!sessionActiveRef.current) return
+      topicRef.current = res.data.topic || ''
       const welcomeText = res.data.aiMessage
       const welcomeId = mkId()
       setMessages([{ id: welcomeId, sender: 'eklav', text: welcomeText, type: 'reply' }])
       setTypewriterMap(prev => ({ ...prev, [welcomeId]: 0 }))
       const sg = setTimeout(() => clearTypewriter(welcomeId), 8000)
       const tw = { msgId: welcomeId, displayText: welcomeText }
+      coachRef.current?.wave() // "Hi Jagadeesh!" with a wave
       if (res.data.aiMessageAudio) await speakAudioUrl(res.data.aiMessageAudio, tw)
       else await speak(welcomeText, tw)
       clearTimeout(sg)
@@ -1442,7 +1502,8 @@ const EnglishVoicePractice: React.FC = () => {
     setSessionEnded(false)
     setMessages([])
     if (adviceTimerRef.current) { clearTimeout(adviceTimerRef.current); adviceTimerRef.current = null }
-    currentAudioRef.current?.pause()
+    stopAllCoachAudio()
+    coachRef.current?.stop()
     setFeedback('')
     setFeedbackScore(null)
     setFeedbackBreakdown(null)
@@ -1518,101 +1579,95 @@ const EnglishVoicePractice: React.FC = () => {
         <div style={{ position: 'fixed', inset: 0, zIndex: 9999, background: CARD_BG, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
 
           {/* ── Header ── */}
-          <div style={{ borderBottom: '1px solid #e2e8f0', padding: '0 24px', height: 56, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-            {/* Left: title */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: '50%', background: '#fff7ed', border: `1.5px solid ${ORANGE}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ORANGE, fontSize: 15 }}>
-                <FaMicrophone />
+          <div className="evp-head">
+            <div className="evp-title">
+              <span className="evp-title-icon"><FaMicrophone /></span>
+              <span>Speaking with Eklav</span>
+            </div>
+
+            <div className="evp-head-controls">
+              {/* Coach voice — also switches the coach (girl / boy) */}
+              <div className="evp-seg" role="group" aria-label="Coach voice">
+                <span className="evp-seg-label">Coach voice</span>
+                <button type="button" className={voiceGender === 'male' ? 'is-on' : ''} onClick={() => { setVoiceGender('male'); setSelectedVoiceName('') }}>
+                  <FaMale /> Male
+                </button>
+                <button type="button" className={voiceGender === 'female' ? 'is-on' : ''} onClick={() => { setVoiceGender('female'); setSelectedVoiceName('') }}>
+                  <FaFemale /> Female
+                </button>
               </div>
-              <div>
-                <div style={{ fontWeight: 800, fontSize: 14, color: PAGE_TEXT, lineHeight: 1.2 }}>Speaking with Eklav</div>
-                <div style={{ fontSize: 11, color: '#94a3b8' }}>Have a natural conversation and improve your communication skills</div>
+
+              {/* Help language — explains mistakes in this language, conversation stays in English */}
+              <label className={`evp-select${nativeLanguage !== 'en' ? ' is-on' : ''}`} title="When you make a mistake, the coach explains it in this language">
+                <FaGlobe />
+                <select value={nativeLanguage} onChange={e => setNativeLanguage(e.target.value)}>
+                  {NATIVE_LANGUAGES.map(l => (
+                    <option key={l.code} value={l.code}>{l.code === 'en' ? 'English only' : `Explain in ${l.label}`}</option>
+                  ))}
+                </select>
+              </label>
+
+              <div className={`evp-timer${sessionStarted && !sessionEnded && timeLeft <= 60 ? ' is-low' : ''}`} title="Time left">
+                <FaClock /> <span>{formatTime(timeLeft)}</span>
               </div>
             </div>
 
-            {/* Center: voice + timer + start/pause/stop */}
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}>
-              <div style={{ display: 'flex', border: '1px solid #e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
-                <button style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: PAGE_BG, fontSize: 12, fontWeight: 600, cursor: 'default', color: PAGE_TEXT, border: 'none', borderRight: '1px solid #e2e8f0' }}>
-                  <FaMicrophone style={{ fontSize: 10 }} /> Voice
-                </button>
-                <button onClick={() => { setVoiceGender('male'); setSelectedVoiceName('') }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: voiceGender === 'male' ? '#fff7ed' : PAGE_BG, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: voiceGender === 'male' ? ORANGE : PAGE_TEXT, border: 'none', borderRight: '1px solid #e2e8f0' }}>
-                  <FaMale style={{ fontSize: 10 }} /> Male Voice
-                </button>
-                <button onClick={() => { setVoiceGender('female'); setSelectedVoiceName('') }}
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '5px 13px', background: voiceGender === 'female' ? '#fff7ed' : PAGE_BG, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: voiceGender === 'female' ? ORANGE : PAGE_TEXT, border: 'none' }}>
-                  <FaFemale style={{ fontSize: 10 }} /> Female Voice
-                </button>
-              </div>
-              {/* Voice picker */}
-              {voices.filter(v => v.lang.startsWith('en')).length > 0 && (
-                <select
-                  value={selectedVoiceName}
-                  onChange={e => setSelectedVoiceName(e.target.value)}
-                  style={{ border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: selectedVoiceName ? ORANGE : PAGE_TEXT, background: PAGE_BG, cursor: 'pointer', outline: 'none', maxWidth: 180 }}
-                >
-                  <option value=''>Auto ({voiceGender})</option>
-                  {voices
-                    .filter(v => v.lang.startsWith('en'))
-                    .map(v => (
-                      <option key={v.name} value={v.name}>{v.name}</option>
-                    ))
-                  }
-                </select>
-              )}
-              {/* Help language — explains mistakes in this language, conversation stays in English */}
-              <select
-                value={nativeLanguage}
-                onChange={e => setNativeLanguage(e.target.value)}
-                title="When you make a mistake, the coach explains it in this language"
-                style={{ display: 'flex', alignItems: 'center', border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 10px', fontSize: 12, fontWeight: 600, color: nativeLanguage !== 'en' ? ORANGE : PAGE_TEXT, background: PAGE_BG, cursor: 'pointer', outline: 'none', maxWidth: 150 }}
-              >
-                {NATIVE_LANGUAGES.map(l => (
-                  <option key={l.code} value={l.code}>{l.code === 'en' ? 'English only' : `Explain in ${l.label}`}</option>
-                ))}
-              </select>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 5, background: PAGE_BG, border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 12px' }}>
-                <FaClock style={{ color: PAGE_TEXT, fontSize: 12 }} />
-                <span style={{ fontWeight: 700, fontSize: 12, fontVariantNumeric: 'tabular-nums', color: PAGE_TEXT }}>Time Left: {formatTime(timeLeft)}</span>
-              </div>
-
+            <div className="evp-head-actions">
               {/* Start → Pause / Resume */}
               {!sessionStarted || sessionEnded ? (
-                <button onClick={sessionEnded ? restartSession : handleStartSession}
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, border: `1.5px solid ${ORANGE}`, borderRadius: 8, padding: '5px 14px', background: ORANGE, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#fff' }}>
-                  <FaPlay style={{ fontSize: 9 }} /> {sessionEnded ? 'Restart' : 'Start'}
+                <button type="button" className="evp-btn evp-btn-primary" onClick={sessionEnded ? restartSession : handleStartSession}>
+                  <FaPlay /> {sessionEnded ? 'Restart' : 'Start'}
                 </button>
               ) : isPaused ? (
-                <button onClick={handleResume}
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, border: '1.5px solid #22c55e', borderRadius: 8, padding: '5px 14px', background: '#22c55e', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#fff' }}>
-                  <FaPlay style={{ fontSize: 9 }} /> Resume
+                <button type="button" className="evp-btn evp-btn-success" onClick={handleResume}>
+                  <FaPlay /> Resume
                 </button>
               ) : (
-                <button onClick={handlePause}
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, border: '1px solid #e2e8f0', borderRadius: 8, padding: '5px 14px', background: CARD_BG, fontSize: 12, fontWeight: 600, cursor: 'pointer', color: PAGE_TEXT }}>
-                  <FaPause style={{ fontSize: 9 }} /> Pause
+                <button type="button" className="evp-btn" onClick={handlePause}>
+                  <FaPause /> Pause
                 </button>
               )}
 
               {/* Stop — ends conversation & generates feedback */}
               {sessionStarted && !sessionEnded && (
-                <button onClick={handleEndSession}
-                  style={{ display: 'flex', alignItems: 'center', gap: 5, border: '1.5px solid #ef4444', borderRadius: 8, padding: '5px 14px', background: CARD_BG, fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#ef4444' }}>
-                  <FaStop style={{ fontSize: 9 }} /> Stop
+                <button type="button" className="evp-btn evp-btn-stop" onClick={handleEndSession}>
+                  <FaStop /> Stop
                 </button>
               )}
-            </div>
 
-            {/* Right: End Session — closes modal only */}
-            <button onClick={handleCloseSession}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#ef4444', border: '1.5px solid #ef4444', borderRadius: 8, padding: '6px 16px', fontSize: 12, fontWeight: 700, cursor: 'pointer', color: '#fff', flexShrink: 0 }}>
-              <FaStop style={{ fontSize: 9 }} /> End Session
-            </button>
+              {/* End Session — closes the session screen */}
+              <button type="button" className="evp-btn evp-btn-exit" onClick={handleCloseSession}>
+                <FaTimes /> End Session
+              </button>
+            </div>
           </div>
 
           {/* ── Keyframe styles ── */}
           <style>{`
+            /* ── Session header: one consistent toolbar (34px controls), wraps on narrow screens ── */
+            .evp-head { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 16px; min-height: 60px; padding: 10px 24px; border-bottom: 1px solid #e2e8f0; background: ${CARD_BG}; flex-shrink: 0; }
+            .evp-head * { white-space: nowrap; }
+            .evp-title { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 15px; color: ${PAGE_TEXT}; }
+            .evp-title-icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 10px; background: linear-gradient(135deg, #ff9a3c, ${ORANGE}); color: #fff; font-size: 14px; box-shadow: 0 4px 12px ${ORANGE}40; }
+            .evp-head-controls { flex: 1; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 10px; min-width: 0; }
+            .evp-head-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+            .evp-seg { display: inline-flex; align-items: center; height: 34px; padding: 3px; border: 1px solid #e2e8f0; border-radius: 10px; background: ${PAGE_BG}; }
+            .evp-seg-label { padding: 0 8px 0 6px; font-size: 11px; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.04em; }
+            .evp-seg button { display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 12px; border: 0; border-radius: 7px; background: transparent; color: ${PAGE_GRAY}; font-size: 12.5px; font-weight: 600; cursor: pointer; transition: background .15s, color .15s; }
+            .evp-seg button.is-on { background: ${CARD_BG}; color: ${ORANGE}; box-shadow: 0 1px 3px rgba(15,23,42,0.12); }
+            .evp-select { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 10px 0 11px; border: 1px solid #e2e8f0; border-radius: 10px; background: ${PAGE_BG}; color: ${PAGE_TEXT}; font-size: 12.5px; font-weight: 600; cursor: pointer; margin: 0; }
+            .evp-select.is-on { color: ${ORANGE}; border-color: ${ORANGE}55; background: #fff7ed; }
+            .evp-select select { border: 0; background: transparent; color: inherit; font: inherit; outline: none; cursor: pointer; padding-right: 2px; }
+            .evp-timer { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: ${PAGE_BG}; color: ${PAGE_TEXT}; font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+            .evp-timer.is-low { color: #dc2626; border-color: #fecaca; background: #fef2f2; }
+            .evp-btn { display: inline-flex; align-items: center; gap: 6px; height: 34px; padding: 0 14px; border: 1px solid #e2e8f0; border-radius: 10px; background: ${CARD_BG}; color: ${PAGE_TEXT}; font-size: 12.5px; font-weight: 700; cursor: pointer; transition: filter .15s; }
+            .evp-btn svg { font-size: 10px; }
+            .evp-btn:hover { filter: brightness(0.96); }
+            .evp-btn-primary { border-color: ${ORANGE}; background: ${ORANGE}; color: #fff; box-shadow: 0 4px 12px ${ORANGE}40; }
+            .evp-btn-success { border-color: #16a34a; background: #16a34a; color: #fff; }
+            .evp-btn-stop { border-color: #fecaca; color: #dc2626; }
+            .evp-btn-exit { border-color: #ef4444; background: #ef4444; color: #fff; }
+            @media (max-width: 1100px) { .evp-head-controls { order: 3; flex-basis: 100%; justify-content: flex-start; } }
             @keyframes roboFloat {
               0%,100% { transform: translateY(0px) rotate(0deg); }
               30%      { transform: translateY(-14px) rotate(1.5deg); }
@@ -1632,6 +1687,10 @@ const EnglishVoicePractice: React.FC = () => {
             @keyframes glowRing {
               0%   { transform: translate(-50%,-50%) scale(0.85); opacity: 0.7; }
               100% { transform: translate(-50%,-50%) scale(2.2);  opacity: 0; }
+            }
+            @keyframes sendGlow {
+              0%,100% { box-shadow: 0 3px 10px #16a34a44; }
+              50%     { box-shadow: 0 3px 18px #16a34aaa; }
             }
             @keyframes turnDotPulse {
               0%,100% { transform: scale(1);   opacity: 1; }
@@ -1715,7 +1774,7 @@ const EnglishVoicePractice: React.FC = () => {
                   students having to infer it from the avatar animation alone. */}
               {sessionStarted && !sessionEnded && !isPaused && (
                 <div style={{
-                  position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 3,
+                  position: 'absolute', bottom: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 3,
                   display: 'flex', alignItems: 'center', gap: 6, borderRadius: 20, padding: '5px 14px',
                   fontSize: 12, fontWeight: 700, color: '#fff', whiteSpace: 'nowrap',
                   background: botSpeaking ? '#2563eb' : isTyping ? '#94a3b8' : isListening ? '#16a34a' : '#94a3b8',
@@ -1849,7 +1908,10 @@ const EnglishVoicePractice: React.FC = () => {
                   {messages.map((m, i) => {
                     const isTypingOut = m.sender === 'eklav' && typewriterMap[m.id] !== undefined
                     const twPos = typewriterMap[m.id] ?? 0
-                    const displayText = isTypingOut && twPos > 0 ? m.text.slice(0, twPos) : m.text
+                    // While the voice is loading the bubble stays empty (typing dots) — the text is revealed
+                    // together with the voice, never shown in full first and then re-typed
+                    const displayText = isTypingOut ? m.text.slice(0, twPos) : m.text
+                    const waitingForVoice = isTypingOut && twPos === 0
                     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
                     return (
                       <div key={i} style={{ display: 'flex', justifyContent: m.sender === 'user' ? 'flex-end' : 'flex-start', marginBottom: 12 }}>
@@ -1874,7 +1936,7 @@ const EnglishVoicePractice: React.FC = () => {
                                 </div>
                               )
                             )}
-                            {displayText}{isTypingOut && <span style={{ animation: 'blink 1s infinite' }}>|</span>}
+                            {waitingForVoice ? <span style={{ color: '#94a3b8', letterSpacing: 2 }}>•••</span> : <>{displayText}{isTypingOut && <span style={{ animation: 'blink 1s infinite' }}>|</span>}</>}
                             {m.type === 'correction' && m.note && !isTypingOut && (
                               <div style={{ marginTop: 6, paddingTop: 6, borderTop: '1px dashed #bbf7d0', fontSize: 12.5, color: '#3f6212', lineHeight: 1.5 }}>
                                 <strong style={{ fontWeight: 700 }}>What changed:</strong> {m.note}
@@ -1895,6 +1957,13 @@ const EnglishVoicePractice: React.FC = () => {
                       <div style={{ maxWidth: '70%', background: '#eff6ff', border: '1px solid #bfdbfe', borderRadius: '14px 14px 4px 14px', padding: '8px 13px', fontSize: 13, color: '#1e40af', fontStyle: 'italic', display: 'flex', alignItems: 'center', gap: 6 }}>
                         <FaMicrophone style={{ flexShrink: 0 }} /> {liveSpeech}
                         <span style={{ display: 'inline-block', width: 2, height: 14, background: '#1e40af', animation: 'turnDotPulse 0.9s ease-in-out infinite', flexShrink: 0 }} />
+                        {/* Send: tapped the moment the student has finished — no waiting for a silence timer */}
+                        {isListening && !isTyping && !botSpeaking && (
+                          <button type="button" onClick={() => sendAnswerRef.current(liveSpeech)} title="Send your answer" aria-label="Send your answer"
+                            style={{ display: 'grid', placeItems: 'center', width: 30, height: 30, marginLeft: 4, borderRadius: '50%', border: 'none', background: '#16a34a', color: '#fff', cursor: 'pointer', flexShrink: 0, fontStyle: 'normal', animation: 'sendGlow 1.8s ease-in-out infinite' }}>
+                            <FaPaperPlane size={12} />
+                          </button>
+                        )}
                       </div>
                     </div>
                   ) : isListening && (
@@ -2184,6 +2253,7 @@ const EnglishVoicePractice: React.FC = () => {
                   : !sessionStarted ? 'Click the mic and start speaking...'
                   : botSpeaking ? '🔊 Robo is speaking — listen up'
                   : isTyping ? `Robo is thinking… ${thinkingSeconds}s`
+                  : isListening && liveSpeech ? 'Finished? Tap ➤ on your message to send it'
                   : isListening ? '🎤 Your turn — speak now!'
                   : 'Get ready…'}
               </div>
