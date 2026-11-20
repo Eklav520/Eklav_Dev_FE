@@ -3,7 +3,7 @@ import { Container, Row, Col } from "react-bootstrap";
 import {
   FaArrowRight, FaBookOpen, FaChartLine, FaChevronLeft, FaChevronRight,
   FaBolt, FaCheckCircle, FaClock, FaCode, FaDatabase, FaLayerGroup, FaPlay,
-  FaQuoteLeft, FaStar, FaTerminal, FaTrophy, FaUsers, FaUser, FaBriefcase,
+  FaQuoteLeft, FaStar, FaTerminal, FaTrophy, FaUser, FaBriefcase,
 } from "react-icons/fa";
 import logoLight from "@/assets/images/logo_white.png";
 import heroStudent from "@/assets/images/hero-student.png";
@@ -970,13 +970,6 @@ const About = ({ onStartJourneyClick, onCourseClick }: AboutProps) => {
             </div>
           </div>
 
-          <div className="code-challenge-stats" aria-label="Coding challenge platform highlights">
-            <div><span><FaCode aria-hidden="true" /></span><strong>5000+<small>Problems</small></strong></div>
-            <div><span><FaUsers aria-hidden="true" /></span><strong>50+<small>Topics</small></strong></div>
-            <div><span><FaTrophy aria-hidden="true" /></span><strong>Weekly<small>Coding Contests</small></strong></div>
-            <div><span><FaChartLine aria-hidden="true" /></span><strong>Global<small>Leaderboard</small></strong></div>
-            <div><span><FaBolt aria-hidden="true" /></span><strong>Company<small>Preparation</small></strong></div>
-          </div>
         </Container>
       </section>
 

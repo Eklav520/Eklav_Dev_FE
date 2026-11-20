@@ -3,6 +3,7 @@ import { Modal } from 'react-bootstrap'
 import { FaTimes } from 'react-icons/fa'
 import { profileImageUrl, sName, type Report, type Student } from './studentReportData'
 import StudentProgressView from './StudentProgressView'
+import '@/components/admin-ui/adminUi.css' // aui-modal* styles: the dashboards don't otherwise load the admin UI kit
 
 /* Admin popup: full-screen progress report for one student. The rows themselves live in
    StudentProgressView, which the student's own dashboard also uses. */
