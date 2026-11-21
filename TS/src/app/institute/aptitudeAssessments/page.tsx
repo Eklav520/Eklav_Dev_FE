@@ -3,12 +3,13 @@ import { Modal } from 'react-bootstrap'
 import {
   FaCalculator, FaUsers, FaPercentage, FaTrophy, FaStopwatch, FaChevronLeft, FaChevronRight,
   FaSyncAlt, FaSpinner, FaExclamationTriangle, FaInbox, FaEye, FaTimes, FaCheckCircle, FaTimesCircle,
-  FaCalendarAlt, FaLayerGroup, FaChartLine, FaMedal,
+  FaCalendarAlt, FaLayerGroup, FaChartLine, FaMedal, FaUserGraduate, FaCalendarDay,
 } from 'react-icons/fa'
 import PageMetaData from '@/components/PageMetaData'
+import ReportDrawer from '@/components/dashboard/moduleOverview/ReportDrawer'
 import { useAuthContext } from '@/context/useAuthContext'
 import {
-  AdminPage, PageHeader, StatCards, SearchInput, AdminSelect, TableFooter, EmptyState, ProgressBar,
+  AdminPage, PageHeader, StatCards, SearchInput, AdminSelect, TableFooter, EmptyState, ProgressBar, Tabs,
   initialsOf, scoreBadgeClass, toOptions,
 } from '@/components/admin-ui'
 
@@ -122,8 +123,218 @@ const StudentModal: React.FC<{ attempt: any; onClose: () => void }> = ({ attempt
   )
 }
 
-// ── Main page ──────────────────────────────────────────────────────────────────
-const AptitudeAssessments: React.FC = () => {
+// ── Every student's progress since joining (default view) ────────────────────
+
+type RangeKey = 'all' | 'today' | '7d' | '31d' | 'custom'
+const RANGE_OPTIONS: { value: RangeKey; label: string }[] = [
+  { value: 'all', label: 'Till Now' }, { value: 'today', label: 'Today' },
+  { value: '7d', label: 'Last 7 days' }, { value: '31d', label: 'Last 31 days' }, { value: 'custom', label: 'Custom range' },
+]
+const rangeDates = (key: RangeKey, customFrom: string, customTo: string) => {
+  const today = ymd(new Date())
+  if (key === 'today') return { from: today, to: today }
+  if (key === '7d') return { from: shiftDay(today, -6), to: today }
+  if (key === '31d') return { from: shiftDay(today, -30), to: today }
+  if (key === 'custom') return { from: customFrom, to: customTo }
+  return { from: '', to: today } // till now: since each student joined
+}
+const shortDate = (d: string | null) => (d ? new Date(`${d.slice(0, 10)}T00:00:00`).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—')
+
+/* One student's attempt history (side panel) */
+const HistoryModal: React.FC<{ student: any; from: string; to: string; onClose: () => void }> = ({ student, from, to, onClose }) => {
+  const { user } = useAuthContext()
+  const [attempts, setAttempts] = useState<any[] | null>(null)
+  useEffect(() => {
+    if (!student || !user?.token) return
+    setAttempts(null)
+    const q = new URLSearchParams({ studentId: student.studentId, to, ...(from ? { from } : {}) })
+    fetch(`${import.meta.env.VITE_API_BASE_URL}/api/institute/daily-aptitude/student-attempts?${q}`, { headers: { Authorization: `Bearer ${user.token}` } })
+      .then((r) => r.json()).then((d) => setAttempts(d.success ? d.attempts : [])).catch(() => setAttempts([]))
+  }, [student, from, to, user?.token])
+
+  if (!student) return null
+  const tone = (p: number): 'green' | 'amber' | 'red' => (p >= 70 ? 'green' : p >= 40 ? 'amber' : 'red')
+  return (
+    <ReportDrawer
+      name={student.name}
+      email={student.email}
+      meta={`Joined ${shortDate(student.joinedOn)}`}
+      badge={student.attempts ? <span className="aui-badge aui-badge-green">{student.attempts} exams</span> : <span className="aui-badge aui-badge-muted">Not attempted</span>}
+      onClose={onClose}
+      stats={[
+        { label: 'Exams taken', value: student.attempts, hint: `of ${student.availableDays} days`, tone: 'orange' },
+        { label: 'Participation', value: `${student.participation}%`, tone: 'blue' },
+        { label: 'Average', value: student.attempts ? `${student.avgPct}%` : '—', tone: student.attempts ? tone(student.avgPct) : 'plain' },
+        { label: 'Best', value: student.attempts ? `${student.bestPct}%` : '—', tone: student.attempts ? tone(student.bestPct) : 'plain' },
+      ]}
+    >
+      <h4 className="rd-section-title">Exam history</h4>
+      {attempts === null ? (
+        <div className="rd-empty"><FaSpinner className="aui-spin" size={18} /><span>Loading…</span></div>
+      ) : attempts.length === 0 ? (
+        <div className="rd-empty"><FaInbox size={18} /><span>No aptitude exams taken in this period.</span></div>
+      ) : (
+        <div className="rd-list">
+          {attempts.map((a) => (
+            <div key={a.date} className="rd-item apa-hist-item">
+              <div className="rd-item-top">
+                <span className="rd-thumb is-text"><FaCalendarAlt /></span>
+                <div className="rd-item-title">
+                  <strong>{longDate(a.date)}</strong>
+                  <small>Submitted {new Date(a.submittedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })} · took {formatSecs(a.timeTakenSeconds)}</small>
+                </div>
+                <span className={`aui-badge ${CATEGORY_BADGE[a.category] || 'aui-badge-muted'}`}>{a.category || '—'}</span>
+              </div>
+              <div className="rd-progress">
+                <span><i style={{ width: `${a.percentage}%`, background: pctColor(a.percentage) }} /></span>
+                <b>{a.score}/{a.total} · {a.percentage}%</b>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </ReportDrawer>
+  )
+}
+
+const STUDENTS_PAGE = 10
+
+const StudentsProgress: React.FC = () => {
+  const { user } = useAuthContext()
+  const baseURL = import.meta.env.VITE_API_BASE_URL
+  const token = user?.token
+  const today = ymd(new Date())
+  const [range, setRange] = useState<RangeKey>('all')
+  const [customFrom, setCustomFrom] = useState(shiftDay(today, -30))
+  const [customTo, setCustomTo] = useState(today)
+  const [applied, setApplied] = useState({ from: '', to: today })
+  const [page, setPage] = useState(1)
+  const [search, setSearch] = useState('')
+  const [show, setShow] = useState<'all' | 'attempted' | 'not-attempted'>('all')
+  const [data, setData] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [selected, setSelected] = useState<any>(null)
+
+  const onRange = (key: string) => {
+    const k = key as RangeKey
+    setRange(k)
+    if (k !== 'custom') { setApplied(rangeDates(k, customFrom, customTo)); setPage(1) }
+  }
+
+  const load = useCallback(async () => {
+    if (!token) return
+    setLoading(true); setError('')
+    try {
+      const q = new URLSearchParams({ to: applied.to, page: String(page), limit: String(STUDENTS_PAGE), search, show, ...(applied.from ? { from: applied.from } : {}) })
+      const res = await fetch(`${baseURL}/api/institute/daily-aptitude/students-summary?${q}`, { headers: { Authorization: `Bearer ${token}` } })
+      const json = await res.json()
+      if (json.success) setData(json)
+      else setError(json.message || 'Failed to load progress')
+    } catch {
+      setError('Network error. Please try again.')
+    } finally {
+      setLoading(false)
+    }
+  }, [baseURL, token, applied, page, search, show])
+
+  // Search waits a moment after typing
+  useEffect(() => { const t = setTimeout(load, search ? 350 : 0); return () => clearTimeout(t) }, [load, search])
+
+  const s = data?.summary
+  const rows: any[] = data?.students ?? []
+  const periodLabel = range === 'custom' ? `${shortDate(applied.from)} – ${shortDate(applied.to)}` : RANGE_OPTIONS.find((o) => o.value === range)?.label
+
+  return (
+    <>
+      <StatCards
+        loading={loading && !data}
+        items={[
+          { label: 'Students', value: s?.totalStudents ?? 0, icon: FaUsers, tone: 'orange', hint: 'in your institute' },
+          { label: 'Attempted', value: s ? `${s.studentsAttempted}` : '—', icon: FaCheckCircle, tone: 'green', hint: s?.totalStudents ? `${Math.round((s.studentsAttempted / s.totalStudents) * 100)}% of students · ${periodLabel}` : periodLabel },
+          { label: 'Exams Taken', value: s?.totalAttempts ?? 0, icon: FaCalendarAlt, tone: 'blue', hint: `${s?.todayAttempts ?? 0} today` },
+          { label: 'Avg Score', value: s?.studentsAttempted ? `${s.avgPct}%` : '—', icon: FaPercentage, tone: 'amber', hint: 'of students who attempted' },
+        ]}
+      />
+
+      {error && <div className="aui-alert"><FaExclamationTriangle /> <span>{error}</span></div>}
+
+      <div className="aui-card">
+        <div className="aui-toolbar">
+          <div className="aui-toolbar-title">
+            <h3>Student progress</h3>
+            <p>{periodLabel === 'Till Now' ? 'Since each student joined, till today' : periodLabel}</p>
+          </div>
+          <div className="aui-toolbar-filters">
+            <SearchInput value={search} onChange={(v) => { setSearch(v); setPage(1) }} placeholder="Search student…" />
+            <AdminSelect label="Period" prefix="Date:" value={range} options={RANGE_OPTIONS} onChange={onRange} />
+            {range === 'custom' && (
+              <span className="apa-custom">
+                <input type="date" className="aui-date" value={customFrom} max={customTo} onChange={(e) => setCustomFrom(e.target.value)} aria-label="From" />
+                <input type="date" className="aui-date" value={customTo} min={customFrom} max={today} onChange={(e) => setCustomTo(e.target.value)} aria-label="To" />
+                <button type="button" className="aui-btn aui-btn-sm aui-btn-primary" onClick={() => { setApplied({ from: customFrom, to: customTo }); setPage(1) }}>Apply</button>
+              </span>
+            )}
+            <AdminSelect label="Show" prefix="Show:" value={show} options={[{ value: 'all', label: 'All students' }, { value: 'attempted', label: 'Attempted' }, { value: 'not-attempted', label: 'Not attempted' }]} onChange={(v) => { setShow(v as typeof show); setPage(1) }} />
+            <button type="button" className="aui-btn" onClick={load} disabled={loading}><FaSyncAlt size={11} className={loading ? 'aui-spin' : ''} /> Refresh</button>
+          </div>
+        </div>
+
+        {loading && !data ? (
+          <div className="aui-empty"><FaSpinner className="aui-spin" size={22} /> Loading progress…</div>
+        ) : rows.length === 0 ? (
+          <EmptyState icon={FaInbox} title="No students match" text="Try a different name, period or filter." />
+        ) : (
+          <>
+            <div className={`aui-table-scroll${loading ? ' apa-busy' : ''}`}>
+              <table className="aui-table">
+                <thead>
+                  <tr>
+                    <th style={{ width: 80 }}>Rank</th>
+                    <th>Student</th>
+                    <th style={{ width: 120 }}>Exams taken</th>
+                    <th style={{ width: 190 }}>Participation</th>
+                    <th style={{ width: 190 }}>Average score</th>
+                    <th style={{ width: 90 }}>Best</th>
+                    <th style={{ width: 120 }}>Last attempt</th>
+                    <th style={{ width: 90 }} className="text-end">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((r) => (
+                    <tr key={r.studentId} className={`apa-row${r.attempts ? '' : ' apa-row-none'}`} onClick={() => setSelected(r)}>
+                      <td>{r.rank ? <RankBadge rank={r.rank} /> : <span className="aui-badge aui-badge-muted">—</span>}</td>
+                      <td>
+                        <div className="aui-person">
+                          <span className="aui-avatar">{initialsOf(r.name)}</span>
+                          <div className="aui-stack"><strong>{r.name}</strong><small>{r.email} · joined {shortDate(r.joinedOn)}</small></div>
+                        </div>
+                      </td>
+                      <td><strong>{r.attempts}</strong> <small className="apa-of">/ {r.availableDays} days</small></td>
+                      <td>{r.attempts ? <ProgressBar value={r.participation} tone={r.participation >= 60 ? 'green' : r.participation >= 25 ? 'amber' : 'orange'} label={`${r.participation}%`} /> : <span className="aui-badge aui-badge-muted">Not attempted</span>}</td>
+                      <td>{r.attempts ? <ProgressBar value={r.avgPct} tone={r.avgPct >= 70 ? 'green' : r.avgPct >= 40 ? 'amber' : 'orange'} label={`${r.avgPct}%`} /> : <span className="apa-of">—</span>}</td>
+                      <td>{r.attempts ? <span className={`aui-badge ${scoreBadgeClass(r.bestPct >= 70 ? 80 : r.bestPct >= 40 ? 50 : 0)}`}>{r.bestPct}%</span> : <span className="apa-of">—</span>}</td>
+                      <td className="aui-num">{r.lastAttempt ? shortDate(r.lastAttempt) : '—'}</td>
+                      <td className="text-end">
+                        <button type="button" className="aui-btn aui-btn-sm" onClick={(e) => { e.stopPropagation(); setSelected(r) }}><FaEye size={11} /> View</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <TableFooter page={page} pageSize={STUDENTS_PAGE} total={data.total ?? rows.length} onPageChange={setPage} noun="students" />
+          </>
+        )}
+      </div>
+
+      <HistoryModal student={selected} from={applied.from} to={applied.to} onClose={() => setSelected(null)} />
+    </>
+  )
+}
+
+// ── One day's results (the original view) ───────────────────────────────────────
+const DailyResults: React.FC = () => {
   const { user } = useAuthContext()
   const baseURL = import.meta.env.VITE_API_BASE_URL
   const token = user?.token
@@ -186,15 +397,8 @@ const AptitudeAssessments: React.FC = () => {
   const filtered = !!(search || category)
 
   return (
-    <AdminPage>
-      <PageMetaData title="Aptitude Assessments" />
-
-      <PageHeader
-        icon={FaCalculator}
-        title="Aptitude Assessments"
-        stats={
+    <>
           <StatCards
-            inline
             loading={loading && !data}
             items={[
               { label: 'Attempts', value: data?.total ?? 0, icon: FaUsers, tone: 'orange' },
@@ -203,8 +407,6 @@ const AptitudeAssessments: React.FC = () => {
               { label: 'Avg Time', value: pageStats ? formatSecs(pageStats.avgTime) : '—', icon: FaStopwatch, tone: 'blue', hint: partial },
             ]}
           />
-        }
-      />
 
       {error && <div className="aui-alert"><FaExclamationTriangle /> <span>{error}</span></div>}
 
@@ -299,8 +501,37 @@ const AptitudeAssessments: React.FC = () => {
       </div>
 
       <StudentModal attempt={selected} onClose={() => setSelected(null)} />
+    </>
+  )
+}
+
+// ── Page: every student's progress (default) or one day's results ───────────────
+const AptitudeAssessments: React.FC = () => {
+  const [view, setView] = useState<'students' | 'daily'>('students')
+  return (
+    <AdminPage>
+      <PageMetaData title="Aptitude Assessments" />
+      <PageHeader
+        icon={FaCalculator}
+        title="Aptitude Assessments"
+        subtitle={view === 'students' ? 'Every student’s daily aptitude progress, from the day they joined' : 'Results of the daily aptitude exam, day by day'}
+        actions={
+          <Tabs
+            items={[{ value: 'students', label: 'All students', icon: FaUserGraduate }, { value: 'daily', label: 'Daily results', icon: FaCalendarDay }]}
+            value={view}
+            onChange={setView}
+          />
+        }
+      />
+      {view === 'students' ? <StudentsProgress /> : <DailyResults />}
 
       <style>{`
+        .apa-custom { display: inline-flex; align-items: center; gap: 6px; }
+        .apa-of { color: #858a90; font-size: 0.74rem; }
+        .apa-row-none { opacity: 0.78; }
+        .apa-tiles-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); margin-bottom: 1rem; }
+        .rd-progress > b.apa-wide, .apa-hist-item .rd-progress > b { min-width: 96px; }
+        @media (max-width: 767.98px) { .apa-tiles-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
         .apa-datebar { display: flex; align-items: center; gap: 8px; min-width: 0; }
         .apa-date-title { margin-left: 6px; }
         .apa-date-title h3 { white-space: nowrap; }
