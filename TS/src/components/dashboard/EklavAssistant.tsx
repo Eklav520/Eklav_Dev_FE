@@ -18,8 +18,10 @@ type Row = {
   id: string; rank: number; name: string; email: string; rollNumber: string; branch: string; joiningYear: string
   overall: number; engagement: number; course: number; interview: number; english: number; assessment: number; code: number
   timeSecs: number; activeDays: number; status: 'on-track' | 'needs-attention' | 'at-risk' | 'not-started'
+  /** Extra detail for activity lists, e.g. "Joined 18 Nov 2026" or "12-month plan expired 03 Nov 2026" */
+  note?: string
 }
-type Table = { title: string; sortBy: string; period: string; view?: 'summary' | 'full'; single?: boolean; total: number; rows: Row[] }
+type Table = { title: string; sortBy: string; period: string; view?: 'summary' | 'full'; single?: boolean; noteLabel?: string; total: number; rows: Row[] }
 type ExamRound = { roundType: string; label: string; enabled: boolean; pickCount: number; timeSeconds: number; startDateTime: string; endDateTime: string; passPercentage: number }
 type ExamDraft = { title: string; description: string; branch: string[]; joiningYear: string[]; rounds: ExamRound[] }
 type Action =
@@ -65,13 +67,16 @@ const RichText = ({ text }: { text: string }) => (
 
 /* ── Student table + exports ─────────────────────────────────── */
 
-const exportRows = (table: Table) => ({
-  head: ['Rank', 'Student', 'Email', 'Roll No', 'Branch', 'Year', 'Overall %', 'Engagement %', 'Course %', 'AI Interview %', 'English %', 'Assessments %', 'Code %', 'Time Spent', 'Status'],
-  body: table.rows.map((r) => [
-    r.rank, r.name, r.email, r.rollNumber, r.branch, r.joiningYear, r.overall, r.engagement, r.course, r.interview,
-    r.english, r.assessment, r.code, fmtTime(r.timeSecs), STATUS_LABELS[r.status],
-  ]),
-})
+const exportRows = (table: Table) => {
+  const withNote = table.rows.some((r) => r.note)
+  return {
+    head: ['Rank', 'Student', 'Email', 'Roll No', 'Branch', 'Year', 'Overall %', 'Engagement %', 'Course %', 'AI Interview %', 'English %', 'Assessments %', 'Code %', 'Time Spent', 'Status', ...(withNote ? [table.noteLabel || 'Details'] : [])],
+    body: table.rows.map((r) => [
+      r.rank, r.name, r.email, r.rollNumber, r.branch, r.joiningYear, r.overall, r.engagement, r.course, r.interview,
+      r.english, r.assessment, r.code, fmtTime(r.timeSecs), STATUS_LABELS[r.status], ...(withNote ? [r.note || ''] : []),
+    ]),
+  }
+}
 
 const downloadCsv = (table: Table) => {
   const { head, body } = exportRows(table)
@@ -281,7 +286,7 @@ const ResultChip = ({ table, active, onOpen }: { table: Table; active: boolean; 
       <span className="eka-result-icon"><FaTable /></span>
       <span className="eka-result-text">
         <b>{table.title}</b>
-        <small>{table.single || table.rows.length === 1
+        <small>{table.single || (table.rows.length === 1 && !table.rows[0].note)
           ? `Student report · ${table.rows[0]?.overall ?? 0}% overall · ${STATUS_LABELS[table.rows[0]?.status || 'not-started']}`
           : `${table.rows.length} students · avg ${avg}% · ${count('at-risk')} at risk · ${PERIOD_LABELS[table.period] || 'All time'}`}</small>
       </span>
@@ -354,7 +359,9 @@ const ResultsPanel = ({ tables, index, onIndex, onClose, onAsk, preparedFor }: {
 }) => {
   const table = tables[index]
   // A single student gets a profile instead of a one-row table
-  const single = Boolean(table.single) || table.rows.length === 1
+  const single = Boolean(table.single) || (table.rows.length === 1 && !table.rows[0].note)
+  // Activity lists (recently joined / expired) carry a date per student
+  const hasNote = table.rows.some((r) => r.note)
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<'all' | Row['status']>('all')
   const [full, setFull] = useState(table.view === 'full')
@@ -440,7 +447,7 @@ const ResultsPanel = ({ tables, index, onIndex, onClose, onAsk, preparedFor }: {
         <table className={full ? 'is-full' : ''}>
           <thead>
             <tr>
-              {th('rank', '#')}{th('name', 'Student')}{th('branch', 'Branch')}
+              {th('rank', '#')}{th('name', 'Student')}{hasNote && <th>{table.noteLabel || 'Details'}</th>}{th('branch', 'Branch')}
               {extra && th(extra, COLUMN_LABELS[extra as string], true)}
               {th('overall', 'Overall', true)}
               {full && FULL_COLUMNS.map(([key, label]) => <Fragment key={key}>{th(key, label, true)}</Fragment>)}
@@ -454,6 +461,7 @@ const ResultsPanel = ({ tables, index, onIndex, onClose, onAsk, preparedFor }: {
               <tr key={r.id} onClick={() => onAsk(`Give me the full report of ${r.name}${r.rollNumber ? ` (${r.rollNumber})` : ''}`)} title={`Ask Eklav about ${r.name}`}>
                 <td>{medals && i < 3 && r.rank === i + 1 ? <span className={`eka-medal m${i + 1}`}>{i + 1}</span> : r.rank}</td>
                 <td><span className="eka-name">{r.name}</span>{(r.rollNumber || r.email) && <small>{r.rollNumber || r.email}</small>}</td>
+                {hasNote && <td className="eka-note">{r.note || '—'}</td>}
                 <td>{r.branch || '—'}</td>
                 {extra && <td className="eka-num">{extraValue(r, extra as string)}</td>}
                 <td className={`eka-num eka-score ${r.status === 'not-started' ? 'is-none' : scoreClass(r.overall)}`}>{r.overall}%</td>
@@ -1292,6 +1300,7 @@ Ask me about your students, say “create an exam”, or tell me which page to o
         .eka-profile-actions button { height: 34px; padding: 0 14px; border: 1px solid #2a2d31; border-radius: 999px; background: #121417; color: #c9cdd2; font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
         .eka-profile-actions button:hover { border-color: rgba(255,122,0,0.55); color: #ffb15e; }
         @media (max-width: 640px) { .eka-profile-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .eka-profile-mod { grid-template-columns: 110px 1fr 42px; } }
+        .eka-panel-table td.eka-note { color: #ffb15e; font-weight: 600; white-space: nowrap; }
         .eka-typing { display: inline-flex; align-items: center; gap: 4px; }
         .eka-typing span { width: 6px; height: 6px; border-radius: 50%; background: #ff9a3c; animation: eka-dot 1.1s infinite ease-in-out; }
         .eka-typing span:nth-child(2) { animation-delay: .15s; } .eka-typing span:nth-child(3) { animation-delay: .3s; }
