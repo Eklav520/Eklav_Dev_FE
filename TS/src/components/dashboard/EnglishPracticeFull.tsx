@@ -4,10 +4,19 @@ import { Spinner } from 'react-bootstrap'
 import {
   FaMicrophone, FaPencilAlt, FaBook, FaHeadphones, FaBolt, FaLanguage,
   FaSearch, FaArrowUp, FaArrowDown, FaMinus, FaDownload, FaUserGraduate, FaCheckCircle,
-  FaBookOpen, FaRandom, FaTheaterMasks, FaSpellCheck, FaLayerGroup,
+  FaBookOpen, FaRandom, FaTheaterMasks, FaSpellCheck, FaLayerGroup, FaFilePdf
 } from 'react-icons/fa'
 import * as XLSX from 'xlsx'
 import { useAuthContext } from '@/context/useAuthContext'
+import { exportBrandedPdf } from './moduleOverview/brandedPdf'
+import { ReportPagination, ScoreBar, StatusPill, StudentCell, ViewButton } from './moduleOverview/ReportCells'
+import { HeaderSelect } from './StudentReports'
+import { CohortFilters, withCohort } from './moduleOverview/cohort'
+import { ReportRangeSelect, useReportRange } from './moduleOverview/range'
+import ReportDrawer from './moduleOverview/ReportDrawer'
+
+// Card footnote colour: grey stays the Student Reports rule grey, trend colours keep their meaning
+const dimAccent = (c: string) => (/^#(888|999|666|555|aaa)$/i.test(c) ? '#8a9097' : c)
 
 /* ─── Types ─────────────────────────────────────────────── */
 type SkillStat = { utilized: number; capacity: number; utilizationPct: number; avgScore: number; studentsUsed?: number }
@@ -112,7 +121,7 @@ const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Se
 /* ─── Styles ─────────────────────────────────────────────── */
 const S = {
   statGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.6rem', marginBottom: '1rem' } as React.CSSProperties,
-  statCard: { background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '10px', padding: '0.65rem 0.8rem' } as React.CSSProperties,
+  statCard: { background: '#111315', border: '1px solid #272a2e', borderRadius: '11px', padding: '0.65rem 0.8rem' } as React.CSSProperties,
   iconCircle: (accent: string): React.CSSProperties => ({
     background: accent, borderRadius: '50%', width: 26, height: 26,
     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -120,10 +129,10 @@ const S = {
   numSm: { fontSize: '1.3rem', fontWeight: 800, color: '#fff', lineHeight: 1, marginBottom: 3 } as React.CSSProperties,
   labelSm: { color: '#999', fontSize: '0.72rem' } as React.CSSProperties,
   sub: (accent: string): React.CSSProperties => ({ color: accent, fontSize: '0.66rem', fontWeight: 600, display: 'block' }),
-  card:  { background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: 14 } as React.CSSProperties,
-  th:    { background: '#111', color: '#555', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' as const, padding: '0.7rem 0.9rem', textAlign: 'left' as const, borderBottom: '1px solid #2a2a2a', whiteSpace: 'nowrap' as const },
-  td:    { padding: '0.65rem 0.9rem', borderBottom: '1px solid #1e1e1e', color: '#e0e0e0', fontSize: '0.8rem', whiteSpace: 'nowrap' as const } as React.CSSProperties,
-  tdMut: { padding: '0.65rem 0.9rem', borderBottom: '1px solid #1e1e1e', color: '#aaa', fontSize: '0.76rem', whiteSpace: 'nowrap' as const } as React.CSSProperties,
+  card:  { background: '#0e1012', border: '1px solid #272a2e', borderRadius: 12 } as React.CSSProperties,
+  th:    { background: '#111', color: '#555', fontSize: '0.68rem', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' as const, padding: '0.7rem 0.9rem', textAlign: 'left' as const, borderBottom: '1px solid #202326', whiteSpace: 'nowrap' as const },
+  td:    { padding: '0.65rem 0.9rem', borderBottom: '1px solid #202326', color: '#e0e0e0', fontSize: '0.8rem', whiteSpace: 'nowrap' as const } as React.CSSProperties,
+  tdMut: { padding: '0.65rem 0.9rem', borderBottom: '1px solid #202326', color: '#aaa', fontSize: '0.76rem', whiteSpace: 'nowrap' as const } as React.CSSProperties,
   select: {
     background: '#111', border: '1px solid #2a2a2a', color: '#fff', borderRadius: 8, padding: '6px 26px 6px 12px', fontSize: '0.82rem', cursor: 'pointer',
     appearance: 'none' as const,
@@ -131,7 +140,7 @@ const S = {
     backgroundRepeat: 'no-repeat', backgroundPosition: 'right 10px center',
   } as React.CSSProperties,
   searchInput: { background: '#111', border: '1px solid #2a2a2a', color: '#fff', borderRadius: 8, padding: '6px 12px 6px 28px', fontSize: '0.82rem', width: 200 } as React.CSSProperties,
-  footer: { background: '#111', borderTop: '1px solid #2a2a2a', color: '#555', fontSize: '0.78rem', borderRadius: '0 0 14px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: '0.5rem', padding: '0.75rem 1.25rem' } as React.CSSProperties,
+  footer: { background: '#111', borderTop: '1px solid #25282b', color: '#555', fontSize: '0.78rem', borderRadius: '0 0 14px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' as const, gap: '0.5rem', padding: '0.75rem 1.25rem' } as React.CSSProperties,
   sectionLabel: { color: '#aaa', fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' as const, marginBottom: '0.75rem' } as React.CSSProperties,
   headerBtn: (accent: string): React.CSSProperties => ({
     display: 'flex', alignItems: 'center', gap: 6,
@@ -201,8 +210,10 @@ const ScoreCell = ({ entry, color, showAttempts = false }: { entry: SkillEntry; 
 }
 
 /* ─── Main Component ─────────────────────────────────────── */
-const EnglishPracticeFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) => {
+const EnglishPracticeFull = ({ apiBase = '/api/institute', view = 'practice' }: { apiBase?: string; view?: 'practice' | 'lsrw' }) => {
   const { user } = useAuthContext()
+  // Date range shared by every report tab (default: till now)
+  const range = useReportRange()
   const baseURL  = import.meta.env.VITE_API_BASE_URL
 
   const now = new Date()
@@ -219,9 +230,9 @@ const EnglishPracticeFull = ({ apiBase = '/api/institute' }: { apiBase?: string 
   const [rangeMode, setRangeMode]     = useState<'monthly' | 'custom'>('monthly')
   const [customStart, setCustomStart] = useState(toDateStr(new Date(now.getFullYear(), now.getMonth(), 1)))
   const [customEnd, setCustomEnd]     = useState(toDateStr(now))
-  const [appliedStart, setAppliedStart] = useState('')
-  const [appliedEnd, setAppliedEnd]     = useState('')
-  const isCustom = rangeMode === 'custom' && Boolean(appliedStart && appliedEnd)
+  const [appliedStart, setAppliedStart] = useState(range.from)
+  const [appliedEnd, setAppliedEnd]     = useState(range.to)
+  const isCustom = true // the shared date range always supplies start / end dates
 
   const applyCustomRange = () => {
     setAppliedStart(customStart)
@@ -232,14 +243,15 @@ const EnglishPracticeFull = ({ apiBase = '/api/institute' }: { apiBase?: string 
     isCustom ? { startDate: appliedStart, endDate: appliedEnd } : { monthKey }
 
   const [students, setStudents]   = useState<StudentRow[]>([])
-  const [pagination, setPag]      = useState<Pagination>({ total: 0, page: 1, limit: 20, totalPages: 1 })
+  const [pagination, setPag]      = useState<Pagination>({ total: 0, page: 1, limit: 10, totalPages: 1 })
   const [studLoading, setStudLoad] = useState(false)
 
-  const [tab, setTab]           = useState<'students' | 'skills' | 'lsrw'>('students')
+  // English Practice and LSRW Practice are separate dashboard tabs; this component renders one of them
+  const tab: 'students' | 'lsrw' = view === 'lsrw' ? 'lsrw' : 'students'
   const [search, setSearch]     = useState('')
   const [skill, setSkill]       = useState<SkillKey | ''>('')
   const [page, setPage]         = useState(1)
-  const [limit, setLimit]       = useState(20)
+  const [limit, setLimit]       = useState(10)
 
   const searchTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -265,13 +277,13 @@ const EnglishPracticeFull = ({ apiBase = '/api/institute' }: { apiBase?: string 
     setStudLoad(true)
     const params = new URLSearchParams({
       page:  String(opts.page  ?? 1),
-      limit: String(opts.limit ?? 20),
+      limit: String(opts.limit ?? 10),
       search: opts.search ?? '',
       skill:  opts.skill  ?? '',
       ...rangeParams(),
     })
     try {
-      const res  = await fetch(`${baseURL}${apiBase}/english-practice-students?${params}`, {
+      const res  = await fetch(`${baseURL}${apiBase}/english-practice-students?${withCohort(params)}`, {
         headers: { Authorization: `Bearer ${user.token}` },
       })
       const data = await res.json()
@@ -289,7 +301,7 @@ const EnglishPracticeFull = ({ apiBase = '/api/institute' }: { apiBase?: string 
   const [lsrwOverview, setLsrwOverview]   = useState<LSRWOverview | null>(null)
   const [lsrwOvLoading, setLsrwOvLoading] = useState(false)
   const [lsrwStudents, setLsrwStudents]   = useState<LSRWStudentRow[]>([])
-  const [lsrwPag, setLsrwPag]             = useState<Pagination>({ total: 0, page: 1, limit: 20, totalPages: 1 })
+  const [lsrwPag, setLsrwPag]             = useState<Pagination>({ total: 0, page: 1, limit: 10, totalPages: 1 })
   const [lsrwStudLoading, setLsrwStudLoad] = useState(false)
   const [lsrwSearch, setLsrwSearch]       = useState('')
   const [lsrwPage, setLsrwPage]           = useState(1)
@@ -312,9 +324,9 @@ const EnglishPracticeFull = ({ apiBase = '/api/institute' }: { apiBase?: string 
     if (!user?.token) return
     if (rangeMode === 'custom' && !isCustom) return
     setLsrwStudLoad(true)
-    const params = new URLSearchParams({ page: String(opts.page ?? 1), limit: '20', search: opts.search ?? '', ...rangeParams() })
+    const params = new URLSearchParams({ page: String(opts.page ?? 1), limit: '10', search: opts.search ?? '', includeAll: '1', ...rangeParams() })
     try {
-      const res = await fetch(`${baseURL}${apiBase}/lsrw-students?${params}`, { headers: { Authorization: `Bearer ${user.token}` } })
+      const res = await fetch(`${baseURL}${apiBase}/lsrw-students?${withCohort(params)}`, { headers: { Authorization: `Bearer ${user.token}` } })
       const data = await res.json()
       if (data.success) {
         setLsrwStudents(data.students)
@@ -411,12 +423,12 @@ const EnglishPracticeFull = ({ apiBase = '/api/institute' }: { apiBase?: string 
 
   const [exporting, setExporting] = useState(false)
 
-  const handleExportExcel = async () => {
+  const handleExportExcel = async (format: 'excel' | 'pdf' = 'excel') => {
     if (!user?.token) return
     setExporting(true)
     try {
       const params = new URLSearchParams({ page: '1', limit: '9999', search, skill, ...rangeParams() })
-      const res = await fetch(`${baseURL}${apiBase}/english-practice-students?${params}`, {
+      const res = await fetch(`${baseURL}${apiBase}/english-practice-students?${withCohort(params)}`, {
         headers: { Authorization: `Bearer ${user.token}` },
       })
       const data = await res.json()
@@ -432,6 +444,10 @@ const EnglishPracticeFull = ({ apiBase = '/api/institute' }: { apiBase?: string 
         row['Overall Avg'] = overallAvg(s) ?? '—'
         return row
       })
+      if (format === 'pdf') {
+        await exportBrandedPdf({ title: 'English Practice', subtitle: isCustom ? `${appliedStart} to ${appliedEnd}` : String(monthKey), rows, fileName: `English_Practice_${isCustom ? `${appliedStart}_to_${appliedEnd}` : monthKey}` })
+        return
+      }
       const ws = XLSX.utils.json_to_sheet(rows)
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, ws, 'English Practice')
@@ -454,222 +470,169 @@ const EnglishPracticeFull = ({ apiBase = '/api/institute' }: { apiBase?: string 
     <div>
       {/* ── Header ─────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
-        <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <FaLanguage size={18} color="#ff6b00" />
-            <span style={{ color: '#fff', fontWeight: 700, fontSize: '1.05rem' }}>English Practice</span>
+        <div className="sr-heading">
+          <span className="sr-heading-icon"><FaLanguage /></span>
+          <div>
+            <h2>{view === 'lsrw' ? 'LSRW Practice' : 'English Practice'}</h2>
+            <p>{view === 'lsrw' ? 'Structured listening, speaking, reading and writing tests, by student and section' : 'Track students’ English skills practice and performance'}</p>
           </div>
-          <div style={{ color: '#666', fontSize: '0.78rem', marginTop: 2 }}>Track students' English skills practice and performance.</div>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' as const, alignItems: 'center' }}>
-          <select style={{ ...S.select, width: 130 }} value={rangeMode} onChange={(e) => setRangeMode(e.target.value as 'monthly' | 'custom')}>
-            <option value="monthly">Monthly</option>
-            <option value="custom">Custom Range</option>
-          </select>
+          <ReportRangeSelect />
 
-          {rangeMode === 'monthly' ? (
+          {view !== 'lsrw' && (
             <>
-              <select style={{ ...S.select, width: 130 }} value={month} onChange={(e) => setMonth(Number(e.target.value))}>
-                {MONTH_NAMES.map((m, i) => <option key={m} value={i + 1}>{m}</option>)}
-              </select>
-              <select style={{ ...S.select, width: 90 }} value={year} onChange={(e) => setYear(Number(e.target.value))}>
-                {yearRange.map((y) => <option key={y} value={y}>{y}</option>)}
-              </select>
-            </>
-          ) : (
-            <>
-              <input type="date" style={{ ...S.select, width: 140 }} value={customStart} max={customEnd} onChange={(e) => setCustomStart(e.target.value)} />
-              <input type="date" style={{ ...S.select, width: 140 }} value={customEnd} min={customStart} max={toDateStr(now)} onChange={(e) => setCustomEnd(e.target.value)} />
-              <button style={S.headerBtn('#ff6b00')} onClick={applyCustomRange}>Apply</button>
+              <button type="button" className="sr-export-button" onClick={() => handleExportExcel('pdf')} disabled={exporting}>
+                <FaFilePdf /> {exporting ? 'Preparing PDF…' : 'Export PDF'}
+              </button>
             </>
           )}
-
-          <button style={S.headerBtn('#22c55e')} onClick={handleExportExcel} disabled={exporting}>
-            <FaDownload size={11} /> {exporting ? 'Exporting…' : 'Export Excel'}
-          </button>
         </div>
       </div>
 
+      {view !== 'lsrw' && (
+        <>
       {/* ── Stat Cards ─────────────────────────────────── */}
-      <div style={S.statGrid}>
-        <div style={S.statCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <div style={S.iconCircle('#ff6b00')}><FaUserGraduate size={12} color="#fff" /></div>
-            <span style={S.labelSm}>Total Students</span>
+      <section className="sr-summary dr-summary">
+        <article className="sr-summary-card sr-card-orange">
+          <span className="sr-summary-icon sr-icon-orange"><FaUserGraduate /></span>
+          <div>
+            <strong>{overview.totalStudents}</strong>
+            <span>Total Students</span>
+            <em className="sr-summary-rule" style={{ color: dimAccent('#22c55e') }}>↑ {overview.newStudentsThisMonth} this month</em>
           </div>
-          <div style={S.numSm}>{overview.totalStudents}</div>
-          <span style={S.sub('#22c55e')}>↑ {overview.newStudentsThisMonth} this month</span>
-        </div>
+        </article>
 
-        <div style={S.statCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <div style={S.iconCircle('#3b82f6')}><FaCheckCircle size={12} color="#fff" /></div>
-            <span style={S.labelSm}>Active Students</span>
+        <article className="sr-summary-card sr-card-blue">
+          <span className="sr-summary-icon sr-icon-blue"><FaCheckCircle /></span>
+          <div>
+            <strong>{overview.activeStudents}</strong>
+            <span>Active Students</span>
+            <em className="sr-summary-rule" style={{ color: dimAccent(cmp.activeStudents >= 0 ? '#22c55e' : '#ef4444') }}>{cmp.activeStudents >= 0 ? '↑' : '↓'} {Math.abs(cmp.activeStudents)} vs {cmp.label}</em>
           </div>
-          <div style={S.numSm}>{overview.activeStudents}</div>
-          <span style={S.sub(cmp.activeStudents >= 0 ? '#22c55e' : '#ef4444')}>
-            {cmp.activeStudents >= 0 ? '↑' : '↓'} {Math.abs(cmp.activeStudents)} vs {cmp.label}
-          </span>
-        </div>
+        </article>
 
-        <div style={S.statCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <div style={S.iconCircle('#a855f7')}><FaHeadphones size={12} color="#fff" /></div>
-            <span style={S.labelSm}>Total Attempts</span>
+        <article className="sr-summary-card sr-card-purple">
+          <span className="sr-summary-icon sr-icon-purple"><FaHeadphones /></span>
+          <div>
+            <strong>{overview.totalAttempts.toLocaleString()}</strong>
+            <span>Total Attempts</span>
+            <em className="sr-summary-rule" style={{ color: dimAccent(cmp.totalAttempts >= 0 ? '#22c55e' : '#ef4444') }}>{cmp.totalAttempts >= 0 ? '↑' : '↓'} {Math.abs(cmp.totalAttempts)} vs {cmp.label}</em>
           </div>
-          <div style={S.numSm}>{overview.totalAttempts.toLocaleString()}</div>
-          <span style={S.sub(cmp.totalAttempts >= 0 ? '#22c55e' : '#ef4444')}>
-            {cmp.totalAttempts >= 0 ? '↑' : '↓'} {Math.abs(cmp.totalAttempts)} vs {cmp.label}
-          </span>
-        </div>
+        </article>
 
-        <div style={S.statCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <div style={S.iconCircle('#f59e0b')}><FaBook size={12} color="#fff" /></div>
-            <span style={S.labelSm}>Monthly Capacity</span>
+        <article className="sr-summary-card sr-card-amber">
+          <span className="sr-summary-icon sr-icon-amber"><FaBook /></span>
+          <div>
+            <strong>{overview.monthlyCapacity.toLocaleString()}</strong>
+            <span>Monthly Capacity</span>
+            <em className="sr-summary-rule" style={{ color: dimAccent('#999') }}>{overview.approvedStudents} students × 30</em>
           </div>
-          <div style={S.numSm}>{overview.monthlyCapacity.toLocaleString()}</div>
-          <span style={S.sub('#999')}>{overview.approvedStudents} students × 30</span>
-        </div>
+        </article>
 
-        <div style={S.statCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <div style={S.iconCircle('#22c55e')}><FaCheckCircle size={12} color="#fff" /></div>
-            <span style={S.labelSm}>Overall Utilization</span>
+        <article className="sr-summary-card sr-card-green">
+          <span className="sr-summary-icon sr-icon-green"><FaCheckCircle /></span>
+          <div>
+            <strong>{overview.overallUtilizationPct}%</strong>
+            <span>Overall Utilization</span>
+            <em className="sr-summary-rule" style={{ color: dimAccent(cmp.overallUtilizationPct >= 0 ? '#22c55e' : '#ef4444') }}>{cmp.overallUtilizationPct >= 0 ? '↑' : '↓'} {Math.abs(cmp.overallUtilizationPct)}% vs {cmp.label}</em>
           </div>
-          <div style={S.numSm}>{overview.overallUtilizationPct}%</div>
-          <span style={S.sub(cmp.overallUtilizationPct >= 0 ? '#22c55e' : '#ef4444')}>
-            {cmp.overallUtilizationPct >= 0 ? '↑' : '↓'} {Math.abs(cmp.overallUtilizationPct)}% vs {cmp.label}
-          </span>
-        </div>
-      </div>
+        </article>
+      </section>
 
-      {/* ── Skill Cards ── */}
-      <div style={S.sectionLabel}>English Skills – Monthly Attempt Utilization · {MONTH_SHORT[month - 1]} {year}</div>
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0.75rem', marginBottom: '1.5rem' }}>
-        {SKILLS.map(({ key, label, icon: Icon, color }) => {
-          const stat = overview.skills[key]
-          return (
-            <div key={key} style={{
-              background: '#1a1a1a', border: '1px solid #252525',
-              borderRadius: 14, padding: '1rem', borderTop: `3px solid ${color}`,
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.75rem' }}>
-                <div style={{ background: `${color}18`, borderRadius: 8, padding: '6px', display: 'inline-flex' }}>
-                  <Icon size={13} color={color} />
-                </div>
-                <span style={{ color: '#ddd', fontWeight: 700, fontSize: '0.82rem' }}>{label}</span>
-              </div>
-              <div style={{ color, fontWeight: 800, fontSize: '1.35rem', lineHeight: 1 }}>{stat.utilized}</div>
-              <div style={{ color: '#555', fontSize: '0.62rem', fontWeight: 500, letterSpacing: '0.05em', marginTop: 2, marginBottom: '0.5rem' }}>ATTEMPTS USED</div>
-              <div style={{ color: '#444', fontSize: '0.68rem', marginBottom: '0.55rem' }}>
-                of <span style={{ color: '#666' }}>{stat.capacity.toLocaleString()}</span> capacity
-              </div>
-              <div style={{ background: '#111', borderRadius: 4, height: 5, overflow: 'hidden', marginBottom: '0.5rem' }}>
-                <div style={{ width: `${stat.utilizationPct}%`, height: '100%', background: color, borderRadius: 4 }} />
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ color, fontWeight: 700, fontSize: '0.76rem' }}>{stat.utilizationPct}% utilized</span>
-                {stat.avgScore > 0 && (
-                  <span style={{
-                    background: `${scoreColor(stat.avgScore)}18`, color: scoreColor(stat.avgScore),
-                    border: `1px solid ${scoreColor(stat.avgScore)}33`,
-                    borderRadius: 5, padding: '1px 7px', fontSize: '0.66rem', fontWeight: 700,
-                  }}>
-                    avg {stat.avgScore}
-                  </span>
-                )}
-              </div>
+      {/* ── Skill utilization (Student Reports panel) ── */}
+      {(() => {
+        const ranked = [...SKILLS].sort((a, b) => overview.skills[b.key].utilizationPct - overview.skills[a.key].utilizationPct)
+        const topKey = overview.skills[ranked[0].key].utilized > 0 ? ranked[0].key : null
+        return (
+          <section className="sr-table-panel dr-panel" style={{ marginBottom: '1.1rem' }}>
+            <div className="dr-panel-head">
+              <div><h3>Skill Utilization</h3><p>{range.label} · practice sessions used of the allowance in this period</p></div>
             </div>
-          )
-        })}
-      </div>
+            <div className="dr-panel-body dr-skill-grid">
+              {SKILLS.map(({ key, label, icon: Icon, color }) => {
+                const st = overview.skills[key]
+                return (
+                  <div key={key} className="dr-type" style={{ ['--c' as string]: color }}>
+                    <div className="dr-type-head">
+                      <span className="dr-type-icon"><Icon /></span>
+                      <div><strong>{label}</strong><small>{st.studentsUsed ?? 0} student{(st.studentsUsed ?? 0) === 1 ? '' : 's'} practised</small></div>
+                      {topKey === key && <span className="sr-status-pill sr-status-on-track">Most used</span>}
+                    </div>
+                    <div className="dr-skill-num"><b>{st.utilized.toLocaleString()}</b><span>of {st.capacity.toLocaleString()} sessions</span></div>
+                    <div className="dr-band-bar"><i style={{ width: `${Math.min(100, st.utilizationPct)}%` }} /></div>
+                    <div className="dr-type-stats">
+                      <span><b>{st.utilizationPct}%</b> used</span>
+                      <span>avg score <b style={{ color: st.avgScore > 0 ? scoreColor(st.avgScore) : undefined }}>{st.avgScore > 0 ? st.avgScore : '—'}</b></span>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </section>
+        )
+      })()}
 
-      {/* ── Tabs ───────────────────────────────────────── */}
-      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #1e1e1e', marginBottom: '1rem' }}>
-        {([
-          { key: 'students', label: 'Students Performance' },
-          { key: 'skills',   label: 'Skill Wise Summary' },
-          { key: 'lsrw',     label: 'LSRW Practice' },
-        ] as const).map(({ key: t, label }) => (
-          <button key={t} onClick={() => setTab(t)} style={{ position: 'relative', background: 'none', border: 'none', padding: '0.6rem 1.1rem 0.8rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: tab === t ? 700 : 500, color: tab === t ? '#fff' : '#555' }}>
-            {label}
-            {tab === t && <div style={{ position: 'absolute', bottom: 0, left: '10%', width: '80%', height: 2.5, background: '#ff6b00', borderRadius: 2 }} />}
-          </button>
-        ))}
-      </div>
+        </>
+      )}
 
-      {/* ── Students Performance Tab ─────────────────────── */}
+      {/* ── Students Performance (Student Reports table) ── */}
       {tab === 'students' && (
-        <div style={S.card}>
-          <div style={{ padding: '0.9rem 1.25rem', borderBottom: '1px solid #1e1e1e', display: 'flex', flexWrap: 'wrap' as const, gap: '0.6rem', alignItems: 'center' }}>
-            <select style={{ ...S.select, minWidth: 150 }} value={skill} onChange={(e) => onSkillFilter(e.target.value)}>
-              <option value="">All Skills</option>
-              {SKILLS.map((s) => <option key={s.key} value={s.key}>{s.label}</option>)}
-            </select>
-            <select style={{ ...S.select, width: 100 }} value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1) }}>
-              {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n} / page</option>)}
-            </select>
-            <span style={{ color: '#444', fontSize: '0.73rem' }}>Showing {MONTH_SHORT[month - 1]} {year} — change via the Month/Year selector above</span>
-            <div style={{ flex: 1 }} />
-            <div style={{ position: 'relative' }}>
-              <FaSearch size={11} color="#444" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)' }} />
-              <input style={S.searchInput} placeholder="Search by name or email" value={search} onChange={(e) => onSearch(e.target.value)} />
+        <section className="sr-table-panel" aria-label="English practice by student">
+          <div className="sr-toolbar">
+            <div className="sr-search">
+              <FaSearch aria-hidden="true" />
+              <input aria-label="Search students" value={search} onChange={(e) => onSearch(e.target.value)} placeholder="Search by name or email" />
+            </div>
+            <div className="sr-filters sr-report-filters">
+              <CohortFilters />
+              <HeaderSelect label="Filter by skill" prefix="Skill:" value={skill}
+                options={[{ value: '', label: 'All' }, ...SKILLS.map((s) => ({ value: s.key, label: s.label }))]}
+                onChange={onSkillFilter} />
+              <span className="sr-result-count">{pagination.total} student{pagination.total === 1 ? '' : 's'} · {range.label}</span>
             </div>
           </div>
 
-          <div style={{ position: 'relative', overflowX: 'auto' }}>
+          <div className="sr-table-scroll" style={{ position: 'relative', overflowX: 'auto' }}>
             {studLoading && (
               <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
                 <Spinner animation="border" style={{ color: '#ff6b00', width: 24, height: 24 }} />
               </div>
             )}
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            {/* Fixed layout: the five skills and Overall get equal columns */}
+            <table style={{ width: '100%', minWidth: 1000, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+              <colgroup>
+                <col style={{ width: 48 }} />
+                <col style={{ width: '24%' }} />
+                {SKILLS.map(({ key }) => <col key={key} />)}
+                <col />
+              </colgroup>
               <thead>
                 <tr>
-                  <th style={{ ...S.th, minWidth: 28 }}>#</th>
-                  <th style={{ ...S.th, minWidth: 140 }}>Student</th>
-                  <th style={{ ...S.th, minWidth: 150 }}>Email</th>
-                  {SKILLS.map(({ key, label, color }) => (
-                    <th key={key} style={{ ...S.th, minWidth: 90, textAlign: 'center' }}>
-                      <span style={{ color }}>{label}</span>
-                    </th>
-                  ))}
-                  <th style={{ ...S.th, minWidth: 90, textAlign: 'center' }}>Overall Avg</th>
+                  <th style={{ ...S.th, width: 40 }}>#</th>
+                  <th style={{ ...S.th, minWidth: 220 }}>Student</th>
+                  {SKILLS.map(({ key, label }) => <th key={key} style={{ ...S.th, minWidth: 110 }}>{label}</th>)}
+                  <th style={{ ...S.th, minWidth: 110 }}>Overall</th>
                 </tr>
               </thead>
               <tbody>
                 {students.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} style={{ textAlign: 'center', padding: '2.5rem', color: '#444' }}>
-                      {studLoading ? '' : 'No students found'}
-                    </td>
-                  </tr>
+                  <tr><td colSpan={8}>{!studLoading && <div className="sr-empty"><FaLanguage /><span>No students match these filters.</span></div>}</td></tr>
                 ) : students.map((s, i) => {
                   const avg = overallAvg(s)
                   return (
                     <tr key={s.userId}>
                       <td style={S.tdMut}>{(pagination.page - 1) * pagination.limit + i + 1}</td>
-                      <td style={{ ...S.td, fontWeight: 600, color: '#fff' }}>
-                        {s.name || s.email?.split('@')[0] || '—'}
-                      </td>
-                      <td style={S.tdMut}>{s.email}</td>
-                      {SKILLS.map(({ key, color }) => (
-                        <td key={key} style={{ ...S.td, textAlign: 'center' }}>
-                          <ScoreCell entry={s[key]} color={color} />
-                        </td>
-                      ))}
-                      <td style={{ ...S.td, textAlign: 'center' }}>
-                        {avg !== null ? (
-                          <span style={{
-                            background: `${scoreColor(avg)}18`, color: scoreColor(avg),
-                            border: `1px solid ${scoreColor(avg)}33`,
-                            borderRadius: 6, padding: '2px 9px', fontSize: '0.75rem', fontWeight: 700,
-                          }}>
-                            {avg}%
-                          </span>
-                        ) : <span style={{ color: '#444' }}>—</span>}
-                      </td>
+                      <td style={S.td}><StudentCell name={s.name || s.email?.split('@')[0] || 'Student'} email={s.email} /></td>
+                      {SKILLS.map(({ key }) => {
+                        const e = s[key]
+                        return (
+                          <td key={key} style={S.td}>
+                            {e ? <ScoreBar pct={e.bestScore} label={<>{e.bestScore}%<TrendIcon trend={e.trend} /></>} /> : <span className="dr-dot">·</span>}
+                          </td>
+                        )
+                      })}
+                      <td style={S.td}>{avg !== null ? <ScoreBar pct={avg} /> : <span className="dr-dot">·</span>}</td>
                     </tr>
                   )
                 })}
@@ -677,88 +640,8 @@ const EnglishPracticeFull = ({ apiBase = '/api/institute' }: { apiBase?: string 
             </table>
           </div>
 
-          <div style={S.footer}>
-            <span>
-              Showing{' '}
-              <strong style={{ color: '#aaa' }}>
-                {pagination.total === 0 ? 0 : (pagination.page - 1) * pagination.limit + 1}–{Math.min(pagination.page * pagination.limit, pagination.total)}
-              </strong>
-              {' '}of <strong style={{ color: '#aaa' }}>{pagination.total}</strong> students
-            </span>
-            <div style={{ display: 'flex', gap: '0.4rem' }}>
-              <PagBtn disabled={pagination.page <= 1} onClick={() => setPage(pagination.page - 1)}>‹ Prev</PagBtn>
-              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1)
-                .filter((p) => p === 1 || p === pagination.totalPages || Math.abs(p - pagination.page) <= 1)
-                .reduce<(number | '…')[]>((acc, p, idx, arr) => {
-                  if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('…')
-                  acc.push(p); return acc
-                }, [])
-                .map((p, idx) => p === '…'
-                  ? <span key={`e-${idx}`} style={{ color: '#444', padding: '0 4px' }}>…</span>
-                  : <PagBtn key={p} active={p === pagination.page} onClick={() => setPage(p as number)}>{p}</PagBtn>
-                )}
-              <PagBtn disabled={pagination.page >= pagination.totalPages} onClick={() => setPage(pagination.page + 1)}>Next ›</PagBtn>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Skill Wise Summary Tab ───────────────────────── */}
-      {tab === 'skills' && (
-        <div style={S.card}>
-          <div style={{ padding: '0.9rem 1.25rem', borderBottom: '1px solid #1e1e1e' }}>
-            <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.88rem' }}>Skill Wise Summary — {MONTH_SHORT[month - 1]} {year}</span>
-          </div>
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-              <thead>
-                <tr>
-                  <th style={{ ...S.th, minWidth: 40 }}>#</th>
-                  <th style={{ ...S.th, minWidth: 160 }}>Skill</th>
-                  <th style={{ ...S.th, minWidth: 110, textAlign: 'center' }}>Attempts Used</th>
-                  <th style={{ ...S.th, minWidth: 110, textAlign: 'center' }}>Capacity</th>
-                  <th style={{ ...S.th, minWidth: 120 }}>Utilization</th>
-                  <th style={{ ...S.th, minWidth: 100, textAlign: 'center' }}>Avg Score</th>
-                  <th style={{ ...S.th, minWidth: 130, textAlign: 'center' }}>Students Practiced</th>
-                </tr>
-              </thead>
-              <tbody>
-                {[...SKILLS]
-                  .map(({ key, label, icon: Icon, color }) => ({ key, label, Icon, color, stat: overview.skills[key] }))
-                  .sort((a, b) => b.stat.utilizationPct - a.stat.utilizationPct)
-                  .map(({ key, label, Icon, color, stat }, i) => (
-                    <tr key={key}>
-                      <td style={S.tdMut}>{i + 1}</td>
-                      <td style={S.td}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                          <div style={{ background: `${color}18`, borderRadius: 6, padding: 5, display: 'inline-flex' }}>
-                            <Icon size={11} color={color} />
-                          </div>
-                          <span style={{ color: '#fff', fontWeight: 600 }}>{label}</span>
-                        </div>
-                      </td>
-                      <td style={{ ...S.td, textAlign: 'center', color, fontWeight: 700 }}>{stat.utilized}</td>
-                      <td style={{ ...S.td, textAlign: 'center' }}>{stat.capacity.toLocaleString()}</td>
-                      <td style={S.td}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 100 }}>
-                          <div style={{ flex: 1, background: '#2a2a2a', borderRadius: 4, height: 6, overflow: 'hidden' }}>
-                            <div style={{ width: `${stat.utilizationPct}%`, background: color, height: '100%' }} />
-                          </div>
-                          <span style={{ color, fontSize: '0.74rem', fontWeight: 700, minWidth: 32 }}>{stat.utilizationPct}%</span>
-                        </div>
-                      </td>
-                      <td style={{ ...S.td, textAlign: 'center' }}>
-                        {stat.avgScore > 0 ? (
-                          <span style={{ color: scoreColor(stat.avgScore), fontWeight: 700 }}>{stat.avgScore}</span>
-                        ) : <span style={{ color: '#444' }}>—</span>}
-                      </td>
-                      <td style={{ ...S.td, textAlign: 'center' }}>{stat.studentsUsed ?? 0}</td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+          <ReportPagination page={pagination.page} pageSize={pagination.limit} total={pagination.total} onPage={setPage} />
+        </section>
       )}
 
       {/* ── LSRW Practice Tab — the separate structured/pattern-based exam
@@ -772,364 +655,258 @@ const EnglishPracticeFull = ({ apiBase = '/api/institute' }: { apiBase?: string 
         ) : (
           <>
             {/* Stat cards */}
-            <div style={S.statGrid}>
-              <div style={S.statCard}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <div style={S.iconCircle('#ff6b00')}><FaCheckCircle size={12} color="#fff" /></div>
-                  <span style={S.labelSm}>Total Attempts</span>
+            <section className="sr-summary dr-summary">
+              <article className="sr-summary-card sr-card-orange">
+                <span className="sr-summary-icon sr-icon-orange"><FaCheckCircle /></span>
+                <div>
+                  <strong>{lsrwOverview.totalAttempts.toLocaleString()}</strong>
+                  <span>Total Attempts</span>
+                  <em className="sr-summary-rule" style={{ color: dimAccent('#999') }}>{lsrwOverview.completedAttempts} completed</em>
                 </div>
-                <div style={S.numSm}>{lsrwOverview.totalAttempts.toLocaleString()}</div>
-                <span style={S.sub('#999')}>{lsrwOverview.completedAttempts} completed</span>
-              </div>
-              <div style={S.statCard}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <div style={S.iconCircle('#3b82f6')}><FaUserGraduate size={12} color="#fff" /></div>
-                  <span style={S.labelSm}>Students Practiced</span>
+              </article>
+              <article className="sr-summary-card sr-card-blue">
+                <span className="sr-summary-icon sr-icon-blue"><FaUserGraduate /></span>
+                <div>
+                  <strong>{lsrwOverview.uniqueStudents}</strong>
+                  <span>Students Practiced</span>
+                  <em className="sr-summary-rule" style={{ color: dimAccent('#999') }}>attempted ≥ 1 section</em>
                 </div>
-                <div style={S.numSm}>{lsrwOverview.uniqueStudents}</div>
-                <span style={S.sub('#999')}>attempted ≥ 1 section</span>
-              </div>
-              <div style={S.statCard}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <div style={S.iconCircle('#a855f7')}><FaLayerGroup size={12} color="#fff" /></div>
-                  <span style={S.labelSm}>Pattern 1</span>
+              </article>
+              <article className="sr-summary-card sr-card-purple">
+                <span className="sr-summary-icon sr-icon-purple"><FaLayerGroup /></span>
+                <div>
+                  <strong>{lsrwOverview.patternBreakdown[1] ?? 0}</strong>
+                  <span>Pattern 1</span>
+                  <em className="sr-summary-rule" style={{ color: dimAccent('#999') }}>attempts</em>
                 </div>
-                <div style={S.numSm}>{lsrwOverview.patternBreakdown[1] ?? 0}</div>
-                <span style={S.sub('#999')}>attempts</span>
-              </div>
-              <div style={S.statCard}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <div style={S.iconCircle('#22c55e')}><FaLayerGroup size={12} color="#fff" /></div>
-                  <span style={S.labelSm}>Pattern 2</span>
+              </article>
+              <article className="sr-summary-card sr-card-green">
+                <span className="sr-summary-icon sr-icon-green"><FaLayerGroup /></span>
+                <div>
+                  <strong>{lsrwOverview.patternBreakdown[2] ?? 0}</strong>
+                  <span>Pattern 2</span>
+                  <em className="sr-summary-rule" style={{ color: dimAccent('#999') }}>attempts</em>
                 </div>
-                <div style={S.numSm}>{lsrwOverview.patternBreakdown[2] ?? 0}</div>
-                <span style={S.sub('#999')}>attempts</span>
-              </div>
-            </div>
+              </article>
+            </section>
 
-            {/* Section cards */}
-            <div style={S.sectionLabel}>LSRW Sections – {isCustom ? `${appliedStart} to ${appliedEnd}` : `${MONTH_SHORT[month - 1]} ${year}`}</div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.75rem', marginBottom: '1.5rem' }}>
-              {LSRW_SECTIONS.map(({ key, label, icon: Icon, color }) => {
-                const stat = lsrwOverview.sections.find((s) => s.key === key)
-                return (
-                  <div key={key} style={{ background: '#1a1a1a', border: '1px solid #252525', borderRadius: 14, padding: '1rem', borderTop: `3px solid ${color}` }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', marginBottom: '0.75rem' }}>
-                      <div style={{ background: `${color}18`, borderRadius: 8, padding: '6px', display: 'inline-flex' }}>
-                        <Icon size={13} color={color} />
+            {/* Section usage (Student Reports panel) */}
+            <section className="sr-table-panel dr-panel" style={{ marginBottom: '1.1rem' }}>
+              <div className="dr-panel-head">
+                <div><h3>LSRW Sections</h3><p>{range.label} · attempts, students and average score per section</p></div>
+              </div>
+              <div className="dr-panel-body dr-lsrw-grid">
+                {LSRW_SECTIONS.map(({ key, label, icon: Icon, color }) => {
+                  const st = lsrwOverview.sections.find((x) => x.key === key)
+                  const avg = st?.avgScore ?? 0
+                  return (
+                    <div key={key} className="dr-type" style={{ ['--c' as string]: color }}>
+                      <div className="dr-type-head">
+                        <span className="dr-type-icon"><Icon /></span>
+                        <div><strong>{label}</strong><small>{st?.studentsUsed ?? 0} student{(st?.studentsUsed ?? 0) === 1 ? '' : 's'}</small></div>
                       </div>
-                      <span style={{ color: '#ddd', fontWeight: 700, fontSize: '0.8rem' }}>{label}</span>
+                      <div className="dr-skill-num"><b>{(st?.attempts ?? 0).toLocaleString()}</b><span>attempt{(st?.attempts ?? 0) === 1 ? '' : 's'}</span></div>
+                      <div className="dr-band-bar"><i style={{ width: `${Math.min(100, avg)}%`, background: avg > 0 ? scoreColor(avg) : undefined }} /></div>
+                      <div className="dr-type-stats"><span>avg score <b style={{ color: avg > 0 ? scoreColor(avg) : undefined }}>{avg > 0 ? avg : '—'}</b></span></div>
                     </div>
-                    <div style={{ color, fontWeight: 800, fontSize: '1.35rem', lineHeight: 1 }}>{stat?.attempts ?? 0}</div>
-                    <div style={{ color: '#555', fontSize: '0.62rem', fontWeight: 500, letterSpacing: '0.05em', marginTop: 2, marginBottom: '0.5rem' }}>ATTEMPTS</div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ color: '#666', fontSize: '0.68rem' }}>{stat?.studentsUsed ?? 0} students</span>
-                      {(stat?.avgScore ?? 0) > 0 && (
-                        <span style={{
-                          background: `${scoreColor(stat!.avgScore)}18`, color: scoreColor(stat!.avgScore),
-                          border: `1px solid ${scoreColor(stat!.avgScore)}33`,
-                          borderRadius: 5, padding: '1px 7px', fontSize: '0.66rem', fontWeight: 700,
-                        }}>
-                          avg {stat!.avgScore}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+            </section>
 
-            {/* Student table */}
-            <div style={S.card}>
-              <div style={{ padding: '0.9rem 1.25rem', borderBottom: '1px solid #1e1e1e', display: 'flex', flexWrap: 'wrap' as const, gap: '0.6rem', alignItems: 'center' }}>
-                <span style={{ color: '#fff', fontWeight: 700, fontSize: '0.88rem' }}>LSRW Student Performance</span>
-                <span style={{ color: '#444', fontSize: '0.73rem' }}>{lsrwPag.total} students</span>
-                <div style={{ flex: 1 }} />
-                <div style={{ position: 'relative' }}>
-                  <FaSearch size={11} color="#444" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)' }} />
-                  <input style={S.searchInput} placeholder="Search by name or email" value={lsrwSearch} onChange={(e) => onLsrwSearch(e.target.value)} />
+            {/* Students (Student Reports table) */}
+            <section className="sr-table-panel" aria-label="LSRW results by student">
+              <div className="sr-toolbar">
+                <div className="sr-search">
+                  <FaSearch aria-hidden="true" />
+                  <input aria-label="Search students" value={lsrwSearch} onChange={(e) => onLsrwSearch(e.target.value)} placeholder="Search by name or email" />
+                </div>
+                <div className="sr-filters sr-report-filters">
+                  <CohortFilters />
+                  <span className="sr-result-count">{lsrwOverview.uniqueStudents} of {lsrwPag.total} attempted</span>
                 </div>
               </div>
 
-              <div style={{ position: 'relative', overflowX: 'auto' }}>
+              <div className="sr-table-scroll" style={{ position: 'relative', overflowX: 'auto' }}>
                 {lsrwStudLoading && (
                   <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
                     <Spinner animation="border" style={{ color: '#ff6b00', width: 24, height: 24 }} />
                   </div>
                 )}
-                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <table style={{ width: '100%', minWidth: 1200, borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+                  <colgroup>
+                    <col style={{ width: 48 }} />
+                    <col style={{ width: '20%' }} />
+                    {LSRW_SECTIONS.map(({ key }) => <col key={key} />)}
+                    <col />
+                    <col style={{ width: 84 }} />
+                    <col style={{ width: 120 }} />
+                    <col style={{ width: 96 }} />
+                  </colgroup>
                   <thead>
                     <tr>
-                      <th style={{ ...S.th, minWidth: 28 }}>#</th>
-                      <th style={{ ...S.th, minWidth: 140 }}>Student</th>
-                      {LSRW_SECTIONS.map(({ key, label, color }) => (
-                        <th key={key} style={{ ...S.th, minWidth: 90, textAlign: 'center' }}>
-                          <span style={{ color }}>{label}</span>
-                        </th>
-                      ))}
-                      <th style={{ ...S.th, minWidth: 90, textAlign: 'center' }}>Overall Avg</th>
-                      <th style={{ ...S.th, minWidth: 70, textAlign: 'center' }}>Attempts</th>
-                      <th style={{ ...S.th, minWidth: 110 }}>Last Activity</th>
-                      <th style={{ ...S.th, minWidth: 60, textAlign: 'center' }}>Action</th>
+                      <th style={S.th}>#</th>
+                      <th style={S.th}>Student</th>
+                      {LSRW_SECTIONS.map(({ key, label }) => <th key={key} style={S.th} title={label}>{label}</th>)}
+                      <th style={S.th}>Overall</th>
+                      <th style={S.th}>Attempts</th>
+                      <th style={S.th}>Last Activity</th>
+                      <th className="dr-actions" style={S.th}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {lsrwStudents.length === 0 ? (
-                      <tr>
-                        <td colSpan={LSRW_SECTIONS.length + 6} style={{ textAlign: 'center', padding: '2.5rem', color: '#444' }}>
-                          {lsrwStudLoading ? '' : 'No students found'}
-                        </td>
-                      </tr>
+                      <tr><td colSpan={LSRW_SECTIONS.length + 6}>{!lsrwStudLoading && <div className="sr-empty"><FaHeadphones /><span>No students match these filters.</span></div>}</td></tr>
                     ) : lsrwStudents.map((s, i) => (
-                      <tr key={s.userId}>
+                      <tr key={s.userId} className={s.attempts ? undefined : 'dr-row-muted'}>
                         <td style={S.tdMut}>{(lsrwPag.page - 1) * lsrwPag.limit + i + 1}</td>
-                        <td style={{ ...S.td, fontWeight: 600, color: '#fff' }}>
-                          {s.name || s.email?.split('@')[0] || '—'}
-                        </td>
+                        <td style={S.td}><StudentCell name={s.name || s.email?.split('@')[0] || 'Student'} email={s.email} minWidth={0} /></td>
                         {LSRW_SECTIONS.map(({ key }) => {
-                          const entry = s.sections[key]
+                          const e = s.sections[key]
                           return (
-                            <td key={key} style={{ ...S.td, textAlign: 'center' }}>
-                              {entry ? (
-                                <span style={{
-                                  background: `${scoreColor(entry.scoreAwarded)}18`, color: scoreColor(entry.scoreAwarded),
-                                  border: `1px solid ${scoreColor(entry.scoreAwarded)}33`,
-                                  borderRadius: 6, padding: '2px 9px', fontSize: '0.75rem', fontWeight: 700,
-                                }}>
-                                  {entry.scoreAwarded}<span style={{ opacity: 0.6 }}>/{entry.marks}</span>
-                                </span>
-                              ) : <span style={{ color: '#444', fontSize: '0.75rem' }}>—</span>}
+                            <td key={key} style={S.td}>
+                              {e ? <ScoreBar pct={e.marks ? (e.scoreAwarded / e.marks) * 100 : 0} label={`${e.scoreAwarded}/${e.marks}`} /> : <span className="dr-dot">·</span>}
                             </td>
                           )
                         })}
-                        <td style={{ ...S.td, textAlign: 'center' }}>
-                          {s.overallAvg !== null ? (
-                            <span style={{
-                              background: `${scoreColor(s.overallAvg)}18`, color: scoreColor(s.overallAvg),
-                              border: `1px solid ${scoreColor(s.overallAvg)}33`,
-                              borderRadius: 6, padding: '2px 9px', fontSize: '0.75rem', fontWeight: 700,
-                            }}>
-                              {s.overallAvg}
-                            </span>
-                          ) : <span style={{ color: '#444' }}>—</span>}
-                        </td>
-                        <td style={{ ...S.td, textAlign: 'center' }}>{s.attempts}</td>
-                        <td style={S.tdMut}>
-                          {s.lastActivity ? new Date(s.lastActivity).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}
-                        </td>
-                        <td style={{ ...S.td, textAlign: 'center' }}>
-                          <button
-                            onClick={() => openLsrwAttempts(s.userId)}
-                            style={{ background: 'transparent', border: '1px solid #2a2a2a', color: '#ff6b00', borderRadius: 6, padding: '3px 10px', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}
-                          >
-                            View
-                          </button>
-                        </td>
+                        <td style={S.td}>{!s.attempts ? <StatusPill tone="none">Not attended</StatusPill> : s.overallAvg !== null ? <ScoreBar pct={s.overallAvg} label={String(s.overallAvg)} /> : <span className="dr-dot">·</span>}</td>
+                        <td style={S.td}><strong>{s.attempts}</strong></td>
+                        <td style={S.tdMut}>{s.lastActivity ? new Date(s.lastActivity).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '—'}</td>
+                        <td className="dr-actions" style={s.attempts ? S.td : S.tdMut}>{s.attempts ? <ViewButton onClick={() => openLsrwAttempts(s.userId)} /> : '—'}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
               </div>
 
-              <div style={S.footer}>
-                <span>
-                  Showing{' '}
-                  <strong style={{ color: '#aaa' }}>
-                    {lsrwPag.total === 0 ? 0 : (lsrwPag.page - 1) * lsrwPag.limit + 1}–{Math.min(lsrwPag.page * lsrwPag.limit, lsrwPag.total)}
-                  </strong>
-                  {' '}of <strong style={{ color: '#aaa' }}>{lsrwPag.total}</strong> students
-                </span>
-                <div style={{ display: 'flex', gap: '0.4rem' }}>
-                  <PagBtn disabled={lsrwPag.page <= 1} onClick={() => setLsrwPage(lsrwPag.page - 1)}>‹ Prev</PagBtn>
-                  {Array.from({ length: lsrwPag.totalPages }, (_, i) => i + 1)
-                    .filter((p) => p === 1 || p === lsrwPag.totalPages || Math.abs(p - lsrwPag.page) <= 1)
-                    .reduce<(number | '…')[]>((acc, p, idx, arr) => {
-                      if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('…')
-                      acc.push(p); return acc
-                    }, [])
-                    .map((p, idx) => p === '…'
-                      ? <span key={`e-${idx}`} style={{ color: '#444', padding: '0 4px' }}>…</span>
-                      : <PagBtn key={p} active={p === lsrwPag.page} onClick={() => setLsrwPage(p as number)}>{p}</PagBtn>
-                    )}
-                  <PagBtn disabled={lsrwPag.page >= lsrwPag.totalPages} onClick={() => setLsrwPage(lsrwPag.page + 1)}>Next ›</PagBtn>
-                </div>
-              </div>
-            </div>
+              <ReportPagination page={lsrwPag.page} pageSize={lsrwPag.limit} total={lsrwPag.total} onPage={setLsrwPage} />
+            </section>
           </>
         )
       )}
 
-      {/* ── LSRW Attempt Drill-Down ("View") ─────────────── */}
-      {(lsrwAttemptsLoading || lsrwAttemptsData || lsrwAttemptsError) && createPortal(
-        <div
-          onClick={closeLsrwAttempts}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 10000, background: 'rgba(0,0,0,0.8)',
-            backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem',
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: '#141414', border: '1px solid #252525', borderRadius: 16,
-              width: '94vw', maxHeight: '88vh', overflow: 'hidden',
-              display: 'flex', flexDirection: 'column', boxShadow: '0 32px 80px rgba(0,0,0,0.8)',
-            }}
+      {/* ── LSRW attempts for one student (side panel, like Student Reports) ── */}
+      {(lsrwAttemptsLoading || lsrwAttemptsData || lsrwAttemptsError) && (() => {
+        const row = lsrwStudents.find((x) => x.userId === lsrwModalStudentId)
+        const who = lsrwAttemptsData?.student || { name: row?.name || 'Student', email: row?.email || '' }
+        const all = lsrwAttemptsData?.attempts || []
+        const p1 = all.filter((a) => a.patternKey === 1)
+        const p2 = all.filter((a) => a.patternKey === 2)
+        const pct = (a: { totalScoreAwarded: number; totalMarks: number }) => (a.totalMarks ? Math.round((a.totalScoreAwarded / a.totalMarks) * 100) : 0)
+        const best = all.length ? Math.max(...all.map(pct)) : null
+        const active = [...(lsrwModalPatternTab === 1 ? p1 : p2)].sort((a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime())
+        const sectionMeta = (key: string) => LSRW_SECTIONS.find((x) => x.key === key)
+        const colorOf = (p: number) => (p >= 75 ? '#22c55e' : p >= 50 ? '#f59e0b' : p > 0 ? '#ef4444' : '#3a3e43')
+        return (
+          <ReportDrawer
+            name={who.name}
+            email={who.email}
+            badge={<StatusPill tone="pending">LSRW</StatusPill>}
+            onClose={closeLsrwAttempts}
+            stats={lsrwAttemptsData ? [
+              { label: 'Attempts', value: all.length, tone: 'orange' },
+              { label: 'Completed', value: all.filter((a) => a.status === 'completed').length, tone: 'green' },
+              { label: 'Pattern 1', value: p1.length, tone: 'purple' },
+              { label: 'Pattern 2', value: p2.length, tone: 'blue' },
+              { label: 'Best score', value: best !== null ? `${best}%` : '—', tone: best === null ? 'plain' : best >= 75 ? 'green' : best >= 50 ? 'amber' : 'red' },
+            ] : undefined}
+            toolbar={<>
+              <label>Date range</label>
+              <input type="date" value={lsrwModalStart} max={lsrwModalEnd || undefined} onChange={(e) => setLsrwModalStart(e.target.value)} />
+              <span className="rd-sep">–</span>
+              <input type="date" value={lsrwModalEnd} min={lsrwModalStart || undefined} onChange={(e) => setLsrwModalEnd(e.target.value)} />
+              <button type="button" className="rd-btn is-primary" onClick={applyLsrwModalRange} disabled={!lsrwModalStart || !lsrwModalEnd}>Apply</button>
+              {(lsrwModalStart || lsrwModalEnd || lsrwModalAppliedStart || lsrwModalAppliedEnd) && <button type="button" className="rd-btn" onClick={clearLsrwModalRange}>Clear</button>}
+            </>}
           >
-            <div style={{ padding: '1.1rem 1.4rem', borderBottom: '1px solid #252525', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' as const }}>
-              <div>
-                <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>LSRW Attempts</div>
-                <div style={{ color: '#555', fontSize: '0.72rem', marginTop: 2 }}>
-                  {lsrwAttemptsData ? `${lsrwAttemptsData.student.name} · ${lsrwAttemptsData.student.email}` : ''}
-                </div>
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ color: '#666', fontSize: '0.7rem', fontWeight: 600, flexShrink: 0 }}>Date Range</span>
-                <input type="date" style={S.select} value={lsrwModalStart} max={lsrwModalEnd || undefined} onChange={(e) => setLsrwModalStart(e.target.value)} />
-                <span style={{ color: '#555' }}>–</span>
-                <input type="date" style={S.select} value={lsrwModalEnd} min={lsrwModalStart || undefined} onChange={(e) => setLsrwModalEnd(e.target.value)} />
-                <button
-                  onClick={applyLsrwModalRange}
-                  style={{ background: 'rgba(255,107,0,0.12)', border: '1px solid rgba(255,107,0,0.4)', color: '#ff6b00', borderRadius: 6, padding: '4px 10px', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}
-                >
-                  Apply
-                </button>
-                {(lsrwModalStart || lsrwModalEnd || lsrwModalAppliedStart || lsrwModalAppliedEnd) && (
-                  <button
-                    onClick={clearLsrwModalRange}
-                    style={{ background: 'transparent', border: '1px solid #2a2a2a', color: '#888', borderRadius: 6, padding: '4px 10px', fontSize: '0.72rem', cursor: 'pointer' }}
-                  >
-                    Clear
-                  </button>
-                )}
-                <button
-                  onClick={closeLsrwAttempts}
-                  style={{ background: '#222', border: '1px solid #333', color: '#777', borderRadius: 8, width: 28, height: 28, cursor: 'pointer', fontSize: '1rem', lineHeight: 1, flexShrink: 0 }}
-                >
-                  ×
-                </button>
-              </div>
-            </div>
+            {lsrwAttemptsLoading && <div className="rd-empty"><Spinner animation="border" style={{ color: '#ff6b00', width: 22, height: 22 }} /><span>Loading attempts…</span></div>}
+            {lsrwAttemptsError && <div className="rd-empty" style={{ color: '#fb737a' }}>{lsrwAttemptsError}</div>}
+            {lsrwAttemptsData && !lsrwAttemptsLoading && (
+              all.length === 0 ? (
+                <div className="rd-empty"><FaHeadphones /><span>No LSRW attempts in this range</span></div>
+              ) : (
+                <>
+                  <div className="dr-tabs" role="tablist">
+                    {([1, 2] as const).map((p) => (
+                      <button key={p} type="button" role="tab" aria-selected={lsrwModalPatternTab === p} className={lsrwModalPatternTab === p ? 'is-on' : ''} onClick={() => setLsrwModalPatternTab(p)}>
+                        Pattern {p} <span style={{ opacity: 0.7 }}>· {(p === 1 ? p1 : p2).length}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {active.length === 0 ? (
+                    <div className="rd-empty"><FaHeadphones /><span>No Pattern {lsrwModalPatternTab} attempts in this range</span></div>
+                  ) : (
+                    <div className="rd-list">
+                      {active.map((a, i) => {
+                        const total = pct(a)
+                        const started = new Date(a.startedAt)
+                        return (
+                          <div key={a.attemptId} className="rd-item rd-attempt-card">
+                            {(() => {
+                              const scored = a.sections.filter((x) => x.status !== 'pending' && x.scoreAwarded !== null)
+                              const ringColor = colorOf(total)
+                              return (
+                                <>
+                                  {/* Summary: score ring · when · status */}
+                                  <div className="rd-attempt-head">
+                                    <div className="rd-ring" style={{ background: `conic-gradient(${ringColor} ${total * 3.6}deg, #25282b 0deg)` }}>
+                                      <span><b>{total}%</b></span>
+                                    </div>
+                                    <div className="rd-attempt-main">
+                                      <div className="rd-attempt-line">
+                                        <strong>Attempt {active.length - i}</strong>
+                                        <StatusPill tone={a.status === 'completed' ? 'good' : 'mid'}>{a.status === 'completed' ? 'Completed' : 'In progress'}</StatusPill>
+                                      </div>
+                                      <small>
+                                        {started.toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })} · {started.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                                        {' · '}Pattern {a.patternKey}
+                                      </small>
+                                      <div className="rd-attempt-facts">
+                                        <span><b>{a.totalScoreAwarded}</b> of {a.totalMarks} marks</span>
+                                        <span><b>{scored.length}</b> of {a.sections.length} sections scored</span>
+                                      </div>
+                                    </div>
+                                  </div>
 
-            <div style={{ overflowY: 'auto', padding: '1.1rem 1.4rem' }}>
-              {lsrwAttemptsLoading && (
-                <div style={{ display: 'flex', justifyContent: 'center', padding: '2.5rem 0' }}>
-                  <Spinner animation="border" style={{ color: '#ff6b00' }} />
-                </div>
-              )}
-              {lsrwAttemptsError && (
-                <div style={{ color: '#ef4444', textAlign: 'center', padding: '2rem 0', fontSize: '0.85rem' }}>{lsrwAttemptsError}</div>
-              )}
-              {lsrwAttemptsData && !lsrwAttemptsLoading && (
-                lsrwAttemptsData.attempts.length === 0 ? (
-                  <div style={{ color: '#444', textAlign: 'center', padding: '2rem 0', fontSize: '0.85rem' }}>No attempts in this range</div>
-                ) : (() => {
-                  type Cell = { score: number | null; marks: number; status: string; time: string; ms: number }
-
-                  const pattern1 = lsrwAttemptsData.attempts.filter((a) => a.patternKey === 1)
-                  const pattern2 = lsrwAttemptsData.attempts.filter((a) => a.patternKey === 2)
-                  const activeAttempts = lsrwModalPatternTab === 1 ? pattern1 : pattern2
-                  // Only this pattern's own 4 sections, in its real order —
-                  // showing all 6 would put dashes under sections that
-                  // pattern never even includes.
-                  const activeSections = LSRW_SECTIONS.filter((s) => LSRW_PATTERN_SECTION_KEYS[lsrwModalPatternTab].includes(s.key))
-
-                  const dateSet = new Set(activeAttempts.map((a) => toDateStr(new Date(a.startedAt))))
-                  const dates = [...dateSet].sort()
-                  const bySection: Record<string, Record<string, Cell>> = {}
-                  activeSections.forEach(({ key }) => { bySection[key] = {} })
-                  activeAttempts.forEach((a) => {
-                    const d = toDateStr(new Date(a.startedAt))
-                    const ms = new Date(a.startedAt).getTime()
-                    a.sections.forEach((sec) => {
-                      if (!bySection[sec.sectionKey]) return
-                      const existing = bySection[sec.sectionKey][d]
-                      if (!existing || ms > existing.ms) {
-                        const time = new Date(a.startedAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })
-                        bySection[sec.sectionKey][d] = { score: sec.scoreAwarded, marks: sec.marks, status: sec.status, time, ms }
-                      }
-                    })
-                  })
-
-                  return (
-                    <div>
-                      {/* Pattern tabs */}
-                      <div style={{ display: 'flex', gap: 0, borderBottom: '1px solid #1e1e1e', marginBottom: '1rem' }}>
-                        {([1, 2] as const).map((p) => (
-                          <button
-                            key={p}
-                            onClick={() => setLsrwModalPatternTab(p)}
-                            style={{ position: 'relative', background: 'none', border: 'none', padding: '0.6rem 1.1rem 0.8rem', cursor: 'pointer', fontSize: '0.85rem', fontWeight: lsrwModalPatternTab === p ? 700 : 500, color: lsrwModalPatternTab === p ? '#fff' : '#555' }}
-                          >
-                            Pattern {p}
-                            {(p === 1 ? pattern1.length : pattern2.length) === 0 && (
-                              <span style={{ marginLeft: 6, color: '#444', fontSize: '0.68rem' }}>(none)</span>
-                            )}
-                            {lsrwModalPatternTab === p && <div style={{ position: 'absolute', bottom: 0, left: '10%', width: '80%', height: 2.5, background: '#ff6b00', borderRadius: 2 }} />}
-                          </button>
-                        ))}
-                      </div>
-
-                      {activeAttempts.length === 0 ? (
-                        <div style={{ color: '#444', fontSize: '0.85rem', padding: '1.5rem 0', textAlign: 'center' }}>No Pattern {lsrwModalPatternTab} attempts in this range</div>
-                      ) : (
-                        <div style={{ overflowX: 'auto' }}>
-                          <table style={{ width: 'max-content', minWidth: '100%', borderCollapse: 'separate', borderSpacing: 0, tableLayout: 'fixed' }}>
-                            <colgroup>
-                              <col style={{ width: 170 }} />
-                              {dates.map((d) => <col key={d} style={{ width: 110 }} />)}
-                            </colgroup>
-                            <thead>
-                              <tr>
-                                <th style={{ ...S.th, position: 'sticky', left: 0, zIndex: 2, background: '#111', boxShadow: '1px 0 0 #2a2a2a' }}>Section</th>
-                                {dates.map((d) => (
-                                  <th key={d} style={{ ...S.th, textAlign: 'center' }}>
-                                    {new Date(d).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
-                                  </th>
-                                ))}
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {activeSections.map(({ key, label, color }) => (
-                                <tr key={key}>
-                                  <td style={{ ...S.td, fontWeight: 700, position: 'sticky', left: 0, zIndex: 1, background: '#141414', boxShadow: '1px 0 0 #2a2a2a' }}>
-                                    <span style={{ color }}>{label}</span>
-                                  </td>
-                                  {dates.map((d) => {
-                                    const cell = bySection[key][d]
-                                    return (
-                                      <td key={d} style={{ ...S.td, textAlign: 'center' }}>
-                                        {!cell ? (
-                                          <span style={{ color: '#333' }}>—</span>
-                                        ) : cell.status === 'pending' ? (
-                                          <span style={{ color: '#444', fontSize: '0.75rem' }}>—</span>
-                                        ) : (
-                                          <div>
-                                            <div style={{ color: scoreColor(cell.score ?? 0), fontWeight: 700, fontSize: '0.78rem' }}>
-                                              {cell.score}<span style={{ opacity: 0.6 }}>/{cell.marks}</span>
-                                            </div>
-                                            <div style={{ color: '#555', fontSize: '0.6rem', marginTop: 2 }}>{cell.time}</div>
-                                          </div>
-                                        )}
-                                      </td>
-                                    )
-                                  })}
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                      )}
+                                  {/* Section results, in the order the test runs */}
+                                  <div className="rd-sec-table">
+                                    <div className="rd-sec-head"><span>Section</span><span>Score</span><span>Marks</span></div>
+                                    {a.sections.map((sec, n) => {
+                                      const meta = sectionMeta(sec.sectionKey)
+                                      const done = sec.status !== 'pending' && sec.scoreAwarded !== null
+                                      const p = done && sec.marks ? Math.round(((sec.scoreAwarded as number) / sec.marks) * 100) : 0
+                                      return (
+                                        <div key={sec.sectionKey} className="rd-sec-row" style={{ ['--c' as string]: meta?.color || '#9da2a8' }}>
+                                          <span className="rd-sec-name"><em>{n + 1}</em>{meta?.label || sec.label}</span>
+                                          {done ? (
+                                            <>
+                                              <span className="rd-sec-bar"><span className="rd-sec-track"><i style={{ width: `${p}%`, background: colorOf(p) }} /></span><b style={{ color: colorOf(p) }}>{p}%</b></span>
+                                              <span className="rd-sec-marks"><b>{sec.scoreAwarded}</b> / {sec.marks}</span>
+                                            </>
+                                          ) : (
+                                            <>
+                                              <span className="rd-sec-bar is-pending"><StatusPill tone="pending">Pending</StatusPill></span>
+                                              <span className="rd-sec-marks">— / {sec.marks}</span>
+                                            </>
+                                          )}
+                                        </div>
+                                      )
+                                    })}
+                                  </div>
+                                </>
+                              )
+                            })()}
+                          </div>
+                        )
+                      })}
                     </div>
-                  )
-                })()
-              )}
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+                  )}
+                </>
+              )
+            )}
+          </ReportDrawer>
+        )
+      })()}
     </div>
   )
 }

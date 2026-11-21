@@ -1,11 +1,14 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import PageMetaData from '@/components/PageMetaData'
 import AssessmentConfig from './components/AssessmentConfig'
 import { FaClipboardCheck, FaCheckCircle } from 'react-icons/fa'
 import { AdminPage, PageHeader } from '@/components/admin-ui'
 
 export default function FinalAssessmentPage() {
-  const [examId, setExamId] = useState<string>("")
+  // ?exam=<id> opens that exam directly (Eklav AI links here after creating one)
+  const [searchParams] = useSearchParams()
+  const [examId, setExamId] = useState<string>(searchParams.get('exam') || "")
   const [examTitle, setExamTitle] = useState<string>("")
 
   const handleExamIdChange = (id: string) => {

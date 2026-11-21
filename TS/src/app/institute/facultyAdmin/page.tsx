@@ -6,7 +6,7 @@ import { Col, Modal, Row } from 'react-bootstrap'
 import {
   FaBookOpen, FaChartBar, FaLanguage, FaRobot, FaClipboardList, FaFileAlt, FaChalkboardTeacher, FaUserTie,
   FaCheckCircle, FaUsers, FaPlus, FaExclamationTriangle, FaTimes, FaSpinner, FaSearch, FaUserPlus, FaEye,
-  FaEyeSlash, FaTrash,
+  FaEyeSlash, FaTrash, FaHeadphones
 } from 'react-icons/fa'
 import { AdminPage, PageHeader, StatCards, SearchInput, AdminSelect, EmptyState, initialsOf, toOptions } from '@/components/admin-ui'
 import DailyTimePerformers from '@/components/dashboard/DailyTimePerformers'
@@ -20,6 +20,7 @@ import AIInterviewFull from '@/components/dashboard/AIInterviewFull'
 import AssessmentWidget from '@/components/dashboard/AssessmentWidget'
 import AssessmentFull from '@/components/dashboard/AssessmentFull'
 import StudentReports from '@/components/dashboard/StudentReports'
+import ModuleReport from '@/components/dashboard/moduleOverview/ModuleReport'
 
 /* ─── Types ──────────────────────────────────────────────── */
 interface FacultyAdmin {
@@ -771,6 +772,7 @@ const FACULTY_TABS = [
   { key: 'course-enrollment', label: 'Course Progress',    icon: FaBookOpen,      color: '#3b82f6' },
   { key: 'ai-interview',      label: 'AI Based Interview', icon: FaRobot,         color: '#a855f7' },
   { key: 'english-practice',  label: 'English Practice',   icon: FaLanguage,      color: '#22c55e' },
+  { key: 'lsrw-practice',     label: 'LSRW Practice',      icon: FaHeadphones,    color: '#14b8a6' },
   { key: 'assessments',       label: 'Assessments',        icon: FaClipboardList, color: '#06b6d4' },
   { key: 'student-reports',   label: 'Student Reports',    icon: FaFileAlt,       color: '#ef4444' },
 ] as const
@@ -1045,90 +1047,40 @@ function FacultyAdminDashboard({ user: _user }: { user: any; baseURL: string }) 
           <div style={DS.content}>
 
             {activeTab === 'daily-engagement' && (
-              <Row className="g-3">
-                <Col md={12} lg={8}>
-                  <DailyTimePerformers apiBase={API_BASE} />
-                </Col>
-                <Col md={12} lg={4}>
-                  <div style={DS.infoCard}>
-                    <div style={DS.iconBox}><FaChartBar size={20} color="#ff6b00" /></div>
-                    <div style={DS.infoTitle}>Daily Engagement</div>
-                    <div style={DS.infoSub}>Student activity tracking</div>
-                    <p style={DS.infoDesc}>
-                      Track how many of your assigned students are active today, who hasn't logged in, and view a 7-day activity trend.
-                    </p>
-                    <button style={DS.btn} onClick={() => setOpenModal('daily-engagement')}>Full Details</button>
-                  </div>
-                </Col>
-              </Row>
+              <ModuleReport apiBase={API_BASE}>
+                <DailyEngagement apiBase={API_BASE} />
+              </ModuleReport>
             )}
 
             {activeTab === 'course-enrollment' && (
-              <Row className="g-3">
-                <Col md={12}>
-                  <CourseEnrollmentTrend
-                    apiBase={API_BASE}
-                    onFullDetails={() => setOpenModal('course-enrollment')}
-                  />
-                </Col>
-              </Row>
+              <ModuleReport apiBase={API_BASE}>
+                <CourseEnrollmentFull apiBase={API_BASE} />
+              </ModuleReport>
             )}
 
             {activeTab === 'ai-interview' && (
-              <Row className="g-3">
-                <Col md={12} lg={8}>
-                  <AIInterviewWidget apiBase={API_BASE} />
-                </Col>
-                <Col md={12} lg={4}>
-                  <div style={DS.infoCard}>
-                    <div style={DS.iconBox}><FaRobot size={20} color="#ff6b00" /></div>
-                    <div style={DS.infoTitle}>AI Based Interview</div>
-                    <div style={DS.infoSub}>Topic Based · Resume Based</div>
-                    <p style={DS.infoDesc}>
-                      Track participation in AI-powered mock interviews for your assigned students. See attempt counts and scores.
-                    </p>
-                    <button style={DS.btn} onClick={() => setOpenModal('ai-interview')}>Full Details</button>
-                  </div>
-                </Col>
-              </Row>
+              <ModuleReport apiBase={API_BASE}>
+                <AIInterviewFull apiBase={API_BASE} />
+              </ModuleReport>
             )}
 
             {activeTab === 'english-practice' && (
-              <Row className="g-3">
-                <Col md={12} lg={8}>
-                  <EnglishPracticeWidget apiBase={API_BASE} />
-                </Col>
-                <Col md={12} lg={4}>
-                  <div style={DS.infoCard}>
-                    <div style={DS.iconBox}><FaLanguage size={20} color="#ff6b00" /></div>
-                    <div style={DS.infoTitle}>English Practice</div>
-                    <div style={DS.infoSub}>Speaking · Writing · Reading · Listening · JAM</div>
-                    <p style={DS.infoDesc}>
-                      Track English skill participation across your assigned students — best scores and skill engagement levels.
-                    </p>
-                    <button style={DS.btn} onClick={() => setOpenModal('english-practice')}>Full Details</button>
-                  </div>
-                </Col>
-              </Row>
+              <ModuleReport apiBase={API_BASE}>
+                <EnglishPracticeFull apiBase={API_BASE} />
+              </ModuleReport>
+            )}
+
+            {/* LSRW Practice — structured LSRW tests, its own tab */}
+            {activeTab === 'lsrw-practice' && (
+              <ModuleReport apiBase={API_BASE}>
+                <EnglishPracticeFull apiBase={API_BASE} view="lsrw" />
+              </ModuleReport>
             )}
 
             {activeTab === 'assessments' && (
-              <Row className="g-3">
-                <Col md={12} lg={8}>
-                  <AssessmentWidget apiBase={API_BASE} />
-                </Col>
-                <Col md={12} lg={4}>
-                  <div style={DS.infoCard}>
-                    <div style={DS.iconBox}><FaClipboardList size={20} color="#ff6b00" /></div>
-                    <div style={DS.infoTitle}>Assessments</div>
-                    <div style={DS.infoSub}>MCQ · Coding · TR · HR</div>
-                    <p style={DS.infoDesc}>
-                      Track your assigned students' performance across assessment rounds. See top and low scorers, pass rates, and round-wise scores.
-                    </p>
-                    <button style={DS.btn} onClick={() => setOpenModal('assessments')}>Full Details</button>
-                  </div>
-                </Col>
-              </Row>
+              <ModuleReport apiBase={API_BASE} icon={FaClipboardList} title="Assessments" subtitle="Exam results by round: who passed, who needs help and every student’s score">
+                <AssessmentFull apiBase={API_BASE} />
+              </ModuleReport>
             )}
 
             {activeTab === 'student-reports' && (

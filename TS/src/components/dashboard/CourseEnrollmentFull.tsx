@@ -3,11 +3,20 @@ import { createPortal } from 'react-dom'
 import { Spinner } from 'react-bootstrap'
 import {
   FaBookOpen, FaCalendarAlt, FaCheckCircle, FaDownload, FaGraduationCap,
-  FaSearch, FaTrophy, FaUserGraduate,
+  FaSearch, FaTrophy, FaUserGraduate, FaFilePdf, FaChevronLeft, FaChevronRight
 } from 'react-icons/fa'
 import ReactApexChart from 'react-apexcharts'
 import * as XLSX from 'xlsx'
 import { useAuthContext } from '@/context/useAuthContext'
+import { exportBrandedPdf } from './moduleOverview/brandedPdf'
+import { ScoreBar, StatusPill, StudentCell, ViewButton, ReportPagination } from './moduleOverview/ReportCells'
+import { HeaderSelect, toOptions } from './StudentReports'
+import { CohortFilters, withCohort } from './moduleOverview/cohort'
+import ReportDrawer from './moduleOverview/ReportDrawer'
+import { ReportRangeSelect, useReportRange } from './moduleOverview/range'
+
+// Card footnote colour: grey stays the Student Reports rule grey, trend colours keep their meaning
+const dimAccent = (c: string) => (/^#(888|999|666|555|aaa)$/i.test(c) ? '#8a9097' : c)
 
 /* ─── Types ─────────────────────────────────────────────── */
 type CourseOption = { courseId: string; title: string }
@@ -98,8 +107,6 @@ const fmtHeaderDate = (d: string) =>
 const fmtDateTime = (d: string | null) =>
   d ? new Date(d).toLocaleString('en-IN', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—'
 
-const AVATAR_COLORS = ['#ff6b00', '#22c55e', '#3b82f6', '#a855f7', '#ec4899', '#14b8a6', '#f59e0b', '#ef4444']
-const avatarColor = (name: string) => AVATAR_COLORS[(name || '?').charCodeAt(0) % AVATAR_COLORS.length]
 const initials = (name: string) => name.split(' ').slice(0, 2).map((w) => w[0]?.toUpperCase() ?? '').join('') || '?'
 
 const statusStyle = (status: Row['status']) => {
@@ -111,7 +118,7 @@ const statusStyle = (status: Row['status']) => {
 /* ─── Styles ─────────────────────────────────────────────── */
 const S = {
   statGrid: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '0.6rem', marginBottom: '1rem' } as React.CSSProperties,
-  statCard: { background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '10px', padding: '0.65rem 0.8rem' } as React.CSSProperties,
+  statCard: { background: '#111315', border: '1px solid #272a2e', borderRadius: '11px', padding: '0.65rem 0.8rem' } as React.CSSProperties,
   iconCircle: (accent: string): React.CSSProperties => ({
     background: accent, borderRadius: '50%', width: 26, height: 26,
     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
@@ -121,7 +128,7 @@ const S = {
   sub: (accent: string): React.CSSProperties => ({ color: accent, fontSize: '0.66rem', fontWeight: 600, display: 'block' }),
   card: { background: '#1a1a1a', border: '1px solid #2a2a2a', borderRadius: '14px' } as React.CSSProperties,
   cardHeader: {
-    padding: '0.9rem 1.1rem', borderBottom: '1px solid #2a2a2a',
+    padding: '0.9rem 1.1rem', borderBottom: '1px solid #202326',
     display: 'flex', alignItems: 'center', justifyContent: 'space-between',
   } as React.CSSProperties,
   cardTitle: { color: '#fff', fontWeight: 700, fontSize: '0.85rem' } as React.CSSProperties,
@@ -149,14 +156,14 @@ const S = {
   th: {
     background: '#111', color: '#666', fontSize: '0.62rem', fontWeight: 600,
     letterSpacing: '0.06em', textTransform: 'uppercase' as const, padding: '0.6rem 0.5rem',
-    textAlign: 'left' as const, borderBottom: '1px solid #2a2a2a', whiteSpace: 'nowrap' as const,
+    textAlign: 'left' as const, borderBottom: '1px solid #202326', whiteSpace: 'nowrap' as const,
   },
   thSortable: { cursor: 'pointer', userSelect: 'none' as const },
-  td: { padding: '0.55rem 0.5rem', borderBottom: '1px solid #1e1e1e', color: '#e0e0e0', fontSize: '0.78rem', whiteSpace: 'nowrap' as const } as React.CSSProperties,
-  tdMuted: { padding: '0.55rem 0.5rem', borderBottom: '1px solid #1e1e1e', color: '#555', fontSize: '0.74rem', whiteSpace: 'nowrap' as const } as React.CSSProperties,
+  td: { padding: '0.55rem 0.5rem', borderBottom: '1px solid #202326', color: '#e0e0e0', fontSize: '0.78rem', whiteSpace: 'nowrap' as const } as React.CSSProperties,
+  tdMuted: { padding: '0.55rem 0.5rem', borderBottom: '1px solid #202326', color: '#555', fontSize: '0.74rem', whiteSpace: 'nowrap' as const } as React.CSSProperties,
   footer: {
-    background: '#111', borderTop: '1px solid #2a2a2a', color: '#555', fontSize: '0.78rem',
-    borderRadius: '0 0 14px 14px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    background: '#111315', borderTop: '1px solid #25282b', color: '#858a90', fontSize: '0.72rem',
+    borderRadius: '0 0 12px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
     flexWrap: 'wrap' as const, gap: '0.5rem', padding: '0.75rem 1.25rem',
   } as React.CSSProperties,
 }
@@ -199,6 +206,8 @@ const ProgressCell = ({ pct }: { pct: number }) => {
 /* ─── Main Component ─────────────────────────────────────── */
 const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string }) => {
   const { user } = useAuthContext()
+  // Date range shared by every report tab (default: till now)
+  const range = useReportRange()
   const baseURL = import.meta.env.VITE_API_BASE_URL
 
   // Overview
@@ -211,16 +220,18 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
 
   // Date range (drives the summary cards' "vs start of range" comparison)
   const [dateRangeMode, setDateRangeMode] = useState<DateRangeMode>('7d')
-  const [startDate, setStartDate] = useState(defaultStart)
-  const [endDate, setEndDate] = useState(defaultEnd)
-  const [appliedStart, setAppliedStart] = useState(defaultStart)
-  const [appliedEnd, setAppliedEnd] = useState(defaultEnd)
+  const [startDate, setStartDate] = useState(range.from)
+  const [endDate, setEndDate] = useState(range.to)
+  const [appliedStart, setAppliedStart] = useState(range.from)
+  const [appliedEnd, setAppliedEnd] = useState(range.to)
 
   // Table state
   const [rows, setRows] = useState<Row[]>([])
+  // Students in scope with no enrolment yet (listed after the enrolled ones, as Not enrolled)
+  const [notEnrolled, setNotEnrolled] = useState<{ userId: string; name: string; email: string; department: string }[]>([])
   const [tableLoading, setTableLoading] = useState(false)
   const [page, setPage] = useState(1)
-  const [limit, setLimit] = useState(20)
+  const [limit] = useState(10)
   const [sortBy, setSortBy] = useState<SortBy>('enrolledOn')
   const [sortOrder, setSortOrder] = useState<SortOrder>('desc')
 
@@ -303,12 +314,14 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
       maxProgress: String(opts.maxProgress ?? appliedProgress[1]),
       sortBy: opts.sortBy ?? sortBy,
       order: opts.order ?? sortOrder,
+      includeAll: '1',
     })
     try {
-      const res = await fetch(`${baseURL}${apiBase}/course-enrollment-students?${params}`, { headers: { Authorization: `Bearer ${user.token}` } })
+      const res = await fetch(`${baseURL}${apiBase}/course-enrollment-students?${withCohort(params)}`, { headers: { Authorization: `Bearer ${user.token}` } })
       const data = await res.json()
       if (data.success) {
         setRows(data.rows)
+        setNotEnrolled(data.notEnrolled || [])
         if (data.departments) setDepartments(data.departments)
       }
     } catch (err) { console.error(err) }
@@ -328,21 +341,17 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
     }, 400)
   }
 
-  const applyFilters = () => {
-    setAppliedCourse(filterCourse)
-    setAppliedDepartment(draftDepartment)
-    setAppliedProgress(draftProgress)
+  const PROGRESS_BANDS: Record<string, [number, number]> = { '': [0, 100], 'not-started': [0, 0], low: [1, 49], mid: [50, 79], done: [80, 100] }
+  const progressBand = Object.keys(PROGRESS_BANDS).find((k) => PROGRESS_BANDS[k][0] === appliedProgress[0] && PROGRESS_BANDS[k][1] === appliedProgress[1]) ?? ''
+  const applyNow = (next: { course?: string; department?: string; band?: string }) => {
+    const course = next.course ?? appliedCourse
+    const department = next.department ?? appliedDepartment
+    const range = next.band !== undefined ? PROGRESS_BANDS[next.band] : appliedProgress
+    setFilterCourse(course); setAppliedCourse(course)
+    setDraftDepartment(department); setAppliedDepartment(department)
+    setDraftProgress(range); setAppliedProgress(range)
     setPage(1)
-    fetchRows({ courseId: filterCourse, department: draftDepartment, minProgress: draftProgress[0], maxProgress: draftProgress[1] })
-  }
-
-  const resetFilters = () => {
-    setFilterCourse(''); setAppliedCourse('')
-    setDraftDepartment(''); setAppliedDepartment('')
-    setDraftProgress([0, 100]); setAppliedProgress([0, 100])
-    setSearch('')
-    setPage(1)
-    fetchRows({ search: '', courseId: '', department: '', minProgress: 0, maxProgress: 100 })
+    fetchRows({ courseId: course, department, minProgress: range[0], maxProgress: range[1] })
   }
 
   const onSortChange = (key: SortBy) => {
@@ -352,7 +361,7 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
     setSortBy(key); setSortOrder(nextOrder)
   }
 
-  const handleExportExcel = async () => {
+  const handleExportExcel = async (format: 'excel' | 'pdf' = 'excel') => {
     if (!user?.token) return
     setExporting(true)
     try {
@@ -361,7 +370,7 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
         minProgress: String(appliedProgress[0]), maxProgress: String(appliedProgress[1]),
         sortBy, order: sortOrder,
       })
-      const res = await fetch(`${baseURL}${apiBase}/course-enrollment-students?${params}`, { headers: { Authorization: `Bearer ${user.token}` } })
+      const res = await fetch(`${baseURL}${apiBase}/course-enrollment-students?${withCohort(params)}`, { headers: { Authorization: `Bearer ${user.token}` } })
       const data = await res.json()
       if (!data.success) return
       const exportRows = data.rows.map((r: Row, i: number) => ({
@@ -377,6 +386,10 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
         'Quiz Score (%)': r.quizScore ?? '—',
         Status: r.status,
       }))
+      if (format === 'pdf') {
+        await exportBrandedPdf({ title: 'Course Progress', subtitle: 'Student progress across enrolled courses', rows: exportRows, fileName: `Student_Course_Progress_${new Date().toISOString().slice(0, 10)}` })
+        return
+      }
       const ws = XLSX.utils.json_to_sheet(exportRows)
       const wb = XLSX.utils.book_new()
       XLSX.utils.book_append_sheet(wb, ws, 'Course Progress')
@@ -473,6 +486,12 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
     return 0
   })
 
+  // Every student appears: those with no enrolment follow the enrolled ones
+  studentGroups = [...studentGroups, ...notEnrolled.map((n) => ({
+    ...n, courses: [], courseCount: 0, avgProgress: 0, lessonsCompleted: 0, lessonsTotal: 0,
+    avgQuizScore: null, lastAccess: null, enrolledOn: null, status: 'Not Started' as Row['status'],
+  }))]
+
   const studentTotalPages = Math.max(1, Math.ceil(studentGroups.length / limit))
   const studentSafePage = Math.min(page, studentTotalPages)
   const pagedStudentGroups = studentGroups.slice((studentSafePage - 1) * limit, studentSafePage * limit)
@@ -481,34 +500,17 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
     <div>
       {/* ── Header ─────────────────────────────────────── */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem', marginBottom: '1.25rem' }}>
-        <div>
-          <div style={{ color: '#fff', fontWeight: 700, fontSize: '1.05rem' }}>Student Course Progress</div>
-          <div style={{ color: '#666', fontSize: '0.78rem', marginTop: 2 }}>Track and monitor individual student progress across all enrolled courses</div>
+        <div className="sr-heading">
+          <span className="sr-heading-icon"><FaBookOpen /></span>
+          <div>
+            <h2>Course Progress</h2>
+            <p>Track and monitor individual student progress across all enrolled courses</p>
+          </div>
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' as const, alignItems: 'center' }}>
-          <div style={{ position: 'relative' }}>
-            <FaCalendarAlt size={11} color="#666" style={{ position: 'absolute', left: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} />
-            <select
-              style={{ ...S.select, width: 170, paddingLeft: 28 }}
-              value={dateRangeMode}
-              onChange={(e) => onDateRangeModeChange(e.target.value as DateRangeMode)}
-            >
-              <option value="today">Today ({fmtHeaderDate(defaultEnd())})</option>
-              <option value="7d">Last 7 Days</option>
-              <option value="30d">Last 30 Days</option>
-              <option value="custom">Custom Range</option>
-            </select>
-          </div>
-          {dateRangeMode === 'custom' && (
-            <>
-              <input type="date" style={S.select} value={startDate} max={endDate} onChange={(e) => setStartDate(e.target.value)} />
-              <span style={{ color: '#555' }}>–</span>
-              <input type="date" style={S.select} value={endDate} min={startDate} max={toDateStr()} onChange={(e) => setEndDate(e.target.value)} />
-              <button style={S.applyBtn} onClick={applyCustomRange}>Apply</button>
-            </>
-          )}
-          <button style={S.headerBtn('#22c55e')} onClick={handleExportExcel} disabled={exporting}>
-            <FaDownload size={11} /> {exporting ? 'Exporting…' : 'Export Excel'}
+          <ReportRangeSelect />
+          <button type="button" className="sr-export-button" onClick={() => handleExportExcel('pdf')} disabled={exporting}>
+            <FaFilePdf /> {exporting ? 'Preparing PDF…' : 'Export PDF'}
           </button>
         </div>
       </div>
@@ -520,186 +522,142 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
       `}</style>
 
       {/* ── Stat Cards ─────────────────────────────────── */}
-      <div style={S.statGrid}>
-        <div style={S.statCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <div style={S.iconCircle('#ff6b00')}><FaUserGraduate size={12} color="#fff" /></div>
-            <span style={S.labelSm}>Total Students</span>
+      <section className="sr-summary dr-summary">
+        <article className="sr-summary-card sr-card-orange">
+          <span className="sr-summary-icon sr-icon-orange"><FaUserGraduate /></span>
+          <div>
+            <strong>{summary.totalStudents}</strong>
+            <span>Total Students</span>
+            <em className="sr-summary-rule" style={{ color: dimAccent('#22c55e') }}>↑ {Math.max(0, summary.totalStudents)} enrolled overall</em>
           </div>
-          <div style={S.numSm}>{summary.totalStudents}</div>
-          <span style={S.sub('#22c55e')}>↑ {Math.max(0, summary.totalStudents)} enrolled overall</span>
-        </div>
+        </article>
 
-        <div style={S.statCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <div style={S.iconCircle('#22c55e')}><FaBookOpen size={12} color="#fff" /></div>
-            <span style={S.labelSm}>Total Courses</span>
+        <article className="sr-summary-card sr-card-green">
+          <span className="sr-summary-icon sr-icon-green"><FaBookOpen /></span>
+          <div>
+            <strong>{summary.totalCourses}</strong>
+            <span>Total Courses</span>
+            <em className="sr-summary-rule" style={{ color: dimAccent('#22c55e') }}>Active Courses</em>
           </div>
-          <div style={S.numSm}>{summary.totalCourses}</div>
-          <span style={S.sub('#22c55e')}>Active Courses</span>
-        </div>
+        </article>
 
-        <div style={S.statCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <div style={S.iconCircle('#a855f7')}><FaGraduationCap size={12} color="#fff" /></div>
-            <span style={S.labelSm}>Students Enrolled</span>
+        <article className="sr-summary-card sr-card-purple">
+          <span className="sr-summary-icon sr-icon-purple"><FaGraduationCap /></span>
+          <div>
+            <strong>{summary.studentsEnrolledCount}</strong>
+            <span>Students Enrolled</span>
+            <em className="sr-summary-rule" style={{ color: dimAccent('#999') }}>{summary.totalStudents > 0 ? Math.round((summary.studentsEnrolledCount / summary.totalStudents) * 100) : 0}% of total students</em>
           </div>
-          <div style={S.numSm}>{summary.studentsEnrolledCount}</div>
-          <span style={S.sub('#999')}>{summary.totalStudents > 0 ? Math.round((summary.studentsEnrolledCount / summary.totalStudents) * 100) : 0}% of total students</span>
-        </div>
+        </article>
 
-        <div style={S.statCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <div style={S.iconCircle('#3b82f6')}><FaCheckCircle size={12} color="#fff" /></div>
-            <span style={S.labelSm}>Average Progress</span>
+        <article className="sr-summary-card sr-card-blue">
+          <span className="sr-summary-icon sr-icon-blue"><FaCheckCircle /></span>
+          <div>
+            <strong>{summary.avgCompletion}%</strong>
+            <span>Average Progress</span>
+            <em className="sr-summary-rule" style={{ color: dimAccent(summary.avgProgressTrendPct >= 0 ? '#22c55e' : '#ef4444') }}>{summary.avgProgressTrendPct >= 0 ? '↑' : '↓'} {Math.abs(summary.avgProgressTrendPct)}% vs start of range</em>
           </div>
-          <div style={S.numSm}>{summary.avgCompletion}%</div>
-          <span style={S.sub(summary.avgProgressTrendPct >= 0 ? '#22c55e' : '#ef4444')}>
-            {summary.avgProgressTrendPct >= 0 ? '↑' : '↓'} {Math.abs(summary.avgProgressTrendPct)}% vs start of range
-          </span>
-        </div>
+        </article>
 
-        <div style={S.statCard}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-            <div style={S.iconCircle('#ef4444')}><FaTrophy size={12} color="#fff" /></div>
-            <span style={S.labelSm}>Completed Courses</span>
+        <article className="sr-summary-card sr-card-red">
+          <span className="sr-summary-icon sr-icon-red"><FaTrophy /></span>
+          <div>
+            <strong>{summary.completedThisMonth}</strong>
+            <span>Completed Courses</span>
+            <em className="sr-summary-rule" style={{ color: dimAccent('#999') }}>This month</em>
           </div>
-          <div style={S.numSm}>{summary.completedThisMonth}</div>
-          <span style={S.sub('#999')}>This month</span>
-        </div>
-      </div>
+        </article>
+      </section>
 
-      {/* ── Filters row ────────────────────────────────── */}
-      <div style={{ ...S.card, marginBottom: '0.85rem' }}>
-        <div style={{ padding: '0.9rem 1.1rem', display: 'flex', flexWrap: 'nowrap' as const, gap: '1rem', alignItems: 'flex-end', overflowX: 'auto' }}>
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4, flex: '1 1 0', minWidth: 150 }}>
-            <span style={S.filterLabel}>Course</span>
-            <select style={{ ...S.select, width: '100%' }} value={filterCourse} onChange={(e) => setFilterCourse(e.target.value)}>
-              <option value="">All Courses</option>
-              {courseOptions.map((c) => <option key={c.courseId} value={c.courseId}>{truncate(c.title, 40)}</option>)}
-            </select>
+      {/* ── Charts row: progress bands and top courses, in the Student Reports panel style ── */}
+      <div className="dr-two-col">
+        <section className="sr-table-panel dr-panel">
+          <div className="dr-panel-head">
+            <div><h3>Progress Distribution</h3><p>{distTotal} students by average course progress</p></div>
           </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4, flex: '1 1 0', minWidth: 150 }}>
-            <span style={S.filterLabel}>Batch / Department</span>
-            <select style={{ ...S.select, width: '100%' }} value={draftDepartment} onChange={(e) => setDraftDepartment(e.target.value)}>
-              <option value="">All Departments</option>
-              {departments.map((d) => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 4, flex: '1 1 0', minWidth: 160 }}>
-            <span style={S.filterLabel}>Progress Range: {draftProgress[0]}% – {draftProgress[1]}%</span>
-            <div style={{ position: 'relative', width: '100%', height: 28, display: 'flex', alignItems: 'center' }}>
-              <div style={{ position: 'absolute', left: 0, right: 0, height: 4, background: '#2a2a2a', borderRadius: 2 }} />
-              <div style={{
-                position: 'absolute', height: 4, background: '#ff6b00', borderRadius: 2,
-                left: `${draftProgress[0]}%`, right: `${100 - draftProgress[1]}%`,
-              }} />
-              <input
-                type="range" min={0} max={100} step={5} value={draftProgress[0]}
-                onChange={(e) => setDraftProgress([Math.min(Number(e.target.value), draftProgress[1]), draftProgress[1]])}
-                style={{ position: 'absolute', width: '100%', margin: 0, background: 'transparent' }}
-                className="course-prog-range"
-              />
-              <input
-                type="range" min={0} max={100} step={5} value={draftProgress[1]}
-                onChange={(e) => setDraftProgress([draftProgress[0], Math.max(Number(e.target.value), draftProgress[0])])}
-                style={{ position: 'absolute', width: '100%', margin: 0, background: 'transparent' }}
-                className="course-prog-range"
-              />
-            </div>
-          </div>
-
-          <div style={{ ...S.searchWrap, flex: '1 1 0', minWidth: 160 }}>
-            <FaSearch size={11} color="#444" style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)' }} />
-            <input style={S.input({ width: '100%' })} placeholder="Search by name or email" value={search} onChange={(e) => onSearchChange(e.target.value)} />
-          </div>
-
-          <button style={{ ...S.applyBtn, flexShrink: 0 }} onClick={applyFilters}>Apply Filters</button>
-          <button style={{ ...S.resetBtn, flexShrink: 0 }} onClick={resetFilters}>Reset</button>
-        </div>
-      </div>
-
-      {/* ── Charts row ─────────────────────────────────── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '0.85rem', marginBottom: '1.25rem', alignItems: 'stretch', minWidth: 0 }}>
-        {/* Overall Progress Distribution */}
-        <div style={{ ...S.card, minWidth: 0 }}>
-          <div style={S.cardHeader}><span style={S.cardTitle}>Overall Progress Distribution</span></div>
-          <div style={{ padding: '0.9rem 1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{ width: 120, flexShrink: 0 }}>
-                <ReactApexChart type="donut" height={120} series={donutSeries} options={donutOptions} />
-              </div>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
-                {[
-                  { label: 'Not Started', range: '0%', value: distribution.notStarted, color: '#555' },
-                  { label: 'In Progress', range: '1% – 49%', value: distribution.inProgress, color: '#ff6b00' },
-                  { label: 'Mid Progress', range: '50% – 79%', value: distribution.midProgress, color: '#3b82f6' },
-                  { label: 'Completed', range: '80% – 100%', value: distribution.completed, color: '#22c55e' },
-                ].map((d) => (
-                  <div key={d.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, fontSize: '0.76rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: d.color, display: 'inline-block', flexShrink: 0 }} />
-                      <span style={{ color: '#ccc' }}>{d.label} ({d.range})</span>
-                    </div>
-                    <span style={{ color: '#888', flexShrink: 0 }}>{d.value} ({Math.round((d.value / distTotal) * 100)}%)</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Top Courses — enrollment-ranked, with each course's own avg
-            completion. Replaces the old "Average Progress Over Time" line
-            chart, which was structurally flat: it averaged each student's
-            *current* progress and only shifted if new UserProgress records
-            were created within the selected date window — with no daily
-            snapshots in the DB, most ranges showed an identical value
-            repeated every day. This shows real, immediately-true variation
-            instead. */}
-        <div style={{ ...S.card, minWidth: 0 }}>
-          <div style={S.cardHeader}>
-            <span style={S.cardTitle}>Top Courses</span>
-            <span style={{ color: '#555', fontSize: '0.7rem' }}>By Enrollment</span>
-          </div>
-          <div style={{ padding: '0.9rem 1rem', display: 'flex', flexDirection: 'column', gap: 12 }}>
-            {topCoursesRanked.length === 0 ? (
-              <div style={{ color: '#555', fontSize: '0.76rem', textAlign: 'center', padding: '1rem 0' }}>No courses yet</div>
-            ) : topCoursesRanked.map((c, i) => {
-              const barPct = Math.round((c.enrolledCount / maxEnrolled) * 100)
-              const completionColor = c.avgCompletion >= 70 ? '#22c55e' : c.avgCompletion >= 40 ? '#f59e0b' : '#ef4444'
+          <div className="dr-panel-body">
+            {(() => {
+              const bands = [
+                { key: 'ns', label: 'Not started', range: '0%', value: distribution.notStarted, color: '#8a94a6' },
+                { key: 'ip', label: 'In progress', range: '1 – 49%', value: distribution.inProgress, color: '#ff7a00' },
+                { key: 'mp', label: 'Mid progress', range: '50 – 79%', value: distribution.midProgress, color: '#3b82f6' },
+                { key: 'cp', label: 'Completed', range: '80 – 100%', value: distribution.completed, color: '#22c55e' },
+              ]
+              const sum = bands.reduce((t, b) => t + b.value, 0) || 1
               return (
-                <div key={c.courseId}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 5, gap: 8 }}>
-                    <span style={{ color: '#ddd', fontSize: '0.78rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      {i + 1}. {truncate(c.title, 32)}
-                    </span>
-                    <span style={{ color: '#666', fontSize: '0.7rem', flexShrink: 0 }}>
-                      {c.enrolledCount} enrolled · <span style={{ color: completionColor, fontWeight: 700 }}>{c.avgCompletion}%</span>
-                    </span>
+                <>
+                  <div className="dr-barchart" role="img" aria-label="Students by progress band">
+                    {bands.map((b) => {
+                      const pct = Math.round((b.value / sum) * 100)
+                      const max = Math.max(1, ...bands.map((x) => x.value))
+                      return (
+                        <div key={b.key} className="dr-barcol" style={{ ['--c' as string]: b.color }} title={`${b.label}: ${b.value} students (${pct}%)`}>
+                          <div className="dr-barval"><strong>{b.value}</strong><small>{pct}%</small></div>
+                          <div className="dr-bartrack"><i style={{ height: `${Math.max(b.value ? 4 : 0, (b.value / max) * 100)}%` }} /></div>
+                          <div className="dr-barlabel"><span>{b.label}</span><em>{b.range}</em></div>
+                        </div>
+                      )
+                    })}
                   </div>
-                  <div style={{ background: '#2a2a2a', borderRadius: 4, height: 6, overflow: 'hidden' }}>
-                    <div style={{ width: `${barPct}%`, background: '#ff6b00', height: '100%' }} />
-                  </div>
-                </div>
+                </>
               )
-            })}
+            })()}
           </div>
-        </div>
+        </section>
+
+        <section className="sr-table-panel dr-panel">
+          <div className="dr-panel-head">
+            <div><h3>Top Courses</h3><p>Most enrolled courses and their average completion</p></div>
+          </div>
+          {topCoursesRanked.length === 0 ? (
+            <div className="sr-empty"><FaBookOpen /><span>No courses yet</span></div>
+          ) : (
+            <div className="dr-mini-table">
+              <div className="dr-mini-head"><span>#</span><span>Course</span><span>Enrolled</span><span>Avg completion</span></div>
+              {topCoursesRanked.map((c, i) => (
+                <div key={c.courseId} className="dr-mini-row">
+                  <span>{i < 3 ? <b className={`dr-medal m${i + 1}`}>{i + 1}</b> : i + 1}</span>
+                  <span className="dr-course">
+                    {c.image ? <img src={c.image} alt="" /> : <em>{c.title.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}</em>}
+                    <strong title={c.title}>{c.title}</strong>
+                  </span>
+                  <span className="dr-enrolled"><strong>{c.enrolledCount}</strong><i><u style={{ width: `${Math.round((c.enrolledCount / maxEnrolled) * 100)}%` }} /></i></span>
+                  <span><ScoreBar pct={c.avgCompletion} /></span>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
       </div>
 
       {/* ── Table ──────────────────────────────────────── */}
-      <div style={S.card}>
-        <div style={{ padding: '0.9rem 1.1rem', borderBottom: '1px solid #2a2a2a', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={S.cardTitle}>Students Progress Overview</span>
-          <select style={{ ...S.select, width: 100 }} value={limit} onChange={(e) => { setLimit(Number(e.target.value)); setPage(1) }}>
-            {[10, 20, 50, 100].map((n) => <option key={n} value={n}>{n} / page</option>)}
-          </select>
+      <section className="sr-table-panel" aria-label="Student course progress">
+        <div className="sr-toolbar">
+          <div className="sr-search">
+            <FaSearch aria-hidden="true" />
+            <input aria-label="Search students" value={search} onChange={(e) => onSearchChange(e.target.value)} placeholder="Search by name or email" />
+          </div>
+          <div className="sr-filters sr-report-filters">
+            <HeaderSelect label="Filter by course" prefix="Course:" value={appliedCourse}
+              options={[{ value: '', label: 'All' }, ...courseOptions.map((c) => ({ value: c.courseId, label: truncate(c.title, 60) }))]}
+              onChange={(course) => applyNow({ course })} />
+            <CohortFilters />
+            <HeaderSelect label="Filter by progress" prefix="Progress:" value={progressBand}
+              options={[{ value: '', label: 'All' }, { value: 'not-started', label: 'Not started' }, { value: 'low', label: '1 – 49%' }, { value: 'mid', label: '50 – 79%' }, { value: 'done', label: '80 – 100%' }]}
+              onChange={(band) => applyNow({ band })} />
+            <span className="sr-result-count">
+              {studentGroups.length ? `${(studentSafePage - 1) * limit + 1}–${Math.min(studentSafePage * limit, studentGroups.length)} of ${studentGroups.length}` : '0 students'}
+            </span>
+            {studentGroups.length > limit && (
+              <span className="sr-compact-pagination">
+                <button type="button" onClick={() => setPage(Math.max(1, studentSafePage - 1))} disabled={studentSafePage <= 1} aria-label="Previous page"><FaChevronLeft /></button>
+                <button type="button" onClick={() => setPage(Math.min(studentTotalPages, studentSafePage + 1))} disabled={studentSafePage >= studentTotalPages} aria-label="Next page"><FaChevronRight /></button>
+              </span>
+            )}
+          </div>
         </div>
 
-        <div style={{ position: 'relative', overflowX: 'auto' }}>
+        <div className="sr-table-scroll" style={{ position: 'relative', overflowX: 'auto' }}>
           {tableLoading && (
             <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 10 }}>
               <Spinner animation="border" style={{ color: '#ff6b00', width: 24, height: 24 }} />
@@ -717,44 +675,30 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
                 <SortableTh label="Lessons Completed" sortKey="lessonsCompleted" sortBy={sortBy} sortOrder={sortOrder} onClick={onSortChange} style={{ minWidth: 100, textAlign: 'center' }} />
                 <SortableTh label="Avg Quiz Score" sortKey="quizScore" sortBy={sortBy} sortOrder={sortOrder} onClick={onSortChange} style={{ minWidth: 80, textAlign: 'center' }} />
                 <th style={{ ...S.th, minWidth: 90, textAlign: 'center' }}>Status</th>
-                <th style={{ ...S.th, minWidth: 60, textAlign: 'center' }}>Action</th>
+                <th className="dr-actions" style={{ ...S.th, minWidth: 60, textAlign: 'center' }}>Action</th>
               </tr>
             </thead>
             <tbody>
               {pagedStudentGroups.length === 0 ? (
                 <tr><td colSpan={9} style={{ textAlign: 'center', padding: '2.5rem', color: '#444' }}>No enrollments found</td></tr>
               ) : pagedStudentGroups.map((g, i) => {
-                const st = statusStyle(g.status)
                 return (
-                  <tr key={g.userId}>
+                  <tr key={g.userId} className={g.courseCount ? undefined : 'dr-row-muted'}>
                     <td style={S.tdMuted}>{(studentSafePage - 1) * limit + i + 1}</td>
-                    <td style={S.td}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <div style={{ width: 22, height: 22, borderRadius: '50%', background: avatarColor(g.name), color: '#fff', fontSize: '0.56rem', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                          {initials(g.name)}
-                        </div>
-                        <div style={{ minWidth: 0 }}>
-                          <div style={{ color: '#fff', fontWeight: 600, fontSize: '0.76rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 130 }}>{g.name}</div>
-                          <div style={{ color: '#555', fontSize: '0.64rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 130 }}>{g.email}</div>
-                        </div>
-                      </div>
-                    </td>
+                    <td style={S.td}><StudentCell name={g.name} email={g.email} /></td>
                     <td style={{ ...S.td, textAlign: 'center' }}>{g.courseCount}</td>
                     <td style={S.tdMuted}>{fmtDate(g.enrolledOn)}</td>
                     <td style={S.tdMuted}>{fmtDateTime(g.lastAccess)}</td>
-                    <td style={S.td}><ProgressCell pct={g.avgProgress} /></td>
+                    <td style={S.td}>{g.courseCount ? <ScoreBar pct={g.avgProgress} /> : <span className="dr-dot">·</span>}</td>
                     <td style={{ ...S.td, textAlign: 'center' }}>{g.lessonsTotal > 0 ? `${g.lessonsCompleted}/${g.lessonsTotal}` : '—'}</td>
                     <td style={{ ...S.td, textAlign: 'center' }}>{g.avgQuizScore !== null ? `${g.avgQuizScore}%` : '—'}</td>
                     <td style={{ ...S.td, textAlign: 'center' }}>
-                      <span style={{ background: st.bg, color: st.text, borderRadius: 6, padding: '2px 10px', fontSize: '0.7rem', fontWeight: 700 }}>{g.status}</span>
+                      {g.courseCount
+                        ? <StatusPill tone={g.status === 'Completed' ? 'good' : g.status === 'In Progress' ? 'mid' : 'none'}>{g.status}</StatusPill>
+                        : <StatusPill tone="pending">Not enrolled</StatusPill>}
                     </td>
-                    <td style={{ ...S.td, textAlign: 'center' }}>
-                      <button
-                        onClick={() => setViewStudent(g)}
-                        style={{ background: 'transparent', border: '1px solid #2a2a2a', color: '#ff6b00', borderRadius: 6, padding: '3px 10px', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}
-                      >
-                        View
-                      </button>
+                    <td className="dr-actions" style={{ ...S.td, textAlign: 'center' }}>
+                      {g.courseCount ? <ViewButton onClick={() => setViewStudent(g)} /> : <span className="dr-dot">—</span>}
                     </td>
                   </tr>
                 )
@@ -764,92 +708,61 @@ const CourseEnrollmentFull = ({ apiBase = '/api/institute' }: { apiBase?: string
         </div>
 
         {/* Pagination */}
-        <div style={S.footer}>
-          <span>
-            Showing <strong style={{ color: '#aaa' }}>{studentGroups.length === 0 ? 0 : (studentSafePage - 1) * limit + 1}–{Math.min(studentSafePage * limit, studentGroups.length)}</strong>
-            {' '}of <strong style={{ color: '#aaa' }}>{studentGroups.length}</strong> students
-          </span>
-          <div style={{ display: 'flex', gap: '0.4rem' }}>
-            <PagBtn disabled={studentSafePage <= 1} onClick={() => setPage(studentSafePage - 1)}>‹ Prev</PagBtn>
-            {Array.from({ length: studentTotalPages }, (_, i) => i + 1)
-              .filter((p) => p === 1 || p === studentTotalPages || Math.abs(p - studentSafePage) <= 1)
-              .reduce<(number | '…')[]>((acc, p, idx, arr) => {
-                if (idx > 0 && (p as number) - (arr[idx - 1] as number) > 1) acc.push('…')
-                acc.push(p); return acc
-              }, [])
-              .map((p, idx) => p === '…'
-                ? <span key={`e-${idx}`} style={{ color: '#444', padding: '0 4px' }}>…</span>
-                : <PagBtn key={p} active={p === studentSafePage} onClick={() => setPage(p as number)}>{p}</PagBtn>
-              )}
-            <PagBtn disabled={studentSafePage >= studentTotalPages} onClick={() => setPage(studentSafePage + 1)}>Next ›</PagBtn>
-          </div>
-        </div>
-      </div>
+        <ReportPagination page={studentSafePage} pageSize={limit} total={studentGroups.length} onPage={setPage} />
+      </section>
 
-      {/* ── Student Course Detail Modal ────────────────── */}
-      {viewStudent && createPortal(
-        <div
-          onClick={() => setViewStudent(null)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.75)',
-            backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem',
-          }}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
-            style={{
-              background: '#141414', border: '1px solid #252525', borderRadius: 16,
-              width: '75vw', maxHeight: '80vh', overflow: 'hidden', display: 'flex', flexDirection: 'column',
-              boxShadow: '0 32px 80px rgba(0,0,0,0.8)',
-            }}
+      {/* ── Student course detail (drawer, like Student Reports) ── */}
+      {viewStudent && (() => {
+        const v = viewStudent
+        const quizzes = v.courses.filter((c) => c.quizScore !== null)
+        const barColor = (p: number) => (p >= 80 ? '#22c55e' : p >= 50 ? '#3b82f6' : p > 0 ? '#ff7a00' : '#3a3e43')
+        return (
+          <ReportDrawer
+            name={v.name}
+            email={v.email}
+            meta={v.department || undefined}
+            badge={<StatusPill tone={v.status === 'Completed' ? 'good' : v.status === 'In Progress' ? 'mid' : 'none'}>{v.status}</StatusPill>}
+            onClose={() => setViewStudent(null)}
+            stats={[
+              { label: 'Courses', value: v.courseCount, hint: 'enrolled', tone: 'orange' },
+              { label: 'Avg progress', value: `${v.avgProgress}%`, hint: 'across all courses', tone: v.avgProgress >= 80 ? 'green' : v.avgProgress >= 50 ? 'blue' : v.avgProgress > 0 ? 'amber' : 'plain' },
+              { label: 'Lessons done', value: v.lessonsTotal ? `${v.lessonsCompleted} / ${v.lessonsTotal}` : '—', hint: v.lessonsTotal ? `${Math.round((v.lessonsCompleted / v.lessonsTotal) * 100)}% complete` : 'no lesson data' },
+              { label: 'Avg quiz', value: v.avgQuizScore !== null ? `${v.avgQuizScore}%` : '—', hint: quizzes.length ? `${quizzes.length} course${quizzes.length === 1 ? '' : 's'} with quizzes` : 'no quiz attempts', tone: v.avgQuizScore === null ? 'plain' : v.avgQuizScore >= 75 ? 'green' : v.avgQuizScore >= 50 ? 'amber' : 'red' },
+            ]}
           >
-            <div style={{ padding: '1.1rem 1.4rem', borderBottom: '1px solid #252525', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <div>
-                <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.95rem' }}>{viewStudent.name}</div>
-                <div style={{ color: '#555', fontSize: '0.72rem', marginTop: 2 }}>{viewStudent.email} · {viewStudent.courseCount} course{viewStudent.courseCount !== 1 ? 's' : ''} enrolled</div>
-              </div>
-              <button
-                onClick={() => setViewStudent(null)}
-                style={{ background: '#222', border: '1px solid #333', color: '#777', borderRadius: 8, width: 28, height: 28, cursor: 'pointer', fontSize: '1rem', lineHeight: 1 }}
-              >
-                ×
-              </button>
-            </div>
-            <div style={{ padding: '1rem 1.4rem', overflowY: 'auto', overflowX: 'hidden', minWidth: 0 }}>
-              {viewStudent.courses.length === 0 ? (
-                <div style={{ color: '#444', textAlign: 'center', padding: '2rem 0', fontSize: '0.85rem' }}>No course enrollments found</div>
-              ) : (
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.75rem', minWidth: 0 }}>
-                  {viewStudent.courses.map((c) => {
-                    const cst = statusStyle(c.status)
-                    return (
-                      <div key={c.courseId} style={{ background: '#1a1a1a', border: '1px solid #232323', borderRadius: 10, padding: '0.75rem 0.85rem', minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                          {c.courseImage
-                            ? <img src={c.courseImage} alt="" style={{ width: 24, height: 24, borderRadius: 5, objectFit: 'cover', flexShrink: 0 }} />
-                            : <div style={{ width: 24, height: 24, borderRadius: 5, background: '#2a2a2a', flexShrink: 0 }} />}
-                          <span style={{ color: '#ddd', fontSize: '0.8rem', fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, minWidth: 0 }} title={c.courseTitle}>{c.courseTitle}</span>
-                        </div>
-                        <div style={{ marginBottom: 8 }}>
-                          <ProgressCell pct={c.progress} />
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: '0.7rem', color: '#777', marginBottom: 8 }}>
-                          <span>{c.lessonsTotal > 0 ? `${c.lessonsCompleted}/${c.lessonsTotal} lessons` : 'No lessons data'}</span>
-                          <span>{c.quizScore !== null ? `${c.quizScore}% quiz avg` : 'No quiz attempts'}</span>
-                          <span>Last access: {fmtDateTime(c.lastAccess)}</span>
-                        </div>
-                        <span style={{ background: cst.bg, color: cst.text, borderRadius: 6, padding: '2px 9px', fontSize: '0.66rem', fontWeight: 700 }}>{c.status}</span>
+            <h4 className="rd-section-title">Enrolled courses</h4>
+            {v.courses.length === 0 ? (
+              <div className="rd-empty"><FaBookOpen /><span>No course enrolments yet</span></div>
+            ) : (
+              <div className="rd-list">
+                {[...v.courses].sort((a, b) => b.progress - a.progress).map((c) => (
+                  <div key={c.courseId} className="rd-item">
+                    <div className="rd-item-top">
+                      {c.courseImage
+                        ? <img className="rd-thumb" src={c.courseImage} alt="" />
+                        : <span className="rd-thumb is-text">{c.courseTitle.split(/\s+/).slice(0, 2).map((w) => w[0]).join('').toUpperCase()}</span>}
+                      <div className="rd-item-title">
+                        <strong title={c.courseTitle}>{c.courseTitle}</strong>
+                        <small>Enrolled {fmtDate(c.enrolledOn)}</small>
                       </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
+                      <StatusPill tone={c.status === 'Completed' ? 'good' : c.status === 'In Progress' ? 'mid' : 'none'}>{c.status}</StatusPill>
+                    </div>
+                    <div className="rd-progress">
+                      <span><i style={{ width: `${Math.min(100, c.progress)}%`, background: barColor(c.progress) }} /></span>
+                      <b>{c.progress}%</b>
+                    </div>
+                    <div className="rd-meta">
+                      <span><FaBookOpen /> <b>{c.lessonsTotal > 0 ? `${c.lessonsCompleted}/${c.lessonsTotal}` : '—'}</b> lessons</span>
+                      <span><FaCheckCircle /> {c.quizScore !== null ? <><b>{c.quizScore}%</b> quiz avg</> : 'No quiz attempts'}</span>
+                      <span><FaCalendarAlt /> Last access <b>{fmtDateTime(c.lastAccess)}</b></span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ReportDrawer>
+        )
+      })()}
     </div>
   )
 }

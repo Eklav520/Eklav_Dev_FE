@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Col, Modal, Row } from 'react-bootstrap'
 import {
-  FaBookOpen, FaChartBar, FaLanguage, FaRobot, FaClipboardList, FaFileAlt, FaCode, FaImage,
+  FaBookOpen, FaChartBar, FaLanguage, FaRobot, FaClipboardList, FaFileAlt, FaCode, FaImage, FaHeadphones
 } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
 import StudentReports from '@/components/dashboard/StudentReports'
+import ModuleReport from '@/components/dashboard/moduleOverview/ModuleReport'
+import EklavAssistant from '@/components/dashboard/EklavAssistant'
 import SiteBannerUpload from '@/components/dashboard/SiteBannerUpload'
 import PageMetaData from '@/components/PageMetaData'
 import DailyEngagement from '@/components/dashboard/DailyEngagement'
@@ -27,6 +29,7 @@ const TABS = [
   { key: 'course-enrollment', label: 'Course Progress',    icon: FaBookOpen,      color: '#3b82f6' },
   { key: 'ai-interview',      label: 'AI Based Interview', icon: FaRobot,         color: '#a855f7' },
   { key: 'english-practice',  label: 'English Practice',   icon: FaLanguage,      color: '#22c55e' },
+  { key: 'lsrw-practice',     label: 'LSRW Practice',      icon: FaHeadphones,    color: '#14b8a6' },
   { key: 'assessments',       label: 'Assessments',        icon: FaClipboardList, color: '#06b6d4' },
   { key: 'code-challenge',    label: 'Code Challenge',     icon: FaCode,          color: '#6366f1' },
   // Landing-page banner & events — Eklav admins only (tutors share this page)
@@ -168,74 +171,37 @@ const DashboardPage = () => {
 
             {/* Daily Engagement */}
             {activeTab === 'daily-engagement' && (
-              <Row className="g-3">
-                <Col md={12} lg={8}>
-                  <DailyTimePerformers apiBase="/api/adminDashboardCharts" />
-                </Col>
-                <Col md={12} lg={4}>
-                  <div style={S.infoCard}>
-                    <div style={S.iconBox}><FaChartBar size={20} color="#ff6b00" /></div>
-                    <div style={S.infoTitle}>Daily Engagement</div>
-                    <div style={S.infoSub}>Student activity tracking</div>
-                    <p style={S.infoDesc}>
-                      Track how many students are active today, who hasn't logged in, and view a 7-day activity trend with detailed records.
-                    </p>
-                    <button style={S.btn} onClick={() => setOpenModal('daily-engagement')}>Full Details</button>
-                  </div>
-                </Col>
-              </Row>
+              <ModuleReport apiBase="/api/adminDashboardCharts">
+                <DailyEngagement apiBase="/api/adminDashboardCharts" />
+              </ModuleReport>
             )}
 
             {/* Course Enrollment */}
             {activeTab === 'course-enrollment' && (
-              <Row className="g-3">
-                <Col md={12}>
-                  <CourseEnrollmentTrend
-                    apiBase="/api/adminDashboardCharts"
-                    onFullDetails={() => setOpenModal('course-enrollment')}
-                  />
-                </Col>
-              </Row>
+              <ModuleReport apiBase="/api/adminDashboardCharts">
+                <CourseEnrollmentFull apiBase="/api/adminDashboardCharts" />
+              </ModuleReport>
             )}
 
             {/* AI Based Interview */}
             {activeTab === 'ai-interview' && (
-              <Row className="g-3">
-                <Col md={12} lg={8}>
-                  <AIInterviewWidget apiBase="/api/adminDashboardCharts" />
-                </Col>
-                <Col md={12} lg={4}>
-                  <div style={S.infoCard}>
-                    <div style={S.iconBox}><FaRobot size={20} color="#ff6b00" /></div>
-                    <div style={S.infoTitle}>AI Based Interview</div>
-                    <div style={S.infoSub}>Topic Based · Resume Based</div>
-                    <p style={S.infoDesc}>
-                      Track student participation in AI-powered mock interviews. See how many students practiced topic-based and resume-based interviews this month, with attempt counts and scores.
-                    </p>
-                    <button style={S.btn} onClick={() => setOpenModal('ai-interview')}>Full Details</button>
-                  </div>
-                </Col>
-              </Row>
+              <ModuleReport apiBase="/api/adminDashboardCharts">
+                <AIInterviewFull apiBase="/api/adminDashboardCharts" />
+              </ModuleReport>
             )}
 
             {/* English Practice */}
             {activeTab === 'english-practice' && (
-              <Row className="g-3">
-                <Col md={12} lg={8}>
-                  <EnglishPracticeWidget apiBase="/api/adminDashboardCharts" />
-                </Col>
-                <Col md={12} lg={4}>
-                  <div style={S.infoCard}>
-                    <div style={S.iconBox}><FaLanguage size={20} color="#ff6b00" /></div>
-                    <div style={S.infoTitle}>English Practice</div>
-                    <div style={S.infoSub}>Speaking · Writing · Reading · Listening · JAM</div>
-                    <p style={S.infoDesc}>
-                      Track student participation across all English skills — see who has practiced, their best scores, and which skills have the highest and lowest engagement.
-                    </p>
-                    <button style={S.btn} onClick={() => setOpenModal('english-practice')}>Full Details</button>
-                  </div>
-                </Col>
-              </Row>
+              <ModuleReport apiBase="/api/adminDashboardCharts">
+                <EnglishPracticeFull apiBase="/api/adminDashboardCharts" />
+              </ModuleReport>
+            )}
+
+            {/* LSRW Practice — structured LSRW tests, its own tab */}
+            {activeTab === 'lsrw-practice' && (
+              <ModuleReport apiBase="/api/adminDashboardCharts">
+                <EnglishPracticeFull apiBase="/api/adminDashboardCharts" view="lsrw" />
+              </ModuleReport>
             )}
 
             {/* Banner — landing page hero banner & events (admin only) */}
@@ -250,42 +216,16 @@ const DashboardPage = () => {
 
             {/* Assessments */}
             {activeTab === 'assessments' && (
-              <Row className="g-3">
-                <Col md={12} lg={8}>
-                  <AssessmentWidget apiBase="/api/adminDashboardCharts" />
-                </Col>
-                <Col md={12} lg={4}>
-                  <div style={S.infoCard}>
-                    <div style={S.iconBox}><FaClipboardList size={20} color="#ff6b00" /></div>
-                    <div style={S.infoTitle}>Assessments</div>
-                    <div style={S.infoSub}>MCQ · Coding · TR · HR</div>
-                    <p style={S.infoDesc}>
-                      Track student performance across all assessment rounds. See top and low scorers for each exam, pass rates, and detailed per-student round-wise scores.
-                    </p>
-                    <button style={S.btn} onClick={() => setOpenModal('assessments')}>Full Details</button>
-                  </div>
-                </Col>
-              </Row>
+              <ModuleReport apiBase="/api/adminDashboardCharts" icon={FaClipboardList} title="Assessments" subtitle="Exam results by round: who passed, who needs help and every student’s score">
+                <AssessmentFull apiBase="/api/adminDashboardCharts" />
+              </ModuleReport>
             )}
 
             {/* Code Challenge */}
             {activeTab === 'code-challenge' && (
-              <Row className="g-3">
-                <Col md={12} lg={8}>
-                  <CodeChallengeWidget apiBase="/api/adminDashboardCharts" />
-                </Col>
-                <Col md={12} lg={4}>
-                  <div style={S.infoCard}>
-                    <div style={{ ...S.iconBox, background: 'rgba(99,102,241,0.12)' }}><FaCode size={20} color="#6366f1" /></div>
-                    <div style={S.infoTitle}>Code Challenge</div>
-                    <div style={S.infoSub}>Easy · Medium · Hard</div>
-                    <p style={S.infoDesc}>
-                      Track how many coding problems students have solved across all difficulty levels. View student-wise breakdowns, top problems, and a 14-day completion trend.
-                    </p>
-                    <button style={S.btn} onClick={() => setOpenModal('code-challenge')}>Full Details</button>
-                  </div>
-                </Col>
-              </Row>
+              <ModuleReport apiBase="/api/adminDashboardCharts" icon={FaCode} title="Code Challenge" subtitle="Coding problems solved by difficulty, daily trend and student-wise progress">
+                <CodeChallengeFull apiBase="/api/adminDashboardCharts" />
+              </ModuleReport>
             )}
 
           </div>
@@ -370,6 +310,8 @@ const DashboardPage = () => {
         </Modal.Body>
       </Modal>
 
+      {/* Eklav AI — ask questions about student performance */}
+      {isAdmin && <EklavAssistant apiBase="/api/admin/assistant" />}
     </>
   )
 }

@@ -294,11 +294,11 @@ const DateRangePicker = ({ from, to, onChange }: { from: string; to: string; onC
   )
 }
 
-type SelectOption = { value: string; label: string }
-const toOptions = (allLabel: string, values: string[]): SelectOption[] =>
+export type SelectOption = { value: string; label: string }
+export const toOptions = (allLabel: string, values: string[]): SelectOption[] =>
   [{ value: '', label: allLabel }, ...values.map(value => ({ value, label: value }))]
 
-const HeaderSelect = ({ label, prefix, value, options, onChange }: {
+export const HeaderSelect = ({ label, prefix, value, options, onChange }: {
   label: string; prefix?: string; value: string; options: SelectOption[]; onChange: (value: string) => void
 }) => {
   const [open, setOpen] = useState(false)
@@ -365,7 +365,14 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
   const [loadingReportIds, setLoadingReportIds] = useState<Set<string>>(() => new Set())
   const [reportLoadErrors, setReportLoadErrors] = useState<Record<string, string>>({})
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null)
-  const [detailClosed, setDetailClosed] = useState(false)
+  // Student details open in a side drawer when a student is clicked
+  const [detailClosed, setDetailClosed] = useState(true)
+  useEffect(() => {
+    if (detailClosed) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.querySelector('.modal.show')) setDetailClosed(true) }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [detailClosed])
   const [report, setReport]           = useState<Report | null>(null)
   const [trend, setTrend]             = useState<TrendPoint[]>([])
   const [exportProgress, setExportProgress] = useState<{ done: number; total: number } | null>(null)
@@ -957,7 +964,11 @@ const StudentReports = ({ apiBase = '/api/institute' }: { apiBase?: string }) =>
         )}
       </section>
 
-      {!detailClosed && <section className="sr-student-detail" aria-label="Selected student performance details">
+      {!detailClosed && <div className="sr-drawer-backdrop" onClick={() => setDetailClosed(true)} />}
+      {!detailClosed && <section className="sr-student-detail sr-drawer" role="dialog" aria-label="Selected student performance details">
+        {(!selectedStudent || !selectedReport) && (
+          <button type="button" className="sr-detail-close sr-drawer-x" onClick={() => setDetailClosed(true)} aria-label="Close student details"><FaTimes /></button>
+        )}
         {!selectedStudent ? (
           <div className="sr-empty">Select a student to view the detailed report.</div>
         ) : !selectedReport ? (

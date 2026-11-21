@@ -1,206 +1,97 @@
 import { useEffect, useState } from 'react'
-import { Spinner } from 'react-bootstrap'
-import { FaRobot, FaFileAlt, FaMicrophone } from 'react-icons/fa'
+import { FaChartLine, FaFileAlt, FaMicrophone, FaRedo, FaRobot, FaStar, FaUserCheck } from 'react-icons/fa'
 import { useAuthContext } from '@/context/useAuthContext'
+import { EmptyState, Kpi, KpiRow, Loading, Meter, ModuleShell, MonthPicker, Panel } from './moduleOverview/ModuleOverview'
 
-/* ─── Types ─────────────────────────────────────────────── */
 type TypeStats = { attempts: number; uniqueStudents: number; avgScore: number; utilizationPct: number }
 type OverviewData = {
   totalStudents: number
-  month:         number
-  year:          number
-  topicBased:    TypeStats
-  resumeBased:   TypeStats
+  month: number
+  year: number
+  topicBased: TypeStats
+  resumeBased: TypeStats
 }
-
-/* ─── Constants ─────────────────────────────────────────── */
-const MONTH_NAMES = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 const TYPES = [
-  { key: 'topicBased',  label: 'Topic Based',  icon: FaMicrophone, color: '#a855f7' },
-  { key: 'resumeBased', label: 'Resume Based',  icon: FaFileAlt,    color: '#f59e0b' },
+  { key: 'topicBased', label: 'Topic based interview', icon: FaMicrophone, color: '#a855f7', about: 'Practice on chosen subjects' },
+  { key: 'resumeBased', label: 'Resume based interview', icon: FaFileAlt, color: '#f59e0b', about: 'Questions from the student’s own resume' },
 ] as const
 
-const S = {
-  select: { background: '#111', border: '1px solid #2a2a2a', color: '#ccc', borderRadius: 7, padding: '5px 10px', fontSize: '0.78rem', cursor: 'pointer' } as React.CSSProperties,
-  goBtn:  { background: '#ff6b00', border: 'none', color: '#fff', borderRadius: 7, padding: '5px 14px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' } as React.CSSProperties,
-}
-
-/* ─── Component ─────────────────────────────────────────── */
-const AIInterviewWidget = ({ apiBase = '/api/institute' }: { apiBase?: string }) => {
+/* AI Interview tab: how many students practised mock interviews in a month, by interview type */
+const AIInterviewWidget = ({ apiBase = '/api/institute', onFullDetails }: { apiBase?: string; onFullDetails?: () => void }) => {
   const { user } = useAuthContext()
-  const baseURL  = import.meta.env.VITE_API_BASE_URL
+  const baseURL = import.meta.env.VITE_API_BASE_URL
 
   const now = new Date()
-  const [selMonth, setSelMonth] = useState(now.getMonth() + 1)
-  const [selYear,  setSelYear]  = useState(now.getFullYear())
-
-  const [data, setData]       = useState<OverviewData | null>(null)
+  const [month, setMonth] = useState(now.getMonth() + 1)
+  const [year, setYear] = useState(now.getFullYear())
+  const [data, setData] = useState<OverviewData | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const doFetch = (month: number, year: number) => {
+  useEffect(() => {
     if (!user?.token) return
     setLoading(true)
     fetch(`${baseURL}${apiBase}/ai-interview-overview?month=${month}&year=${year}`, {
       headers: { Authorization: `Bearer ${user.token}` },
     })
       .then((r) => r.json())
-      .then((d) => { if (d.success) setData(d) })
+      .then((d) => setData(d.success ? d : null))
       .catch(console.error)
       .finally(() => setLoading(false))
-  }
+  }, [user?.token, baseURL, apiBase, month, year])
 
-  useEffect(() => {
-    if (!user?.token) return
-    doFetch(now.getMonth() + 1, now.getFullYear())
-  }, [user?.token]) // eslint-disable-line
-
-  const handleGo = () => doFetch(selMonth, selYear)
-
-  const monthLabel = data ? `${MONTH_NAMES[data.month - 1]} ${data.year}` : ''
-  const yearRange  = Array.from({ length: 5 }, (_, i) => now.getFullYear() - i)
-
-  /* Top type = highest utilizationPct */
-  const topKey = data
-    ? (data.topicBased.utilizationPct >= data.resumeBased.utilizationPct ? 'topicBased' : 'resumeBased')
-    : null
+  const attempts = data ? data.topicBased.attempts + data.resumeBased.attempts : 0
+  // A student can do both types, so the larger of the two is the safe "at least" count
+  const active = data ? Math.max(data.topicBased.uniqueStudents, data.resumeBased.uniqueStudents) : 0
+  const scored = data ? [data.topicBased, data.resumeBased].filter((t) => t.avgScore > 0) : []
+  const avgScore = scored.length ? Math.round(scored.reduce((s, t) => s + t.avgScore, 0) / scored.length) : 0
+  const reach = data?.totalStudents ? Math.round((active / data.totalStudents) * 100) : 0
+  const topKey = data && attempts ? (data.topicBased.utilizationPct >= data.resumeBased.utilizationPct ? 'topicBased' : 'resumeBased') : null
 
   return (
-    <div style={{
-      background: '#141414', border: '1px solid #222',
-      borderRadius: 16, overflow: 'hidden', height: '100%',
-      display: 'flex', flexDirection: 'column',
-    }}>
-      {/* ── Header ── */}
-      <div style={{
-        padding: '0.85rem 1.25rem', borderBottom: '1px solid #1e1e1e',
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-        flexWrap: 'wrap' as const, gap: '0.5rem',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-          <div style={{ background: 'rgba(168,85,247,0.12)', borderRadius: 8, padding: '6px 8px', display: 'flex' }}>
-            <FaRobot size={14} color="#a855f7" />
-          </div>
-          <div>
-            <div style={{ color: '#fff', fontWeight: 700, fontSize: '0.9rem' }}>AI Based Interview</div>
-            <div style={{ color: '#555', fontSize: '0.7rem' }}>
-              {data
-                ? `${data.totalStudents} students · ${monthLabel}`
-                : 'Monthly interview utilization'}
-            </div>
-          </div>
-        </div>
+    <ModuleShell
+      icon={FaRobot}
+      color="#a855f7"
+      title="AI Based Interview"
+      subtitle={data ? `Mock interview practice · ${data.totalStudents} students` : 'Mock interview practice'}
+      controls={<MonthPicker month={month} year={year} onChange={(m, y) => { setMonth(m); setYear(y) }} />}
+      onFullDetails={onFullDetails}
+    >
+      {loading ? <Loading /> : !data ? <EmptyState text="Couldn't load interview data" hint="Try another month or refresh the page." /> : (
+        <>
+          <KpiRow>
+            <Kpi icon={FaUserCheck} label="Students practised" value={active} hint={`${reach}% of ${data.totalStudents} students`} tone={reach >= 50 ? 'good' : reach > 0 ? 'mid' : 'low'} />
+            <Kpi icon={FaRedo} label="Interviews taken" value={attempts} hint={active ? `${(attempts / active).toFixed(1)} per active student` : 'none this month'} tone="accent" />
+            <Kpi icon={FaStar} label="Average score" value={avgScore ? avgScore : '—'} hint={avgScore ? 'across both interview types' : 'no scored interviews'} />
+            <Kpi icon={FaChartLine} label="Not practised" value={Math.max(0, data.totalStudents - active)} hint="students yet to try" tone="low" />
+          </KpiRow>
 
-        {/* Month + Year + Go */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-          <select style={S.select} value={selMonth} onChange={(e) => setSelMonth(Number(e.target.value))}>
-            {MONTH_NAMES.map((m, i) => <option key={i + 1} value={i + 1}>{m}</option>)}
-          </select>
-          <select style={S.select} value={selYear} onChange={(e) => setSelYear(Number(e.target.value))}>
-            {yearRange.map((y) => <option key={y} value={y}>{y}</option>)}
-          </select>
-          <button style={S.goBtn} onClick={handleGo}>Go</button>
-        </div>
-      </div>
-
-      {loading ? (
-        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flex: 1, padding: '2.5rem' }}>
-          <Spinner animation="border" style={{ color: '#ff6b00', width: 22, height: 22 }} />
-        </div>
-      ) : !data ? (
-        <div style={{ textAlign: 'center', color: '#444', padding: '3rem', fontSize: '0.82rem' }}>No data available</div>
-      ) : (
-        <div style={{ flex: 1, padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '0.85rem' }}>
-
-          {/* Two donut rings side by side */}
-          <div style={{ display: 'flex', justifyContent: 'space-around', alignItems: 'flex-start', padding: '0.5rem 0' }}>
-            {TYPES.map(({ key, label, icon: Icon, color }) => {
-              const stat  = data[key] as TypeStats
-              const isTop = topKey === key && stat.uniqueStudents > 0
-              const SIZE  = 90, STROKE = 8, R = (SIZE - STROKE) / 2
-              const CIRC  = 2 * Math.PI * R
-              const offset = CIRC * (1 - Math.min(stat.utilizationPct, 100) / 100)
-              return (
-                <div key={key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.55rem' }}>
-                  {/* Donut ring */}
-                  <div style={{ position: 'relative', width: SIZE, height: SIZE }}>
-                    <svg width={SIZE} height={SIZE} style={{ transform: 'rotate(-90deg)' }}>
-                      <circle cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none" stroke="#1e1e1e" strokeWidth={STROKE} />
-                      <circle
-                        cx={SIZE / 2} cy={SIZE / 2} r={R} fill="none"
-                        stroke={isTop ? color : `${color}66`}
-                        strokeWidth={isTop ? STROKE + 2 : STROKE}
-                        strokeDasharray={CIRC}
-                        strokeDashoffset={offset}
-                        strokeLinecap="round"
-                        style={{ transition: 'stroke-dashoffset 0.6s ease' }}
-                      />
-                    </svg>
-                    <div style={{
-                      position: 'absolute', inset: 0,
-                      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 3,
-                    }}>
-                      <Icon size={14} color={isTop ? color : '#444'} />
-                      <span style={{ color: isTop ? color : '#777', fontWeight: 800, fontSize: '0.85rem', lineHeight: 1 }}>
-                        {stat.utilizationPct}%
-                      </span>
-                    </div>
-                  </div>
-
-                  {/* Label + stats */}
-                  <div style={{ textAlign: 'center' as const }}>
-                    <div style={{ color: isTop ? '#ddd' : '#aaa', fontSize: '0.76rem', fontWeight: isTop ? 700 : 500, marginBottom: 4 }}>
-                      {label}
-                    </div>
-                    <div style={{ fontSize: '0.68rem', marginBottom: 2 }}>
-                      <span style={{ color: isTop ? color : '#999', fontWeight: 700 }}>{stat.uniqueStudents}</span>
-                      <span style={{ color: '#666' }}> / {data.totalStudents} students</span>
-                    </div>
-                    <div style={{ fontSize: '0.68rem' }}>
-                      <span style={{ color: isTop ? color : '#888', fontWeight: 600 }}>{stat.attempts}</span>
-                      <span style={{ color: '#666' }}> attempts</span>
-                    </div>
-                    {stat.avgScore > 0 && (
-                      <div style={{ fontSize: '0.65rem', color: '#555', marginTop: 2 }}>
-                        avg <span style={{ color: isTop ? color : '#666', fontWeight: 700 }}>{stat.avgScore}</span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Summary bar */}
-          <div style={{
-            background: '#0d0d0d', borderRadius: 10, padding: '0.65rem 1rem',
-            display: 'flex', justifyContent: 'space-around', gap: '0.5rem',
-          }}>
-            <div style={{ textAlign: 'center' as const }}>
-              <div style={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>
-                {data.topicBased.attempts + data.resumeBased.attempts}
+          {!attempts ? (
+            <EmptyState text="No mock interviews this month" hint="Encourage students to try a topic or resume based interview." />
+          ) : (
+            <Panel title="By interview type" icon={FaRobot} tone="accent" aside="share of students who practised">
+              <div className="mo-meters">
+                {TYPES.map(({ key, label, icon, color, about }) => {
+                  const s = data[key]
+                  return (
+                    <Meter
+                      key={key}
+                      icon={icon}
+                      label={label}
+                      color={color}
+                      pct={s.utilizationPct}
+                      value={`${s.utilizationPct}%`}
+                      highlight={topKey === key}
+                      detail={<>{about} · <b>{s.uniqueStudents}</b> students · <b>{s.attempts}</b> interviews{s.avgScore > 0 && <> · avg score <b>{s.avgScore}</b></>}</>}
+                    />
+                  )
+                })}
               </div>
-              <div style={{ color: '#444', fontSize: '0.65rem' }}>Total Attempts</div>
-            </div>
-            <div style={{ width: 1, background: '#1e1e1e' }} />
-            <div style={{ textAlign: 'center' as const }}>
-              <div style={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>
-                {new Set([data.topicBased.uniqueStudents, data.resumeBased.uniqueStudents]).size > 0
-                  ? Math.max(data.topicBased.uniqueStudents, data.resumeBased.uniqueStudents)
-                  : 0}
-              </div>
-              <div style={{ color: '#444', fontSize: '0.65rem' }}>Active Students</div>
-            </div>
-            <div style={{ width: 1, background: '#1e1e1e' }} />
-            <div style={{ textAlign: 'center' as const }}>
-              <div style={{ color: '#fff', fontWeight: 700, fontSize: '1rem' }}>{data.totalStudents}</div>
-              <div style={{ color: '#444', fontSize: '0.65rem' }}>Total Students</div>
-            </div>
-          </div>
-
-        </div>
+            </Panel>
+          )}
+        </>
       )}
-    </div>
+    </ModuleShell>
   )
 }
 
