@@ -19,7 +19,7 @@ type Row = {
   overall: number; engagement: number; course: number; interview: number; english: number; assessment: number; code: number
   timeSecs: number; activeDays: number; status: 'on-track' | 'needs-attention' | 'at-risk' | 'not-started'
 }
-type Table = { title: string; sortBy: string; period: string; view?: 'summary' | 'full'; total: number; rows: Row[] }
+type Table = { title: string; sortBy: string; period: string; view?: 'summary' | 'full'; single?: boolean; total: number; rows: Row[] }
 type ExamRound = { roundType: string; label: string; enabled: boolean; pickCount: number; timeSeconds: number; startDateTime: string; endDateTime: string; passPercentage: number }
 type ExamDraft = { title: string; description: string; branch: string[]; joiningYear: string[]; rounds: ExamRound[] }
 type Action =
@@ -50,6 +50,7 @@ const fmtTime = (secs: number) => {
 const fmtWhen = (iso: string) => new Date(iso).toLocaleString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', hour: 'numeric', minute: '2-digit' })
 const fmtClock = (iso: string) => new Date(iso).toLocaleTimeString('en-IN', { hour: 'numeric', minute: '2-digit' })
 const scoreClass = (v: number) => (v >= 75 ? 'is-good' : v >= 50 ? 'is-mid' : 'is-low')
+const scoreHex = (v: number) => (v >= 75 ? '#22c55e' : v >= 50 ? '#f59e0b' : v > 0 ? '#ef4444' : '#3a3e43')
 const extraValue = (r: Row, key: string) => (key === 'time_spent' ? fmtTime(r.timeSecs) : `${(r as any)[key] ?? 0}%`)
 const plain = (text: string) => text.replace(/\*\*/g, '')
 
@@ -197,6 +198,69 @@ const downloadPdf = async (table: Table, preparedFor: string) => {
   doc.save(`${table.title.replace(/[^\w\- ]+/g, '').trim().replace(/\s+/g, '-') || 'eklav-students'}.pdf`)
 }
 
+/* ── "Preparing your report" while the assistant works: a satellite gathering data around a globe ── */
+
+const PREP_STEPS = [
+  'Connecting to student records…',
+  'Collecting scores from every module…',
+  'Ranking and comparing students…',
+  'Preparing your report…',
+]
+
+const ReportPreparing = ({ variant = 'chat' }: { variant?: 'chat' | 'panel' }) => {
+  const [step, setStep] = useState(0)
+  useEffect(() => {
+    // Walk through the steps, then stay on the last one until the answer arrives
+    const t = setInterval(() => setStep((s) => Math.min(s + 1, PREP_STEPS.length - 1)), 1300)
+    return () => clearInterval(t)
+  }, [])
+  return (
+    <div className={variant === 'panel' ? 'eka-prep is-panel' : 'eka-bubble eka-prep'} role="status" aria-live="polite">
+      <div className="eka-prep-visual" aria-hidden="true">
+        <svg viewBox="0 0 120 120">
+          <defs>
+            <radialGradient id={`eka-globe-${variant}`} cx="38%" cy="32%" r="70%">
+              <stop offset="0%" stopColor="#ffb15e" stopOpacity="0.9" />
+              <stop offset="55%" stopColor="#ff7a00" stopOpacity="0.35" />
+              <stop offset="100%" stopColor="#120c06" stopOpacity="0.9" />
+            </radialGradient>
+          </defs>
+          {/* globe */}
+          <circle cx="60" cy="60" r="24" fill={`url(#eka-globe-${variant})`} stroke="rgba(255,154,60,0.6)" />
+          <ellipse cx="60" cy="60" rx="24" ry="9" fill="none" stroke="rgba(255,177,94,0.35)" />
+          <ellipse cx="60" cy="60" rx="10" ry="24" fill="none" stroke="rgba(255,177,94,0.35)" />
+          <line x1="36" y1="60" x2="84" y2="60" stroke="rgba(255,177,94,0.25)" />
+          {/* orbit */}
+          <ellipse cx="60" cy="60" rx="50" ry="20" fill="none" stroke="rgba(255,154,60,0.25)" strokeDasharray="3 4" transform="rotate(-20 60 60)" />
+          {/* satellite travelling the orbit */}
+          <g className="eka-prep-sat">
+            <g transform="translate(110 60)">
+              <rect x="-4" y="-3" width="8" height="6" rx="1.5" fill="#fff" />
+              <rect x="-13" y="-2" width="8" height="4" fill="#ff9a3c" />
+              <rect x="5" y="-2" width="8" height="4" fill="#ff9a3c" />
+              <circle r="2" cx="0" cy="0" fill="#ff7a00" />
+            </g>
+          </g>
+          {/* data pulses rising from the globe */}
+          <circle className="eka-prep-ping" cx="60" cy="60" r="24" fill="none" stroke="#ff9a3c" />
+          <circle className="eka-prep-ping is-late" cx="60" cy="60" r="24" fill="none" stroke="#ff9a3c" />
+        </svg>
+      </div>
+      <div className="eka-prep-text">
+        <b>Preparing your report</b>
+        <ul>
+          {PREP_STEPS.map((s, i) => (
+            <li key={s} className={i < step ? 'is-done' : i === step ? 'is-now' : ''}>
+              <span>{i < step ? '✓' : i === step ? '' : ''}</span>{s}
+            </li>
+          ))}
+        </ul>
+        <div className="eka-prep-bar"><i style={{ width: `${((step + 1) / PREP_STEPS.length) * 92}%` }} /></div>
+      </div>
+    </div>
+  )
+}
+
 /* ── Results: a compact card in the chat, the data itself in a side panel ── */
 
 type SortKey = 'rank' | 'name' | 'branch' | 'overall' | 'timeSecs' | 'activeDays' | keyof Row
@@ -217,10 +281,71 @@ const ResultChip = ({ table, active, onOpen }: { table: Table; active: boolean; 
       <span className="eka-result-icon"><FaTable /></span>
       <span className="eka-result-text">
         <b>{table.title}</b>
-        <small>{table.rows.length} students · avg {avg}% · {count('at-risk')} at risk · {PERIOD_LABELS[table.period] || 'All time'}</small>
+        <small>{table.single || table.rows.length === 1
+          ? `Student report · ${table.rows[0]?.overall ?? 0}% overall · ${STATUS_LABELS[table.rows[0]?.status || 'not-started']}`
+          : `${table.rows.length} students · avg ${avg}% · ${count('at-risk')} at risk · ${PERIOD_LABELS[table.period] || 'All time'}`}</small>
       </span>
       <span className="eka-result-open">{active ? 'Showing' : 'View'} <FaChevronRight /></span>
     </button>
+  )
+}
+
+/* One student's full report (shown instead of a table when the result is a single student) */
+const MODULE_ROWS: [keyof Row, string][] = [
+  ['engagement', 'Daily Engagement'], ['course', 'Course Progress'], ['interview', 'AI Interview'],
+  ['english', 'English Practice'], ['assessment', 'Assessments'], ['code', 'Code Challenge'],
+]
+const StudentProfile = ({ row, onAsk }: { row: Row; onAsk: (text: string) => void }) => {
+  const ring = row.status === 'not-started' ? '#3a3e43' : scoreHex(row.overall)
+  const scored = MODULE_ROWS.map(([k, label]) => ({ k, label, v: Number(row[k]) || 0 }))
+  const best = [...scored].sort((a, b) => b.v - a.v)[0]
+  const weakest = [...scored].sort((a, b) => a.v - b.v)[0]
+  const first = row.name.split(/\s+/)[0]
+  return (
+    <div className="eka-profile">
+      <div className="eka-profile-head">
+        <span className="eka-profile-avatar">{row.name.split(/\s+/).slice(0, 2).map((p) => p[0]).join('').toUpperCase()}</span>
+        <div className="eka-profile-who">
+          <b>{row.name}</b>
+          <small>{[row.rollNumber, row.branch, row.joiningYear && `Batch ${row.joiningYear}`, row.email].filter(Boolean).join(' · ')}</small>
+          <span className={`eka-status is-${row.status}`}>{STATUS_LABELS[row.status]}</span>
+        </div>
+        <div className="eka-profile-ring" style={{ background: `conic-gradient(${ring} ${Math.min(100, row.overall) * 3.6}deg, #25282b 0deg)` }}>
+          <span><b>{row.overall}%</b><small>Overall</small></span>
+        </div>
+      </div>
+
+      <div className="eka-profile-stats">
+        <div><small>Rank</small><b>#{row.rank}</b></div>
+        <div><small>Time spent</small><b>{fmtTime(row.timeSecs)}</b></div>
+        <div><small>Active days</small><b>{row.activeDays}</b></div>
+        <div><small>Strongest</small><b className="is-good" title={best.label}>{best.v ? best.label : '—'}</b></div>
+      </div>
+
+      <div className="eka-profile-modules">
+        <h4>Module scores</h4>
+        {scored.map(({ k, label, v }) => (
+          <div key={k} className="eka-profile-mod">
+            <span>{label}</span>
+            <div><i style={{ width: `${Math.min(100, v)}%`, background: scoreHex(v) }} /></div>
+            <b style={{ color: v ? scoreHex(v) : '#6b7280' }}>{v}%</b>
+          </div>
+        ))}
+      </div>
+
+      {weakest && (
+        <div className="eka-profile-note">
+          {row.status === 'not-started'
+            ? <>{first} hasn’t started on Eklav yet. A reminder to log in and begin with Daily Engagement would help.</>
+            : <>Focus area: <b>{weakest.label}</b> ({weakest.v}%). {best.v > 0 && <>Strongest in <b>{best.label}</b> ({best.v}%).</>}</>}
+        </div>
+      )}
+
+      <div className="eka-profile-actions">
+        <button type="button" onClick={() => onAsk(`How can ${row.name} improve?`)}>How can {first} improve?</button>
+        <button type="button" onClick={() => onAsk(`Compare ${row.name} with the ${row.branch || 'class'} average`)}>Compare with {row.branch || 'class'} average</button>
+      </div>
+    </div>
   )
 }
 
@@ -228,6 +353,8 @@ const ResultsPanel = ({ tables, index, onIndex, onClose, onAsk, preparedFor }: {
   tables: Table[]; index: number; onIndex: (i: number) => void; onClose: () => void; onAsk: (text: string) => void; preparedFor: string
 }) => {
   const table = tables[index]
+  // A single student gets a profile instead of a one-row table
+  const single = Boolean(table.single) || table.rows.length === 1
   const [query, setQuery] = useState('')
   const [status, setStatus] = useState<'all' | Row['status']>('all')
   const [full, setFull] = useState(table.view === 'full')
@@ -277,7 +404,7 @@ const ResultsPanel = ({ tables, index, onIndex, onClose, onAsk, preparedFor }: {
               {tables.map((t, i) => <option key={i} value={i}>{t.title}</option>)}
             </select>
           ) : <b>{table.title}</b>}
-          <span>{PERIOD_LABELS[table.period] || 'All time'} · {table.rows.length} of {table.total} students</span>
+          <span>{PERIOD_LABELS[table.period] || 'All time'} · {single ? 'student report' : `${table.rows.length} of ${table.total} students`}</span>
         </div>
         <div className="eka-panel-tools">
           <button type="button" className="eka-icon is-sm eka-hide-sm" onClick={() => setWide((w) => !w)} title={wide ? 'Narrow panel' : 'Widen panel'}>{wide ? <FaCompressAlt /> : <FaExpandAlt />}</button>
@@ -285,6 +412,7 @@ const ResultsPanel = ({ tables, index, onIndex, onClose, onAsk, preparedFor }: {
         </div>
       </div>
 
+      {single ? <StudentProfile row={table.rows[0]} onAsk={onAsk} /> : (<>
       <div className="eka-kpis">
         <div><small>Students</small><b>{table.rows.length}</b></div>
         <div><small>Average</small><b className="is-orange">{avg}%</b></div>
@@ -340,8 +468,10 @@ const ResultsPanel = ({ tables, index, onIndex, onClose, onAsk, preparedFor }: {
         {!rows.length && <div className="eka-panel-empty">No students match this search.</div>}
       </div>
 
+      </>)}
+
       <div className="eka-panel-foot">
-        <span>{rows.length === table.rows.length ? `${rows.length} students` : `${rows.length} of ${table.rows.length} shown`} · click a student to ask about them</span>
+        <span>{single ? 'Download this student’s report as PDF or Excel' : `${rows.length === table.rows.length ? `${rows.length} students` : `${rows.length} of ${table.rows.length} shown`} · click a student to ask about them`}</span>
         <div>
           <button type="button" onClick={() => downloadCsv(view)} disabled={!rows.length}><FaFileExcel /> Excel</button>
           <button type="button" className="is-primary" onClick={savePdf} disabled={!rows.length || pdfState === 'busy'}>
@@ -495,12 +625,21 @@ const EklavAssistant = ({ apiBase }: { apiBase: string }) => {
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening'
   const SpeechRecognition = typeof window !== 'undefined' ? (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition : null
-  const canSpeak = typeof window !== 'undefined' && 'speechSynthesis' in window
+  const canSpeak = typeof window !== 'undefined' && ('speechSynthesis' in window || typeof Audio !== 'undefined')
+  // Replies are spoken with the server voice (the same natural voice as English Speaking Practice);
+  // speakSeq drops audio that arrives after the admin has moved on
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+  const speakSeq = useRef(0)
+  const hushVoice = () => {
+    speakSeq.current++
+    window.speechSynthesis?.cancel()
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null }
+  }
 
   /* Voice in: spoken questions send themselves when the admin stops talking */
   const startListening = useCallback(() => {
     if (!SpeechRecognition || recRef.current) return
-    window.speechSynthesis?.cancel()
+    hushVoice()
     setSpeaking(false)
     const rec = new SpeechRecognition()
     rec.lang = 'en-IN'
@@ -617,23 +756,56 @@ const EklavAssistant = ({ apiBase }: { apiBase: string }) => {
   /* Voice out: read the reply, then listen again (hands-free) */
   const speak = useCallback((text: string) => {
     if (!canSpeak || !voiceRef.current || !text) return
-    const synth = window.speechSynthesis
-    synth.cancel()
-    const u = new SpeechSynthesisUtterance(plain(text))
-    const voices = synth.getVoices()
-    u.voice = voices.find((v) => v.lang === 'en-IN') || voices.find((v) => /en-(GB|US)/.test(v.lang) && /female|zira|samantha|google/i.test(v.name)) || null
-    u.rate = 1.02
-    u.onstart = () => setSpeaking(true)
-    u.onend = () => {
+    hushVoice()
+    const seq = speakSeq.current
+    const words = plain(text).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu, '').trim().slice(0, 1800)
+    // After speaking, listen again (or wait for "Hi Eklav" while resting)
+    const done = () => {
       setSpeaking(false)
       if (voiceRef.current && openRef.current) setTimeout(asleepRef.current ? startWakeListening : startListening, 250)
     }
-    u.onerror = () => setSpeaking(false)
-    synth.speak(u)
-  }, [canSpeak, startListening, startWakeListening])
+
+    // Fallback: the most natural voice this browser has (Neural / Natural / Google voices sound human)
+    const browserVoice = () => {
+      if (seq !== speakSeq.current) return
+      if (!('speechSynthesis' in window)) { done(); return }
+      const synth = window.speechSynthesis
+      const u = new SpeechSynthesisUtterance(words)
+      const voices = synth.getVoices().filter((v) => /^en/i.test(v.lang))
+      const natural = (v: SpeechSynthesisVoice) => /natural|neural|online/i.test(v.name)
+      u.voice = voices.find((v) => natural(v) && /en-IN/i.test(v.lang))
+        || voices.find((v) => natural(v) && /(aria|jenny|sonia|libby|neerja|emma|ava)/i.test(v.name))
+        || voices.find(natural)
+        || voices.find((v) => /Google UK English Female|Google US English/i.test(v.name))
+        || voices.find((v) => v.lang === 'en-IN') || null
+      u.rate = 0.98
+      u.onstart = () => setSpeaking(true)
+      u.onend = done
+      u.onerror = () => setSpeaking(false)
+      synth.speak(u)
+    }
+
+    setSpeaking(true)
+    fetch(`${baseURL}/api/tts/speak`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${user?.token}` },
+      body: JSON.stringify({ text: words, gender: 'female' }),
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (seq !== speakSeq.current) return // the admin interrupted
+        if (!d?.audio) { browserVoice(); return }
+        const audio = new Audio(d.audio)
+        audioRef.current = audio
+        audio.onended = () => { if (audioRef.current === audio) audioRef.current = null; done() }
+        audio.onerror = () => { if (audioRef.current === audio) audioRef.current = null; browserVoice() }
+        audio.play().catch(() => browserVoice())
+      })
+      .catch(() => browserVoice())
+  }, [canSpeak, startListening, startWakeListening, baseURL, user?.token]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const stopVoice = () => {
-    window.speechSynthesis?.cancel()
+    hushVoice()
     setSpeaking(false)
     if (recRef.current) {
       recRef.current.cancelled = true // aborting fires onend: don't send what was heard
@@ -719,7 +891,7 @@ Ask me about your students, say “create an exam”, or tell me which page to o
   }, [messages, busy])
 
   useEffect(() => () => {
-    window.speechSynthesis?.cancel()
+    hushVoice()
     if (recRef.current) { recRef.current.cancelled = true; recRef.current.abort?.() }
   }, [])
 
@@ -767,7 +939,10 @@ Ask me about your students, say “create an exam”, or tell me which page to o
         const opts: string[] = data.action.options
         const said = opts.filter((o) => !reply.toLowerCase().includes(o.toLowerCase()))
         speak(said.length ? `${reply} ${said.length > 1 ? `${said.slice(0, -1).join(', ')}, or ${said[said.length - 1]}` : said[0]}?` : reply)
-      } else if (data.action?.type !== 'navigate') speak(reply)
+      } else if (data.action?.type !== 'navigate') {
+        // With a table on screen, read only the summary, never the list of students
+        speak(data.table ? reply.split('\n').filter((l: string) => !/^\s*([-*•]|\d+[.)])\s+/.test(l)).join(' ') : reply)
+      }
     } catch (err: any) {
       setMessages((prev) => [...prev, { role: 'assistant', text: err?.message || 'Something went wrong. Please try again.', error: true }])
     } finally {
@@ -816,6 +991,8 @@ Ask me about your students, say “create an exam”, or tell me which page to o
           <span>Ask Eklav AI</span>
         </button>
       )}
+      {/* Blurs the page behind the launcher while it is hovered (visual only, never blocks clicks) */}
+      {!open && <div className="eka-launcher-dim" aria-hidden="true" />}
 
       {open && (
         <div className="eka-screen" role="dialog" aria-modal="true" aria-label="Eklav AI assistant">
@@ -840,7 +1017,7 @@ Ask me about your students, say “create an exam”, or tell me which page to o
             </div>
           </div>
 
-          <div className={`eka-split${panelTable ? ' has-panel' : ''}`}>
+          <div className={`eka-split${panelTable || busy ? ' has-panel' : ''}`}>
           <div className="eka-main">
           <div className="eka-body" ref={bodyRef}>
             <div className="eka-column">
@@ -903,7 +1080,8 @@ Ask me about your students, say “create an exam”, or tell me which page to o
                   {busy && (
                     <div className="eka-row">
                       {avatar()}
-                      <div className="eka-bubble eka-typing"><span /><span /><span /> <em>Working on it…</em></div>
+                      <div className="eka-bubble eka-typing eka-prep-mini"><span /><span /><span /> <em>Preparing your report…</em></div>
+                      <div className="eka-prep-inline"><ReportPreparing /></div>
                     </div>
                   )}
 
@@ -953,7 +1131,12 @@ Ask me about your students, say “create an exam”, or tell me which page to o
           </div>
           </div>
 
-          {panelTable && (
+          {busy && (
+            <aside className="eka-panel eka-panel-prep" aria-label="Preparing report">
+              <ReportPreparing variant="panel" />
+            </aside>
+          )}
+          {panelTable && !busy && (
             <ResultsPanel tables={tables} index={panelIndex!} onIndex={setPanelIndex} onClose={() => setPanelIndex(null)}
               onAsk={(text) => { if (window.innerWidth <= 1100) setPanelIndex(null); ask(text) }} preparedFor={rawName.trim()} />
           )}
@@ -962,9 +1145,14 @@ Ask me about your students, say “create an exam”, or tell me which page to o
       )}
 
       <style>{`
-        .eka-launcher { position: fixed; right: 24px; bottom: 24px; z-index: 1040; display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 20px 0 6px; border: 1px solid rgba(255,122,0,0.45); border-radius: 999px; background: linear-gradient(135deg, #1a1208, #0e1012); color: #fff; font-size: 0.9rem; font-weight: 700; box-shadow: 0 10px 30px rgba(0,0,0,0.45); cursor: pointer; animation: eka-pulse 2.6s ease-out infinite; transition: transform .15s; }
-        .eka-launcher:hover { transform: translateY(-2px); }
+        .eka-launcher { position: fixed; left: 50%; bottom: 22px; z-index: 1040; translate: -50% 0; display: inline-flex; align-items: center; gap: 10px; height: 52px; padding: 0 20px 0 6px; border: 1px solid rgba(255,122,0,0.45); border-radius: 999px; background: linear-gradient(135deg, #1a1208, #0e1012); color: #fff; font-size: 0.9rem; font-weight: 700; box-shadow: 0 10px 30px rgba(0,0,0,0.45); cursor: pointer; animation: eka-pulse 2.6s ease-out infinite; transition: transform .15s; }
+        .eka-launcher:hover { transform: translateY(-3px); border-color: #ff7a00; box-shadow: 0 14px 36px rgba(255,122,0,0.28); }
+        /* Bottom-centre so it is noticed, with an orange glow halo */
+        .eka-launcher::before { content: ''; position: absolute; inset: -6px; z-index: -1; border-radius: inherit; background: radial-gradient(closest-side, rgba(255,122,0,0.28), rgba(255,122,0,0)); animation: eka-glow 2.4s ease-in-out infinite; pointer-events: none; }
+        @keyframes eka-glow { 0%, 100% { opacity: .55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.06); } }
         .eka-launcher .eka-avatar { width: 40px; height: 40px; flex-basis: 40px; }
+        .eka-launcher-dim { position: fixed; inset: 0; z-index: 1039; background: rgba(8,9,10,0.35); backdrop-filter: blur(5px); -webkit-backdrop-filter: blur(5px); opacity: 0; pointer-events: none; transition: opacity .25s ease; }
+        .eka-launcher:hover + .eka-launcher-dim, .eka-launcher:focus-visible + .eka-launcher-dim { opacity: 1; }
         @keyframes eka-pulse { 0% { box-shadow: 0 10px 30px rgba(0,0,0,0.45), 0 0 0 0 rgba(255,122,0,0.45); } 70%, 100% { box-shadow: 0 10px 30px rgba(0,0,0,0.45), 0 0 0 14px rgba(255,122,0,0); } }
 
         .eka-avatar { position: relative; display: grid; place-items: center; width: 34px; height: 34px; flex: 0 0 34px; border: 1px solid rgba(255,122,0,0.5); border-radius: 50%; background: radial-gradient(circle at 30% 25%, #2a1a0a, #0b0c0d); }
@@ -1039,6 +1227,71 @@ Ask me about your students, say “create an exam”, or tell me which page to o
         .eka-bubble b { color: #fff; }
         .eka-bubble.is-user { max-width: 75%; border: 0; border-radius: 16px 4px 16px 16px; background: linear-gradient(135deg, #ff8a1f, #ff7a00); color: #fff; font-weight: 600; }
         .eka-bubble.is-error { border-color: rgba(239,68,68,0.35); background: rgba(239,68,68,0.08); color: #fca5a5; }
+        /* Preparing-report card: satellite orbiting a data globe, steps ticking off */
+        .eka-prep { display: flex; align-items: center; gap: 16px; min-width: min(460px, 100%); padding: 14px 18px !important; }
+        .eka-prep-visual { flex: 0 0 96px; height: 96px; }
+        .eka-prep-visual svg { width: 100%; height: 100%; overflow: visible; }
+        .eka-prep-sat { transform-origin: 60px 60px; animation: eka-orbit 2.6s linear infinite; }
+        @keyframes eka-orbit { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        .eka-prep-ping { transform-origin: 60px 60px; animation: eka-ping 1.8s ease-out infinite; }
+        .eka-prep-ping.is-late { animation-delay: .9s; }
+        @keyframes eka-ping { 0% { transform: scale(1); opacity: .7; } 100% { transform: scale(2.1); opacity: 0; } }
+        .eka-prep-text { flex: 1; min-width: 0; }
+        .eka-prep-text b { display: block; margin-bottom: 8px; color: #fff; font-size: 0.92rem; font-weight: 800; }
+        .eka-prep-text ul { margin: 0 0 10px; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 5px; }
+        .eka-prep-text li { display: flex; align-items: center; gap: 8px; color: #5f656c; font-size: 0.8rem; transition: color .3s; }
+        .eka-prep-text li span { display: grid; place-items: center; flex: 0 0 16px; height: 16px; border: 1px solid #2f3337; border-radius: 50%; font-size: 0.6rem; font-weight: 800; }
+        .eka-prep-text li.is-done { color: #9aa0a6; }
+        .eka-prep-text li.is-done span { border-color: rgba(34,197,94,0.5); background: rgba(34,197,94,0.15); color: #4ade80; }
+        .eka-prep-text li.is-now { color: #ffb15e; font-weight: 700; }
+        .eka-prep-text li.is-now span { border-color: #ff9a3c; border-top-color: transparent; animation: eka-spin .8s linear infinite; }
+        @keyframes eka-spin { to { transform: rotate(360deg); } }
+        .eka-prep-bar { height: 4px; border-radius: 99px; background: #23262a; overflow: hidden; }
+        .eka-prep-bar i { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, #c2410c, #ff9a3c); transition: width 1.1s ease; }
+        /* Preparing animation in the results panel (where the report will appear) */
+        .eka-panel-prep { display: flex; align-items: center; justify-content: center; padding: 32px; background: radial-gradient(60% 50% at 50% 40%, rgba(255,122,0,0.08), transparent 70%), #0c0e10; }
+        .eka-prep.is-panel { flex-direction: column; text-align: center; gap: 22px; max-width: 420px; padding: 0; border: 0; background: none; }
+        .eka-prep.is-panel .eka-prep-visual { flex: 0 0 auto; width: 220px; height: 220px; }
+        .eka-prep.is-panel .eka-prep-text { width: 100%; }
+        .eka-prep.is-panel .eka-prep-text b { font-size: 1.15rem; margin-bottom: 14px; }
+        .eka-prep.is-panel .eka-prep-text ul { align-items: flex-start; gap: 9px; margin: 0 auto 16px; width: fit-content; text-align: left; }
+        .eka-prep.is-panel .eka-prep-text li { font-size: 0.86rem; }
+        .eka-prep-inline { display: none; }
+        @media (max-width: 1100px) {
+          .eka-panel-prep { display: none; }
+          .eka-prep-mini { display: none !important; }
+          .eka-prep-inline { display: block; }
+        }
+        /* Single-student report in the results panel */
+        .eka-profile { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 4px 18px 16px; scrollbar-width: thin; }
+        .eka-profile-head { display: flex; align-items: center; gap: 14px; padding: 16px; border: 1px solid #1f2225; border-radius: 14px; background: linear-gradient(110deg, rgba(255,122,0,0.1), #111316 60%); }
+        .eka-profile-avatar { display: grid; place-items: center; flex: 0 0 56px; height: 56px; border: 1px solid rgba(255,122,0,0.4); border-radius: 50%; background: #25201b; color: #ffb15e; font-size: 1.05rem; font-weight: 800; }
+        .eka-profile-who { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+        .eka-profile-who b { color: #fff; font-size: 1.12rem; font-weight: 800; }
+        .eka-profile-who small { color: #858b92; font-size: 0.74rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+        .eka-profile-ring { display: grid; place-items: center; flex: 0 0 88px; height: 88px; border-radius: 50%; }
+        .eka-profile-ring > span { display: flex; flex-direction: column; align-items: center; justify-content: center; width: 70px; height: 70px; border-radius: 50%; background: #111316; }
+        .eka-profile-ring b { color: #fff; font-size: 1.1rem; font-weight: 800; line-height: 1; }
+        .eka-profile-ring small { margin-top: 3px; color: #858b92; font-size: 0.6rem; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
+        .eka-profile-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
+        .eka-profile-stats div { padding: 10px 12px; border: 1px solid #1f2225; border-radius: 10px; background: #111316; min-width: 0; }
+        .eka-profile-stats small { display: block; color: #7d838a; font-size: 0.62rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; }
+        .eka-profile-stats b { display: block; margin-top: 4px; overflow: hidden; color: #fff; font-size: 1rem; font-weight: 800; text-overflow: ellipsis; white-space: nowrap; }
+        .eka-profile-stats b.is-good { color: #4ade80; font-size: 0.86rem; }
+        .eka-profile-modules { padding: 14px 16px; border: 1px solid #1f2225; border-radius: 14px; background: #0e1012; }
+        .eka-profile-modules h4 { margin: 0 0 10px; color: #9aa0a6; font-size: 0.66rem; font-weight: 750; letter-spacing: .06em; text-transform: uppercase; }
+        .eka-profile-mod { display: grid; grid-template-columns: 150px 1fr 48px; align-items: center; gap: 12px; padding: 8px 0; }
+        .eka-profile-mod + .eka-profile-mod { border-top: 1px solid #1a1d20; }
+        .eka-profile-mod span { color: #d6d9dc; font-size: 0.8rem; font-weight: 600; }
+        .eka-profile-mod > div { height: 8px; border-radius: 99px; background: #23262a; overflow: hidden; }
+        .eka-profile-mod > div i { display: block; height: 100%; border-radius: inherit; transition: width .7s ease; }
+        .eka-profile-mod b { font-size: 0.82rem; font-weight: 800; text-align: right; }
+        .eka-profile-note { padding: 11px 14px; border: 1px solid rgba(255,122,0,0.28); border-radius: 12px; background: rgba(255,122,0,0.07); color: #d6d9dc; font-size: 0.82rem; line-height: 1.5; }
+        .eka-profile-note b { color: #ffb15e; }
+        .eka-profile-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+        .eka-profile-actions button { height: 34px; padding: 0 14px; border: 1px solid #2a2d31; border-radius: 999px; background: #121417; color: #c9cdd2; font: inherit; font-size: 0.78rem; font-weight: 700; cursor: pointer; }
+        .eka-profile-actions button:hover { border-color: rgba(255,122,0,0.55); color: #ffb15e; }
+        @media (max-width: 640px) { .eka-profile-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); } .eka-profile-mod { grid-template-columns: 110px 1fr 42px; } }
         .eka-typing { display: inline-flex; align-items: center; gap: 4px; }
         .eka-typing span { width: 6px; height: 6px; border-radius: 50%; background: #ff9a3c; animation: eka-dot 1.1s infinite ease-in-out; }
         .eka-typing span:nth-child(2) { animation-delay: .15s; } .eka-typing span:nth-child(3) { animation-delay: .3s; }
@@ -1202,7 +1455,7 @@ Ask me about your students, say “create an exam”, or tell me which page to o
           .eka-pill { width: 36px; padding: 0; justify-content: center; }
         }
         @media (max-width: 575.98px) {
-          .eka-launcher { right: 16px; bottom: 16px; padding: 0 6px; }
+          .eka-launcher { bottom: 14px; padding: 0 6px; }
           .eka-launcher > span:last-child { display: none; }
           .eka-top, .eka-body, .eka-foot { padding-left: 14px; padding-right: 14px; }
           .eka-welcome h2 { font-size: 1.4rem; }
